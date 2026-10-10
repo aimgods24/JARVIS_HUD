@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>J.A.R.V.I.S. STARK HUD</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-glow: rgba(0, 243, 255, 0.35);
+            --bg-dark: #020b18;
+            --panel-bg: rgba(4, 18, 38, 0.88);
+            --text-color: #00f3ff;
+            --glow-width: 2px;
+            --border-style: var(--glow-width) solid var(--neon-blue);
+        }
+
+        body.night-mode {
+            --neon-blue: #ff2a2a; --neon-glow: rgba(255, 42, 42, 0.4);
+            --bg-dark: #000000; --panel-bg: rgba(15, 0, 0, 0.9); --text-color: #ff2a2a;
+        }
+
+        body.simple-mode-black {
+            --neon-blue: #ffffff; --neon-glow: none; --bg-dark: #000000;
+            --panel-bg: #111111; --text-color: #ffffff; --border-style: 1px solid #333333;
+        }
+
+        body.simple-mode-white {
+            --neon-blue: #000000; --neon-glow: none; --bg-dark: #ffffff;
+            --panel-bg: #f4f4f4; --text-color: #000000; --border-style: 1px solid #cccccc;
+        }
+
+        /* Blackout Display Styling */
+        body.blackout-active .stark-reactor-panel,
+        body.blackout-active .hud-header-bar,
+        body.blackout-active .hud-footer-meters,
+        body.blackout-active #chat-sidebar {
+            display: none !important;
+        }
+
+        body.blackout-active {
+            background-color: #000000 !important;
+        }
+
+        body.blackout-active .stark-workspace {
+            grid-template-columns: 1fr !important;
+        }
+
+        body.shutdown-mode { filter: grayscale(100%) brightness(20%); pointer-events: none; }
+        body.shutdown-mode #userInput { pointer-events: auto; }
+
+        body {
+            background-color: var(--bg-dark); color: var(--text-color);
+            font-family: 'Consolas', 'Segoe UI', monospace;
+            margin: 0; padding: 10px; display: flex; flex-direction: column;
+            height: 97vh; overflow: hidden; box-sizing: border-box;
+            box-shadow: inset 0 0 calc(var(--glow-width) * 5) var(--neon-glow);
+        }
+
+        /* Setup, Security & Boot Screens */
+        #setup-overlay, #boot-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #020b18; z-index: 2000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+
+        #boot-screen { display: none; z-index: 1900; }
+
+        .setup-box {
+            background: var(--panel-bg); border: 2px solid var(--neon-blue);
+            padding: 25px; border-radius: 12px; box-shadow: 0 0 35px var(--neon-glow);
+            text-align: center; display: flex; flex-direction: column; gap: 12px; width: 320px;
+        }
+
+        .pin-input {
+            font-size: 20px; letter-spacing: 6px; text-align: center;
+            background: rgba(0,0,0,0.8); border: 1px solid var(--neon-blue); color: var(--text-color);
+            padding: 6px; border-radius: 4px; outline: none; width: 140px; margin: 0 auto;
+        }
+
+        /* Header Bar */
+        .hud-header-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid var(--neon-blue); padding-bottom: 6px;
+            text-shadow: 0 0 8px var(--neon-glow);
+        }
+
+        .hud-clock { font-size: 20px; font-weight: bold; letter-spacing: 2px; }
+
+        /* Workspace Grid */
+        .stark-workspace {
+            display: grid; grid-template-columns: 2fr 1fr; gap: 12px; flex: 1; margin: 10px 0; overflow: hidden;
+        }
+
+        .stark-reactor-panel {
+            background: var(--panel-bg); border: var(--border-style); border-radius: 8px;
+            position: relative; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            box-shadow: inset 0 0 25px var(--neon-glow);
+        }
+
+        #waveform-canvas { position: absolute; width: 100%; height: 180px; z-index: 3; pointer-events: none; }
+
+        .reticle-ring {
+            width: 200px; height: 200px; border-radius: 50%;
+            border: 2px dashed var(--neon-blue); position: absolute;
+            animation: spin-slow 20s linear infinite; z-index: 1;
+        }
+
+        @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .stark-orb {
+            width: 140px; height: 140px; border-radius: 50%;
+            background: radial-gradient(circle, #ffffff 0%, #00aaff 60%, #020b18 100%);
+            border: 2px solid var(--neon-blue); box-shadow: 0 0 40px var(--neon-blue);
+            z-index: 2; position: relative; background-size: cover; background-position: center;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .stark-telemetry-col { display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+
+        .hud-panel-box {
+            background: var(--panel-bg); border: var(--border-style); border-radius: 6px;
+            padding: 8px; font-size: 11px; display: flex; flex-direction: column; gap: 6px;
+        }
+
+        #drop-zone { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+
+        .msg { line-height: 1.4; word-wrap: break-word; }
+        .msg-user { color: #ffffff; font-weight: bold; }
+        .msg-jarvis { color: var(--text-color); }
+
+        #media-container {
+            display: none; height: 140px; border: var(--border-style);
+            border-radius: 6px; overflow: hidden; margin-top: 4px;
+        }
+
+        #media-container iframe { width: 100%; height: 100%; border: none; }
+
+        .hud-footer-meters {
+            display: flex; gap: 15px; align-items: center; border-top: 1px solid var(--neon-blue); padding-top: 6px; font-size: 11px;
+        }
+
+        .meter-bar { flex: 1; height: 8px; background: rgba(0,243,255,0.15); border: 1px solid var(--neon-blue); border-radius: 3px; overflow: hidden; }
+        .meter-fill { height: 100%; background: var(--neon-blue); width: 85%; }
+
+        .input-container { display: flex; gap: 8px; margin-top: 6px; z-index: 2100; }
+
+        textarea {
+            flex: 1; height: 40px; background: rgba(0,0,0,0.6); border: var(--border-style);
+            border-radius: 4px; color: var(--text-color); padding: 6px; font-size: 13px; outline: none; resize: none;
+        }
+
+        button, select {
+            background: rgba(0, 243, 255, 0.12); border: var(--border-style);
+            color: var(--text-color); padding: 6px 12px; border-radius: 4px; font-weight: bold; cursor: pointer;
+        }
+
+        button:hover { background: var(--text-color); color: var(--bg-dark); }
+
+        /* Full Google Maps Engine Drawer */
+        #maps-panel {
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #242f3e; z-index: 1500; flex-direction: column; box-sizing: border-box;
+        }
+
+        .gmaps-top-bar {
+            background: #1a232e; padding: 10px 15px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 2px solid #00f3ff; color: #fff;
+        }
+
+        #maps-iframe { flex: 1; border: none; width: 100%; filter: invert(90%) hue-rotate(180deg); }
+
+        /* Left Chat Library Sidebar */
+        #chat-sidebar {
+            display: none; position: fixed; left: 0; top: 0; width: 220px; height: 100vh;
+            background: var(--panel-bg); border-right: 2px solid var(--neon-blue); z-index: 1600;
+            padding: 10px; box-sizing: border-box; flex-direction: column; gap: 8px;
+        }
+
+        .history-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .history-item { padding: 6px; background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.2); border-radius: 4px; font-size: 11px; cursor: pointer; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.88); z-index: 1800; justify-content: center; align-items: center; }
+        .modal-content { background: var(--panel-bg); border: var(--border-style); padding: 20px; width: 340px; display: flex; flex-direction: column; gap: 10px; max-height: 85vh; overflow-y: auto; }
+    </style>
+</head>
+<body class="dark-mode">
+
+    <!-- Mandatory Security Password Screen -->
+    <div id="setup-overlay">
+        <div class="setup-box">
+            <div style="font-weight:bold; font-size:15px;">J.A.R.V.I.S. AUTHENTICATION</div>
+            
+            <div id="gender-step">
+                <div style="font-size:11px; margin-bottom:8px;">Please identify your title:</div>
+                <div style="display:flex; gap:8px; justify-content:center;">
+                    <button onclick="selectGender('Woman')">WOMAN (MA'AM)</button>
+                    <button onclick="selectGender('Man')">MAN (SIR)</button>
+                </div>
+            </div>
+
+            <div id="pin-step" style="display:none; flex-direction:column; gap:8px;">
+                <div style="font-size:11px;">Enter Security Password / PIN:</div>
+                <input type="password" maxlength="4" id="pin-input" class="pin-input" autofocus>
+                <button onclick="submitPin()">LOGIN / UNLOCK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Boot Sequence Screen -->
+    <div id="boot-screen">
+        <div style="font-size: 18px; font-weight: bold; letter-spacing: 4px; margin-bottom: 10px;">BOOTING STARK HUD CORE</div>
+        <div style="width: 220px; height: 5px; border: 1px solid var(--neon-blue); border-radius: 3px; overflow: hidden;">
+            <div id="boot-progress" style="width: 0%; height: 100%; background: var(--neon-blue); transition: width 0.1s linear;"></div>
+        </div>
+    </div>
+
+    <!-- Chat Library Sidebar -->
+    <div id="chat-sidebar">
+        <div style="font-size:12px; font-weight:bold; border-bottom:1px solid var(--neon-blue); padding-bottom:4px; display:flex; justify-content:space-between;">
+            <span>📚 LIBRARY</span>
+            <button onclick="startNewSession()" style="padding:2px 6px; font-size:9px;">+ NEW</button>
+        </div>
+        <div class="history-list" id="history-list"></div>
+    </div>
+
+    <!-- Header Telemetry Bar -->
+    <div class="hud-header-bar">
+        <div style="display:flex; align-items:center; gap:6px;">
+            <button onclick="toggleSidebar()" style="padding:2px 6px; font-size:10px;">☰</button>
+            <span>SYS: ONLINE [GRID OK]</span>
+        </div>
+        <div class="hud-clock" id="clock">00:00:00</div>
+        <div>
+            <button onclick="fetchGlobalNewsFeed()" style="font-size:10px;">🌍 NEWS</button>
+            <button onclick="toggleBlackoutMode()" style="font-size:10px;">🕶️ BLACKOUT</button>
+            <button onclick="openMapsPanel()">GOOGLE MAPS</button>
+            <button onclick="openCustomizer()">⚙️ SETTINGS</button>
+        </div>
+    </div>
+
+    <!-- Stark Workspace Layout -->
+    <div class="stark-workspace">
+        <div class="stark-reactor-panel">
+            <canvas id="waveform-canvas"></canvas>
+            <div class="reticle-ring"></div>
+            <div class="stark-orb" id="jarvis-orb">
+                <div style="font-size:14px; font-weight:bold; color:#fff;" id="orb-text">J.A.R.V.I.S.</div>
+            </div>
+        </div>
+
+        <div class="stark-telemetry-col">
+            <div class="hud-panel-box">
+                <b>ACTIVITY LOG:</b>
+                <div id="activity-log">SYS: SECURE | MIC PASSIVE</div>
+                <div>BATTERY: <span id="battery-status">100% (CHARGING)</span></div>
+            </div>
+
+            <div class="hud-panel-box" style="flex:1;">
+                <b>COMMUNICATION TERMINAL:</b>
+                <div id="drop-zone">
+                    <div class="msg msg-jarvis">J.A.R.V.I.S.: Tactical HUD online. Microphone passive until wake command or voice button tap.</div>
+                </div>
+
+                <div id="media-container">
+                    <iframe id="media-frame" src="about:blank" allow="autoplay; clipboard-write; encrypted-media; fullscreen"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Meters -->
+    <div class="hud-footer-meters">
+        <span>PWR</span><div class="meter-bar"><div class="meter-fill"></div></div>
+        <span>SYS</span><div class="meter-bar"><div class="meter-fill" style="width:92%;"></div></div>
+        <span>ACTIVE</span><div class="meter-bar"><div class="meter-fill" style="width:78%;"></div></div>
+    </div>
+
+    <div class="input-container">
+        <textarea id="userInput" placeholder="Command J.A.R.V.I.S..."></textarea>
+        <button onclick="openCamera()">📷 CAM</button>
+        <button id="mic-btn" onclick="toggleVoiceInput()">🎙️ VOICE (OFF)</button>
+        <button id="send-btn" onclick="sendCommand()">SEND</button>
+    </div>
+
+    <!-- Google Maps Drawer -->
+    <div id="maps-panel">
+        <div class="gmaps-top-bar">
+            <span>📍 FULL GOOGLE MAPS NAVIGATION</span>
+            <button onclick="closeMapsPanel()" style="background:#ff0055; color:#fff;">CLOSE MAPS</button>
+        </div>
+        <iframe id="maps-iframe" src="about:blank"></iframe>
+    </div>
+
+    <!-- Customizer Modal -->
+    <div class="modal" id="customizer-modal">
+        <div class="modal-content">
+            <h3 style="margin:0; text-align:center;">SYSTEM SETTINGS</h3>
+            
+            <label>Custom Wake Word:</label>
+            <input type="text" id="custom-wake-word" value="WAKE UP JARVIS">
+
+            <label>Preferred Honorific:</label>
+            <select id="gender-select">
+                <option value="Sir">Sir</option>
+                <option value="Ma'am">Ma'am</option>
+            </select>
+
+            <label>Upload Custom Orb Image / GIF:</label>
+            <input type="file" id="orb-file-input" accept="image/*" onchange="uploadCustomOrb(this)">
+
+            <button onclick="toggleBlackoutMode()">🕶️ TOGGLE BLACKOUT MODE</button>
+            <button onclick="saveCustomizations()" style="margin-top:10px;">SAVE ALL PREFERENCES</button>
+            <button onclick="closeCustomizer()" style="background:rgba(255,0,0,0.3);">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div class="modal" id="camera-modal">
+        <div class="modal-content">
+            <video id="cam-feed" autoplay style="width:100%; border:1px solid var(--neon-blue);"></video>
+            <button onclick="captureSnapshot()">📸 CAPTURE & ATTACH</button>
+            <button onclick="closeCamera()" style="background:red; color:white;">CANCEL</button>
+        </div>
+    </div>
+
+    <script>
+        let pendingImages = [];
+        let isListening = false, recognizer = null;
+        let wakeWord = localStorage.getItem('jarvis_wake_word') || 'WAKE UP JARVIS';
+        let videoStream = null;
+
+        // Enhanced Device-Aware Keyboard & Enter Key Detector
+        const userInputEl = document.getElementById('userInput');
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        userInputEl.addEventListener('keydown', function(event) {
+            if (!isMobileDevice) {
+                if (event.key === 'Enter' || event.keyCode === 13) {
+                    if (!event.shiftKey) {
+                        event.preventDefault();
+                        sendCommand();
+                    }
+                }
+            }
+        });
+
+        // Force Login Screen on Reload
+        window.onload = () => {
+            document.getElementById('setup-overlay').style.display = 'flex';
+            if (localStorage.getItem('jarvis_honorific')) {
+                document.getElementById('gender-step').style.display = 'none';
+                document.getElementById('pin-step').style.display = 'flex';
+            }
+            initPassiveWakeWordListener();
+        };
+
+        function selectGender(type) {
+            localStorage.setItem('jarvis_honorific', (type === 'Woman') ? 'Ma\'am' : 'Sir');
+            document.getElementById('gender-step').style.display = 'none';
+            document.getElementById('pin-step').style.display = 'flex';
+        }
+
+        function submitPin() {
+            const entered = document.getElementById('pin-input').value.trim();
+            const savedPin = localStorage.getItem('jarvis_security_pin') || '1234';
+
+            if (!localStorage.getItem('jarvis_security_pin')) {
+                localStorage.setItem('jarvis_security_pin', entered);
+            }
+
+            if (entered === savedPin || entered === localStorage.getItem('jarvis_security_pin')) {
+                document.getElementById('setup-overlay').style.display = 'none';
+                bootSystem();
+            } else { alert("ACCESS DENIED"); }
+        }
+
+        function bootSystem() {
+            const bootScreen = document.getElementById('boot-screen');
+            const progress = document.getElementById('boot-progress');
+            bootScreen.style.display = 'flex';
+
+            let val = 0;
+            const timer = setInterval(() => {
+                val += 10;
+                progress.style.width = val + '%';
+                if (val >= 100) {
+                    clearInterval(timer);
+                    bootScreen.style.display = 'none';
+                }
+            }, 50);
+        }
+
+        // Fetch Global News Function
+        async function fetchGlobalNewsFeed() {
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.innerHTML += `<div class="msg msg-jarvis"><b>J.A.R.V.I.S.:</b> Accessing 24-hour global news networks...</div>`;
+            try {
+                const res = await fetch('/api/get_news');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    dropZone.innerHTML += `<div class="msg msg-jarvis"><b>WORLD NEWS FEED:</b><br>${data.news.join('<br><br>')}</div>`;
+                }
+            } catch(e) {
+                dropZone.innerHTML += `<div class="msg msg-jarvis">J.A.R.V.I.S.: News feed connection error.</div>`;
+            }
+            dropZone.scrollTop = dropZone.scrollHeight;
+        }
+
+        // Blackout Toggle
+        function toggleBlackoutMode() {
+            document.body.classList.toggle('blackout-active');
+            closeCustomizer();
+        }
+
+        // Passive Mic & Wake-Word Listening
+        function initPassiveWakeWordListener() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const passiveRec = new SpeechRecognition();
+                passiveRec.continuous = true;
+                passiveRec.onresult = (e) => {
+                    const phrase = e.results[e.results.length - 1][0].transcript.toUpperCase().trim();
+                    if (phrase.includes(wakeWord.toUpperCase())) {
+                        document.getElementById('drop-zone').innerHTML += `<div class="msg msg-jarvis"><b>J.A.R.V.I.S.:</b> Wake phrase detected. Microphone active!</div>`;
+                        toggleVoiceInput(true);
+                    }
+                };
+                try { passiveRec.start(); } catch(err) {}
+            }
+        }
+
+        function toggleVoiceInput(forceOn = false) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return;
+
+            if (isListening && !forceOn) {
+                if (recognizer) recognizer.stop();
+                isListening = false;
+                document.getElementById('mic-btn').innerText = "🎙️ VOICE (OFF)";
+                document.getElementById('mic-btn').style.background = "rgba(0, 243, 255, 0.12)";
+            } else {
+                recognizer = new SpeechRecognition();
+                recognizer.continuous = false;
+                recognizer.onresult = (e) => {
+                    document.getElementById('userInput').value = e.results[0][0].transcript;
+                    sendCommand();
+                    toggleVoiceInput(false);
+                };
+                recognizer.onend = () => {
+                    isListening = false;
+                    document.getElementById('mic-btn').innerText = "🎙️ VOICE (OFF)";
+                    document.getElementById('mic-btn').style.background = "rgba(0, 243, 255, 0.12)";
+                };
+                recognizer.start();
+                isListening = true;
+                document.getElementById('mic-btn').innerText = "🎙️ VOICE (ACTIVE)";
+                document.getElementById('mic-btn').style.background = "#00ff66";
+            }
+        }
+
+        // Navigation Drawer
+        function openMapsPanel(destination = null) {
+            document.getElementById('maps-panel').style.display = 'flex';
+            const target = destination ? encodeURIComponent(destination) : "Current Location";
+            document.getElementById('maps-iframe').src = `https://maps.google.com/maps?q=${target}&t=&z=16&ie=UTF8&iwloc=&output=embed`;
+        }
+
+        function closeMapsPanel() { document.getElementById('maps-panel').style.display = 'none'; }
+
+        // Camera Feed
+        async function openCamera() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                document.getElementById('cam-feed').srcObject = videoStream;
+                document.getElementById('camera-modal').style.display = 'flex';
+            } catch (e) { alert("Camera access denied."); }
+        }
+
+        function captureSnapshot() {
+            const video = document.getElementById('cam-feed');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            pendingImages.push(canvas.toDataURL('image/jpeg').split(',')[1]);
+            document.getElementById('drop-zone').innerHTML += `<div class="msg msg-user"><b>[SNAPSHOT ATTACHED]</b></div>`;
+            closeCamera();
+        }
+
+        function closeCamera() {
+            if (videoStream) { videoStream.getTracks().forEach(t => t.stop()); videoStream = null; }
+            document.getElementById('camera-modal').style.display = 'none';
+        }
+
+        // Command Handler
+        async function sendCommand() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text && pendingImages.length === 0) return;
+
+            const dropZone = document.getElementById('drop-zone');
+            dropZone.innerHTML += `<div class="msg msg-user"><b>YOU:</b> ${text || "Attached Snapshot"}</div>`;
+            input.value = '';
+
+            const payloadImages = [...pendingImages];
+            pendingImages = [];
+
+            try {
+                const response = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: text,
+                        images: payloadImages,
+                        honorific: localStorage.getItem('jarvis_honorific') || 'Sir'
+                    })
+                });
+                const data = await response.json();
+                dropZone.innerHTML += `<div class="msg msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
+
+                if (data.blackout) toggleBlackoutMode();
+                if (data.nav_destination) openMapsPanel(data.nav_destination);
+
+                if (data.audio) {
+                    let audio = new Audio('/api/audio?t=' + new Date().getTime());
+                    audio.play();
+                }
+            } catch (err) {}
+            dropZone.scrollTop = dropZone.scrollHeight;
+        }
+
+        // Clock & Customization
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = 
+                `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+        }, 1000);
+
+        function openCustomizer() { document.getElementById('customizer-modal').style.display = 'flex'; }
+        function closeCustomizer() { document.getElementById('customizer-modal').style.display = 'none'; }
+        function saveCustomizations() {
+            wakeWord = document.getElementById('custom-wake-word').value.trim() || 'WAKE UP JARVIS';
+            localStorage.setItem('jarvis_wake_word', wakeWord);
+            closeCustomizer();
+        }
+
+        function uploadCustomOrb(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const orb = document.getElementById('jarvis-orb');
+                    orb.style.backgroundImage = `url('${e.target.result}')`;
+                    document.getElementById('orb-text').style.display = 'none';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
+</body>
+</html>
