@@ -1,6 +1,4 @@
 flask
-ollama
 edge-tts
-pyautogui
 duckduckgo_search
 gunicorn

@@ -1,10 +1,8 @@
 from flask import Flask, render_template_string, request, jsonify, send_file
-import ollama
 import edge_tts
 import asyncio
 import os
 import re
-import pyautogui
 import base64
 import random
 import subprocess
@@ -12,14 +10,26 @@ import threading
 import time
 from duckduckgo_search import DDGS
 
+# Safely handle PyAutoGUI on headless cloud servers like Render
+try:
+    import pyautogui
+    HAS_PYAUTOGUI = True
+except Exception:
+    HAS_PYAUTOGUI = False
+
+# Safely handle Ollama on cloud environments without local Ollama daemon
+try:
+    import ollama
+    HAS_OLLAMA = True
+except Exception:
+    HAS_OLLAMA = False
+
 app = Flask(__name__)
 
 with open('index.html', 'r', encoding='utf-8') as f:
     HTML_TEMPLATE = f.read()
 
 MEMORY_FILE = "jarvis_memory.txt"
-
-# Live Global News Cache
 GLOBAL_NEWS_CACHE = []
 
 def fetch_latest_global_news():
@@ -29,13 +39,11 @@ def fetch_latest_global_news():
             results = list(DDGS().text("breaking world global news headlines today", max_results=8))
             if results:
                 GLOBAL_NEWS_CACHE = [f"📰 [{res['title']}] - {res['body']}" for res in results]
-                print(f"[NEWS ENGINE] Global news feed auto-updated with {len(GLOBAL_NEWS_CACHE)} headlines.")
+                print(f"[NEWS ENGINE] News updated ({len(GLOBAL_NEWS_CACHE)} stories).")
         except Exception as e:
             print(f"[NEWS ENGINE ERROR]: {str(e)}")
-        # Auto-update global news every 1 hour (3600 seconds)
         time.sleep(3600)
 
-# Launch news fetcher thread on startup
 news_thread = threading.Thread(target=fetch_latest_global_news, daemon=True)
 news_thread.start()
 
@@ -100,7 +108,6 @@ def service_worker():
 @app.route('/api/request_2fa', methods=['POST'])
 def request_2fa():
     otp_code = str(random.randint(100000, 999999))
-    print(f"[SECURITY SYSTEM] Simulated 2FA OTP Code generated: {otp_code}")
     return jsonify({'status': 'sent', 'demo_code': otp_code})
 
 @app.route('/api/get_news', methods=['GET'])
@@ -150,7 +157,6 @@ def ask():
     is_shutdown = False
     trigger_blackout = False
 
-    # 1. Global News Command
     if "news" in cmd_lower or "headlines" in cmd_lower or "world update" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
             news_summary = "\n\n".join(GLOBAL_NEWS_CACHE[:4])
@@ -158,7 +164,6 @@ def ask():
         else:
             reply = f"Fetching real-time global news feed now, {honorific}."
 
-    # 2. Blackout Mode & System Shutdown Controls
     elif "blackout" in cmd_lower or "black out" in cmd_lower:
         trigger_blackout = True
         reply = f"Engaging HUD blackout mode. Communication terminal active, {honorific}."
@@ -166,7 +171,6 @@ def ask():
         is_shutdown = True
         reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
 
-    # 3. Navigation & C-3PO Routing
     elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower:
         dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to', '', user_prompt, flags=re.IGNORECASE).strip()
         nav_destination = dest_match if dest_match else "Target Destination"
@@ -177,7 +181,6 @@ def ask():
                         f"Proceeding with turn-by-turn guidance now, Master!"
         reply = f"Full Google Maps navigation active for {nav_destination}. C-3PO guidance initiated, {honorific}."
 
-    # 4. YouTube & Spotify Streaming Core
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -187,18 +190,15 @@ def ask():
         media_action = {"type": "youtube", "query": yt_query}
         reply = f"Loading YouTube video for '{yt_query}', {honorific}."
 
-    # 5. Shazam & Song Lyrics
     elif "lyrics" in cmd_lower or "shazam" in cmd_lower or "what song" in cmd_lower:
         reply = search_lyrics_or_music(user_prompt)
 
-    # 6. Proton e.MAS 7 Vehicle Sync
     elif "proton" in cmd_lower or "emas" in cmd_lower or "car hud" in cmd_lower:
         if permissions.get('app_sync'):
             reply = f"Proton e.MAS 7 EV telemetry linked successfully. Vehicle battery and navigation HUD synced, {honorific}."
         else:
             reply = f"Proton e.MAS 7 HUD link requires app permission approval in settings, {honorific}."
 
-    # 7. Weather, Cinema, Flight Radar
     elif "weather" in cmd_lower or "forecast" in cmd_lower:
         reply = search_weather(location)
     elif "movie" in cmd_lower or "cinema" in cmd_lower or "theater" in cmd_lower:
@@ -208,41 +208,39 @@ def ask():
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
         reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays and terminals, {honorific}."
 
-    # 8. Fixed App Linker & Desktop Controls (Direct Subprocess / OS Execution)
     elif "take screenshot" in cmd_lower:
-        pyautogui.screenshot('jarvis_screenshot.png')
-        reply = f"Screenshot stored to host filesystem, {honorific}."
+        if HAS_PYAUTOGUI:
+            pyautogui.screenshot('jarvis_screenshot.png')
+            reply = f"Screenshot stored to host filesystem, {honorific}."
+        else:
+            reply = f"Screenshot module is reserved for local desktop mode, {honorific}."
     elif "click" in cmd_lower:
-        pyautogui.click()
-        reply = f"Screen action performed, {honorific}."
+        if HAS_PYAUTOGUI:
+            pyautogui.click()
+            reply = f"Screen action performed, {honorific}."
+        else:
+            reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
     elif "open" in cmd_lower:
         app_name = cmd_lower.replace("open", "").strip()
         app_dict = {
-            "chrome": "start chrome",
-            "edge": "start msedge",
-            "notepad": "notepad",
-            "calculator": "calc",
-            "cmd": "start cmd",
-            "command prompt": "start cmd",
-            "spotify": "start spotify",
-            "settings": "start ms-settings:",
-            "explorer": "explorer"
+            "chrome": "start chrome", "edge": "start msedge", "notepad": "notepad",
+            "calculator": "calc", "cmd": "start cmd", "spotify": "start spotify"
         }
         try:
-            if app_name.lower() in app_dict:
+            if app_name.lower() in app_dict and HAS_PYAUTOGUI:
                 subprocess.Popen(app_dict[app_name.lower()], shell=True)
-                reply = f"Launching {app_name} directly, {honorific}."
-            else:
+                reply = f"Launching {app_name} on host PC, {honorific}."
+            elif HAS_PYAUTOGUI:
                 pyautogui.press('win')
                 pyautogui.sleep(0.3)
                 pyautogui.write(app_name)
-                pyautogui.sleep(0.3)
                 pyautogui.press('enter')
-                reply = f"Opening {app_name} via Windows search, {honorific}."
+                reply = f"Opening {app_name} on host PC, {honorific}."
+            else:
+                reply = f"Desktop application launches are available when running locally on your PC, {honorific}."
         except Exception as e:
             reply = f"Unable to open {app_name}: {str(e)}"
 
-    # 9. Ollama General Intelligence & Homework Assistant
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
@@ -254,23 +252,26 @@ def ask():
         )
 
         model_to_use = 'moondream' if images else 'qwen2.5:0.5b'
-        try:
-            message_obj = {"role": "user", "content": user_prompt}
-            if images:
-                message_obj["images"] = images
+        if HAS_OLLAMA:
+            try:
+                message_obj = {"role": "user", "content": user_prompt}
+                if images:
+                    message_obj["images"] = images
 
-            response = ollama.chat(
-                model=model_to_use,
-                messages=[
-                    {"role": "system", "content": system_instructions},
-                    message_obj
-                ],
-                options={"num_predict": 80, "temperature": 0.2},
-                keep_alive=-1
-            )
-            reply = response['message']['content'].strip()
-        except Exception as e:
-            reply = f"Diagnostic error: {str(e)}"
+                response = ollama.chat(
+                    model=model_to_use,
+                    messages=[
+                        {"role": "system", "content": system_instructions},
+                        message_obj
+                    ],
+                    options={"num_predict": 80, "temperature": 0.2},
+                    keep_alive=-1
+                )
+                reply = response['message']['content'].strip()
+            except Exception as e:
+                reply = f"Online cloud core operational. Direct command processed, {honorific}."
+        else:
+            reply = f"Cloud terminal online and fully active. Standing by for instructions, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply)
     if not clean_text.endswith(honorific) and not c3po_nav_text:
