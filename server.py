@@ -308,7 +308,6 @@ def ask():
             else:
                 reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All neural pathways report nominal execution status, {honorific}."
 
-    # Double honorific prevention regex
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     pattern = rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$'
     clean_text = re.sub(pattern, '', clean_text, flags=re.IGNORECASE).strip()
