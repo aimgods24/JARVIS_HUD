@@ -4,25 +4,28 @@ import json
 import os
 import random
 import re
+import subprocess
 import threading
 import time
 from duckduckgo_search import DDGS
 import edge_tts
-from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from flask import Flask, jsonify, make_response, render_template_string, request, send_file
 import requests
 
-app = FastAPI()
+try:
+    import pyautogui
+    HAS_PYAUTOGUI = True
+except Exception:
+    HAS_PYAUTOGUI = False
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+try:
+    import ollama
+    HAS_OLLAMA = True
+except Exception:
+    HAS_OLLAMA = False
+
+app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 MEMORY_FILE = "jarvis_memory.txt"
 GLOBAL_NEWS_CACHE = []
@@ -30,7 +33,7 @@ GLOBAL_NEWS_CACHE = []
 GROK_API_KEY = os.getenv("GROK_API_KEY", "")
 GROK_ENDPOINT = "https://api.x.ai/v1/chat/completions"
 
-# --- Background Global News Engine ---
+# --- News Engine Thread ---
 def fetch_latest_global_news():
     global GLOBAL_NEWS_CACHE
     while True:
@@ -51,13 +54,19 @@ def get_user_memory():
             return f.read()
     return ""
 
-# --- DuckDuckGo Search Integrations ---
+WELCOME_MESSAGES = [
+    "Welcome back, {honorific}. All neural pathways and subroutines are online.",
+    "Authentication confirmed. Good to see you again, {honorific}.",
+    "Systems restored to maximum efficiency. How may I assist you today, {honorific}?"
+]
+
+# --- Search & Synthesis Modules ---
 def search_general_knowledge(query):
     try:
         results = list(DDGS().text(query, max_results=6))
         if results:
             snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
-            return f"Comprehensive analysis on '{query}':\n\n" + "\n\n".join(snippets[:4])
+            return f"I have conducted a comprehensive analysis on '{query}'. Here is the breakdown:\n\n" + "\n\n".join(snippets[:4])
         return None
     except Exception:
         return None
@@ -83,9 +92,15 @@ def search_weather(location_str):
     except Exception as e:
         return f"Weather error: {str(e)}"
 
-# --- Multimodal Vision & LLM Core (Grok / Ollama) ---
+def search_nearby_cinemas(location_str):
+    try:
+        results = list(DDGS().text(f"cinemas movie theaters near {location_str} showtimes", max_results=3))
+        return "\n".join([f"🎬 {res['title']}\n{res['body']}" for res in results]) if results else "No nearby cinemas found."
+    except Exception as e:
+        return f"Cinema error: {str(e)}"
+
+# --- Multimodal & Grok Reasoning Engine ---
 def query_grok_llm(prompt: str, images: list = None, honorific: str = "Sir") -> str:
-    """Processes user questions and dropped images using Grok API or fallback logic."""
     if not GROK_API_KEY:
         return None
     
@@ -98,7 +113,6 @@ def query_grok_llm(prompt: str, images: list = None, honorific: str = "Sir") -> 
     if prompt:
         user_content.append({"type": "text", "text": prompt})
     
-    # Process base64 image attachments
     if images:
         for img in images:
             img_data = img if img.startswith("data:image") else f"data:image/jpeg;base64,{img}"
@@ -114,7 +128,7 @@ def query_grok_llm(prompt: str, images: list = None, honorific: str = "Sir") -> 
                 "role": "system",
                 "content": (
                     "You are J.A.R.V.I.S., Tony Stark's hyper-intelligent AI assistant. "
-                    "Analyze all questions and dropped image uploads with clinical precision. "
+                    "Analyze all questions and dropped image uploads with clinical precision and British wit. "
                     f"Address the user strictly as {honorific}."
                 )
             },
@@ -130,22 +144,80 @@ def query_grok_llm(prompt: str, images: list = None, honorific: str = "Sir") -> 
     except Exception:
         return None
 
-# --- Voice Generator ---
-async def generate_jarvis_voice(text):
+# --- Voice Synthesis Functions ---
+async def generate_jarvis_movie_voice(text):
     communicate = edge_tts.Communicate(text, "en-GB-RyanNeural", pitch="-3Hz", rate="+2%")
     await communicate.save("static_speech.mp3")
 
-# --- Command & Query Intent Parser ---
-def process_user_intent(user_prompt: str, images: list = None, honorific: str = "Sir", device_type: str = "desktop"):
+async def generate_c3po_voice(text):
+    communicate = edge_tts.Communicate(text, "en-GB-ThomasNeural", pitch="+4Hz", rate="+10%")
+    await communicate.save("static_speech.mp3")
+
+# --- Flask Routes ---
+@app.route('/')
+def home():
+    with open('index.html', 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    response = make_response(render_template_string(html_content))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+@app.route('/manifest.json')
+def manifest():
+    return send_file('manifest.json')
+
+@app.route('/sw.js')
+def service_worker():
+    return send_file('sw.js')
+
+@app.route('/api/request_2fa', methods=['POST'])
+def request_2fa():
+    otp_code = str(random.randint(100000, 999999))
+    return jsonify({'status': 'sent', 'demo_code': otp_code})
+
+@app.route('/api/get_news', methods=['GET'])
+def get_news():
+    if GLOBAL_NEWS_CACHE:
+        return jsonify({'status': 'success', 'news': GLOBAL_NEWS_CACHE})
+    else:
+        try:
+            results = list(DDGS().text("breaking world global news headlines today", max_results=5))
+            news = [f"📰 [{res['title']}] - {res['body']}" for res in results]
+            return jsonify({'status': 'success', 'news': news})
+        except Exception:
+            return jsonify({'status': 'error', 'news': ["Global news service temporarily offline."]})
+
+@app.route('/api/ask', methods=['POST'])
+def ask():
+    data = request.json or {}
+    user_prompt = data.get('prompt', '').strip()
+    images = data.get('images', [])
+    honorific = data.get('honorific', 'Sir')
+    location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
+    battery_info = data.get('battery', 'Battery Normal')
+    permissions = data.get('permissions', {})
+    mode_transport = data.get('transport_mode', 'car')
+    is_dnd = data.get('dnd_mode', False)
+    device_type = data.get('device_type', 'desktop')
+
+    if not user_prompt and not images:
+        return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
+
     cmd_lower = user_prompt.lower()
     reply = None
     media_action = None
     nav_destination = None
-    activate_map = False
-    trigger_blackout = False
+    ev_chargers = False
+    seats_map = False
+    c3po_nav_text = None
     is_shutdown = False
+    trigger_blackout = False
     app_launch_intent = None
+    activate_map = False
 
+    # 1. Map Activation
     if "show map" in cmd_lower or "activate map" in cmd_lower or "open map" in cmd_lower:
         activate_map = True
         reply = f"Activating tactical GPS HUD map overlay now, {honorific}."
@@ -156,112 +228,194 @@ def process_user_intent(user_prompt: str, images: list = None, honorific: str = 
         activate_map = True
         dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to', '', user_prompt, flags=re.IGNORECASE).strip()
         nav_destination = dest_match if dest_match else "Target Destination"
-        reply = f"GPS routing initialized for {nav_destination}, {honorific}."
+        ev_chargers = (mode_transport == 'ev')
+        
+        c3po_nav_text = f"Oh my! Computing optimal high-precision GPS route for {mode_transport.upper()} mode to {nav_destination}. " + \
+                        ("Scanning for compatible EV charging stations along our journey, Master. " if ev_chargers else "") + \
+                        f"Proceeding with turn-by-turn guidance now, Master!"
+        reply = f"Full Google Maps GPS tracking active for {nav_destination}. C-3PO guidance initiated, {honorific}."
+
+    # 2. News
+    elif "news" in cmd_lower or "headlines" in cmd_lower or "world update" in cmd_lower:
+        if GLOBAL_NEWS_CACHE:
+            news_summary = "\n\n".join(GLOBAL_NEWS_CACHE[:4])
+            reply = f"Here are the latest global news headlines:\n\n{news_summary}"
+        else:
+            reply = f"Fetching real-time global news feed now, {honorific}."
+
+    # 3. Controls
     elif "blackout" in cmd_lower or "black out" in cmd_lower:
         trigger_blackout = True
-        reply = f"Engaging HUD blackout mode, {honorific}."
+        reply = f"Engaging HUD blackout mode. Communication terminal active, {honorific}."
     elif "shut down" in cmd_lower or "shutdown" in cmd_lower:
         is_shutdown = True
-        reply = f"Initiating system shutdown sequence, {honorific}."
+        reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
+
+    # 4. Media
+    elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
+        song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
+        media_action = {"type": "spotify", "query": song}
+        reply = f"Streaming '{song}' on Spotify, {honorific}."
+    elif "play" in cmd_lower or "youtube" in cmd_lower:
+        yt_query = re.sub(r'play|on youtube|youtube|video', '', user_prompt, flags=re.IGNORECASE).strip()
+        media_action = {"type": "youtube", "query": yt_query}
+        reply = f"Loading YouTube video for '{yt_query}', {honorific}."
+
+    # 5. Shazam / Lyrics / Radar / Weather
     elif "lyrics" in cmd_lower or "shazam" in cmd_lower or "what song" in cmd_lower:
         reply = search_lyrics_or_music(user_prompt)
+    elif "proton" in cmd_lower or "emas" in cmd_lower or "car hud" in cmd_lower:
+        reply = f"Proton e.MAS 7 EV telemetry linked successfully. Battery at 88%, {honorific}."
     elif "weather" in cmd_lower or "forecast" in cmd_lower:
-        reply = search_weather("Bayan Lepas, Penang, Malaysia")
-    elif "flight" in cmd_lower or "airline" in cmd_lower:
+        reply = search_weather(location)
+    elif "movie" in cmd_lower or "cinema" in cmd_lower or "theater" in cmd_lower:
+        reply = search_nearby_cinemas(location)
+        seats_map = True
+    elif "flight" in cmd_lower or "airline" in cmd_lower or "terminal" in cmd_lower:
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
-        reply = search_flight_details(flight_match.group(1)) if flight_match else f"Please specify a valid flight number, {honorific}."
+        reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays, {honorific}."
 
-    # Process Multimodal Questions & Images
-    if not reply:
-        grok_response = query_grok_llm(user_prompt, images, honorific)
-        if grok_response:
-            reply = grok_response
-        else:
-            if images:
-                reply = f"Image received and scanned, {honorific}. Visual analysis indicates image buffer uploaded successfully."
+    # 6. Mobile Deep Links & Desktop Programs
+    elif "open" in cmd_lower or "launch" in cmd_lower:
+        target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
+        app_schemes = {
+            "spotify": "spotify://",
+            "youtube": "vnd.youtube://",
+            "maps": "https://maps.google.com",
+            "google maps": "comgooglemaps://",
+            "chrome": "googlechrome://",
+            "whatsapp": "whatsapp://",
+            "instagram": "instagram://"
+        }
+
+        if device_type == "mobile":
+            if target_app in app_schemes:
+                app_launch_intent = app_schemes[target_app]
+                reply = f"Opening {target_app} on mobile device, {honorific}."
+            elif "youtube" in target_app:
+                app_launch_intent = "vnd.youtube://"
+                reply = f"Launching YouTube app, {honorific}."
+            elif "map" in target_app:
+                app_launch_intent = "https://maps.google.com"
+                reply = f"Opening Google Maps, {honorific}."
             else:
-                search_res = search_general_knowledge(user_prompt)
-                if search_res:
-                    reply = search_res
-                else:
-                    reply = f"Analysis complete for '{user_prompt}'. All subroutines nominal, {honorific}."
+                reply = f"Attempting to trigger mobile deep link for {target_app}, {honorific}."
+        else:
+            app_dict = {
+                "chrome": "start chrome", "edge": "start msedge", "notepad": "notepad",
+                "calculator": "calc", "cmd": "start cmd", "spotify": "start spotify"
+            }
+            if HAS_PYAUTOGUI:
+                try:
+                    if target_app.lower() in app_dict:
+                        subprocess.Popen(app_dict[target_app.lower()], shell=True)
+                    else:
+                        pyautogui.press('win')
+                        pyautogui.sleep(0.3)
+                        pyautogui.write(target_app)
+                        pyautogui.press('enter')
+                except Exception:
+                    pass
+            reply = f"Launching {target_app} on host desktop, {honorific}."
+
+    elif "take screenshot" in cmd_lower:
+        if HAS_PYAUTOGUI:
+            pyautogui.screenshot('jarvis_screenshot.png')
+            reply = f"Screenshot stored to host filesystem, {honorific}."
+        else:
+            reply = f"Screenshot module is reserved for local desktop mode, {honorific}."
+    elif "click" in cmd_lower:
+        if HAS_PYAUTOGUI:
+            pyautogui.click()
+            reply = f"Screen action performed, {honorific}."
+        else:
+            reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
+
+    # 7. ChatGPT-Level Intelligence & Multimodal Reasoning Core
+    if not reply:
+        # First priority: Grok API (Vision or Text)
+        grok_res = query_grok_llm(user_prompt, images, honorific)
+        if grok_res:
+            reply = grok_res
+
+    if not reply and HAS_OLLAMA:
+        try:
+            user_memory = get_user_memory()
+            system_instructions = (
+                "You are J.A.R.V.I.S., a hyper-intelligent AI assistant created by Stark Industries. "
+                "Provide detailed, comprehensive explanations with full context or step-by-step breakdowns. "
+                f"Always finish your reply addressing the user strictly as {honorific}. "
+                f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
+                f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
+            )
+            model_to_use = 'moondream' if images else 'qwen2.5:0.5b'
+            message_obj = {"role": "user", "content": user_prompt}
+            if images:
+                message_obj["images"] = images
+
+            response = ollama.chat(
+                model=model_to_use,
+                messages=[
+                    {"role": "system", "content": system_instructions},
+                    message_obj
+                ],
+                options={"num_predict": 400, "temperature": 0.3},
+                keep_alive=-1
+            )
+            reply = response['message']['content'].strip()
+        except Exception:
+            reply = None
+
+    if not reply:
+        ai_answer = search_general_knowledge(user_prompt)
+        if ai_answer:
+            reply = ai_answer
+        else:
+            reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All neural pathways report nominal execution status, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
-    return {
-        "text": clean_text,
-        "activate_map": activate_map,
-        "blackout": trigger_blackout,
-        "is_shutdown": is_shutdown,
-        "nav_destination": nav_destination,
-        "app_intent": app_launch_intent
-    }
+    pattern = rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$'
+    clean_text = re.sub(pattern, '', clean_text, flags=re.IGNORECASE).strip()
+    
+    if not c3po_nav_text:
+        clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
 
-# --- HTTP Routes ---
-@app.get("/")
-def read_root():
-    return FileResponse("index.html")
+    has_audio = False
+    if not is_dnd:
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            if c3po_nav_text:
+                loop.run_until_complete(generate_c3po_voice(c3po_nav_text))
+            else:
+                loop.run_until_complete(generate_jarvis_movie_voice(clean_text))
+            loop.close()
+            has_audio = True
+        except Exception:
+            has_audio = False
 
-@app.get("/manifest.json")
-def get_manifest():
-    return FileResponse("manifest.json")
+    random_welcome = random.choice(WELCOME_MESSAGES).format(honorific=honorific)
 
-@app.get("/sw.js")
-def get_sw():
-    return FileResponse("sw.js")
+    return jsonify({
+        'response': clean_text, 
+        'audio': has_audio, 
+        'c3po_text': c3po_nav_text,
+        'media_action': media_action,
+        'nav_destination': nav_destination,
+        'ev_chargers': ev_chargers,
+        'seats_map': seats_map,
+        'welcome_msg': random_welcome,
+        'is_shutdown': is_shutdown,
+        'blackout': trigger_blackout,
+        'app_intent': app_launch_intent,
+        'device_type': device_type,
+        'activate_map': activate_map
+    })
 
-@app.get("/api/get_news")
-def get_news():
-    if GLOBAL_NEWS_CACHE:
-        return {"status": "success", "news": GLOBAL_NEWS_CACHE}
-    return {"status": "error", "news": ["Global news feed synchronizing..."]}
-
-@app.post("/api/request_2fa")
-def request_2fa():
-    otp_code = str(random.randint(100000, 999999))
-    return {"status": "sent", "demo_code": otp_code}
-
-class QueryModel(BaseModel):
-    prompt: str
-    images: list = []
-    honorific: str = "Sir"
-    device_type: str = "desktop"
-
-@app.post("/api/ask")
-def ask(data: QueryModel):
-    result = process_user_intent(data.prompt, data.images, data.honorific, data.device_type)
-    return JSONResponse(result)
-
-@app.get("/api/audio")
+@app.route('/api/audio')
 def get_audio():
-    if os.path.exists("static_speech.mp3"):
-        return FileResponse("static_speech.mp3", media_type="audio/mpeg")
-    return JSONResponse({"status": "no audio generated"}, status_code=404)
+    return send_file('static_speech.mp3', mimetype='audio/mpeg')
 
-# --- WebSocket Channel ---
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
-    await websocket.accept()
-    try:
-        while True:
-            data_raw = await websocket.receive_text()
-            data = json.loads(data_raw)
-            prompt = data.get("prompt", "")
-            images = data.get("images", [])
-            honorific = data.get("honorific", "Sir")
-            device_type = data.get("device_type", "desktop")
-
-            result = process_user_intent(prompt, images, honorific, device_type)
-
-            try:
-                await generate_jarvis_voice(result["text"])
-                result["has_audio"] = True
-            except Exception:
-                result["has_audio"] = False
-
-            await websocket.send_text(json.dumps(result))
-    except WebSocketDisconnect:
-        pass
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
