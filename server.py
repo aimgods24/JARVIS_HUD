@@ -1,23 +1,22 @@
+from flask import Flask, render_template_string, request, jsonify, send_file, make_response
+import edge_tts
 import asyncio
-import base64
-import json
 import os
-import random
 import re
+import random
 import subprocess
 import threading
 import time
 from duckduckgo_search import DDGS
-import edge_tts
-from flask import Flask, jsonify, make_response, render_template_string, request, send_file
-import requests
 
+# Handle PyAutoGUI on headless servers
 try:
     import pyautogui
     HAS_PYAUTOGUI = True
 except Exception:
     HAS_PYAUTOGUI = False
 
+# Handle Ollama local models
 try:
     import ollama
     HAS_OLLAMA = True
@@ -30,10 +29,6 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 MEMORY_FILE = "jarvis_memory.txt"
 GLOBAL_NEWS_CACHE = []
 
-GROK_API_KEY = os.getenv("GROK_API_KEY", "")
-GROK_ENDPOINT = "https://api.x.ai/v1/chat/completions"
-
-# --- News Engine Thread ---
 def fetch_latest_global_news():
     global GLOBAL_NEWS_CACHE
     while True:
@@ -60,13 +55,14 @@ WELCOME_MESSAGES = [
     "Systems restored to maximum efficiency. How may I assist you today, {honorific}?"
 ]
 
-# --- Search & Synthesis Modules ---
 def search_general_knowledge(query):
+    """ChatGPT-grade search & synthesis engine"""
     try:
         results = list(DDGS().text(query, max_results=6))
         if results:
             snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
-            return f"I have conducted a comprehensive analysis on '{query}'. Here is the breakdown:\n\n" + "\n\n".join(snippets[:4])
+            detailed_response = f"I have conducted a comprehensive analysis on '{query}'. Here is the breakdown:\n\n" + "\n\n".join(snippets[:4])
+            return detailed_response
         return None
     except Exception:
         return None
@@ -99,67 +95,12 @@ def search_nearby_cinemas(location_str):
     except Exception as e:
         return f"Cinema error: {str(e)}"
 
-# --- Multimodal & Grok Reasoning Engine ---
-def query_grok_llm(prompt: str, images: list = None, honorific: str = "Sir") -> str:
-    if not GROK_API_KEY:
-        return None
-    
-    headers = {
-        "Authorization": f"Bearer {GROK_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    user_content = []
-    if prompt:
-        user_content.append({"type": "text", "text": prompt})
-    
-    if images:
-        for img in images:
-            img_data = img if img.startswith("data:image") else f"data:image/jpeg;base64,{img}"
-            user_content.append({"type": "image_url", "image_url": {"url": img_data}})
-
-    if not user_content:
-        user_content = "Analyze system state."
-
-    payload = {
-        "model": "grok-vision-beta" if images else "grok-beta",
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are J.A.R.V.I.S., Tony Stark's hyper-intelligent AI assistant. "
-                    "Analyze all questions and dropped image uploads with clinical precision and British wit. "
-                    f"Address the user strictly as {honorific}."
-                )
-            },
-            {"role": "user", "content": user_content}
-        ],
-        "temperature": 0.4
-    }
-    try:
-        res = requests.post(GROK_ENDPOINT, headers=headers, json=payload, timeout=15)
-        if res.status_code == 200:
-            return res.json()['choices'][0]['message']['content']
-        return None
-    except Exception:
-        return None
-
-# --- Voice Synthesis Functions ---
-async def generate_jarvis_movie_voice(text):
-    communicate = edge_tts.Communicate(text, "en-GB-RyanNeural", pitch="-3Hz", rate="+2%")
-    await communicate.save("static_speech.mp3")
-
-async def generate_c3po_voice(text):
-    communicate = edge_tts.Communicate(text, "en-GB-ThomasNeural", pitch="+4Hz", rate="+10%")
-    await communicate.save("static_speech.mp3")
-
-# --- Flask Routes ---
 @app.route('/')
 def home():
     with open('index.html', 'r', encoding='utf-8') as f:
         html_content = f.read()
     response = make_response(render_template_string(html_content))
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
@@ -261,7 +202,7 @@ def ask():
         media_action = {"type": "youtube", "query": yt_query}
         reply = f"Loading YouTube video for '{yt_query}', {honorific}."
 
-    # 5. Shazam / Lyrics / Radar / Weather
+    # 5. Shazam / Lyrics / Radar
     elif "lyrics" in cmd_lower or "shazam" in cmd_lower or "what song" in cmd_lower:
         reply = search_lyrics_or_music(user_prompt)
     elif "proton" in cmd_lower or "emas" in cmd_lower or "car hud" in cmd_lower:
@@ -331,47 +272,43 @@ def ask():
         else:
             reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
 
-    # 7. ChatGPT-Level Intelligence & Multimodal Reasoning Core
+    # 7. ChatGPT-Level Intelligence Reasoning Core
     if not reply:
-        # First priority: Grok API (Vision or Text)
-        grok_res = query_grok_llm(user_prompt, images, honorific)
-        if grok_res:
-            reply = grok_res
+        user_memory = get_user_memory()
+        system_instructions = (
+            "You are J.A.R.V.I.S., a hyper-intelligent AI assistant created by Stark Industries. "
+            "Provide detailed, comprehensive, high-value ChatGPT-level explanations with full context, bullet points, or step-by-step breakdowns when asked complex questions. "
+            f"Always finish your reply addressing the user strictly as {honorific}. "
+            f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
+            f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
+        )
 
-    if not reply and HAS_OLLAMA:
-        try:
-            user_memory = get_user_memory()
-            system_instructions = (
-                "You are J.A.R.V.I.S., a hyper-intelligent AI assistant created by Stark Industries. "
-                "Provide detailed, comprehensive explanations with full context or step-by-step breakdowns. "
-                f"Always finish your reply addressing the user strictly as {honorific}. "
-                f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
-                f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
-            )
-            model_to_use = 'moondream' if images else 'qwen2.5:0.5b'
-            message_obj = {"role": "user", "content": user_prompt}
-            if images:
-                message_obj["images"] = images
+        if HAS_OLLAMA:
+            try:
+                model_to_use = 'moondream' if images else 'qwen2.5:0.5b'
+                message_obj = {"role": "user", "content": user_prompt}
+                if images:
+                    message_obj["images"] = images
 
-            response = ollama.chat(
-                model=model_to_use,
-                messages=[
-                    {"role": "system", "content": system_instructions},
-                    message_obj
-                ],
-                options={"num_predict": 400, "temperature": 0.3},
-                keep_alive=-1
-            )
-            reply = response['message']['content'].strip()
-        except Exception:
-            reply = None
+                response = ollama.chat(
+                    model=model_to_use,
+                    messages=[
+                        {"role": "system", "content": system_instructions},
+                        message_obj
+                    ],
+                    options={"num_predict": 400, "temperature": 0.3},
+                    keep_alive=-1
+                )
+                reply = response['message']['content'].strip()
+            except Exception:
+                reply = None
 
-    if not reply:
-        ai_answer = search_general_knowledge(user_prompt)
-        if ai_answer:
-            reply = ai_answer
-        else:
-            reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All neural pathways report nominal execution status, {honorific}."
+        if not reply:
+            ai_answer = search_general_knowledge(user_prompt)
+            if ai_answer:
+                reply = ai_answer
+            else:
+                reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All neural pathways report nominal execution status, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     pattern = rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$'
@@ -412,10 +349,17 @@ def ask():
         'activate_map': activate_map
     })
 
+async def generate_jarvis_movie_voice(text):
+    communicate = edge_tts.Communicate(text, "en-GB-RyanNeural", pitch="-3Hz", rate="+2%")
+    await communicate.save("static_speech.mp3")
+
+async def generate_c3po_voice(text):
+    communicate = edge_tts.Communicate(text, "en-GB-ThomasNeural", pitch="+4Hz", rate="+10%")
+    await communicate.save("static_speech.mp3")
+
 @app.route('/api/audio')
 def get_audio():
     return send_file('static_speech.mp3', mimetype='audio/mpeg')
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=5000, debug=True)

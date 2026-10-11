@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STARK INDUSTRIES MARK-VII HUD</title>
+    <title>STARK EXPO 2010 // MARK-VII HUD</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --stark-cyan: #00f3ff;
-            --stark-blue: #0088ff;
+            --stark-red: #ff2a2a;
             --stark-glow: rgba(0, 243, 255, 0.65);
-            --stark-bg: #010a18;
-            --stark-panel: rgba(1, 15, 36, 0.85);
-            --stark-border: rgba(0, 243, 255, 0.55);
+            --stark-bg: #010812;
+            --stark-panel: rgba(1, 14, 32, 0.85);
+            --stark-border: rgba(0, 243, 255, 0.5);
         }
 
         * { box-sizing: border-box; }
@@ -22,30 +22,33 @@
             background-color: var(--stark-bg);
             color: var(--stark-cyan);
             font-family: 'Consolas', 'Courier New', monospace;
-            margin: 0; padding: 6px;
+            margin: 0; padding: 4px;
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
             user-select: none;
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.15) 0%, transparent 75%),
-                linear-gradient(0deg, rgba(1, 10, 24, 0.98) 0%, rgba(0, 4, 12, 0.99) 100%);
+                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.1) 0%, transparent 80%),
+                linear-gradient(0deg, rgba(1, 8, 18, 0.98) 0%, rgba(0, 3, 8, 0.99) 100%);
         }
 
+        /* Top Numerical Ruler Bar */
         .stark-top-ruler {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--stark-border);
-            padding: 4px 10px; font-size: 0.7rem; letter-spacing: 2px;
-            background: rgba(0, 243, 255, 0.05);
-            box-shadow: 0 0 12px var(--stark-glow);
+            padding: 3px 8px; font-size: 0.65rem; letter-spacing: 2px;
+            background: rgba(0, 243, 255, 0.04);
+            box-shadow: 0 0 10px var(--stark-glow);
         }
 
-        .ruler-numbers { display: flex; gap: 8px; font-weight: bold; opacity: 0.9; }
+        .ruler-numbers { display: flex; gap: 5px; font-weight: bold; opacity: 0.85; }
+        .ruler-active { color: #fff; background: var(--stark-cyan); padding: 0 3px; border-radius: 2px; text-shadow: 0 0 6px var(--stark-cyan); }
 
+        /* Main Workspace Grid */
         .hud-workspace {
             display: grid;
-            grid-template-columns: 280px 1fr 300px;
-            gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
+            grid-template-columns: 280px 1fr 280px;
+            gap: 6px; flex: 1; overflow: hidden; margin-top: 4px;
             position: relative;
         }
 
@@ -58,67 +61,74 @@
         .stark-panel {
             background: var(--stark-panel);
             border: 1px solid var(--stark-border);
-            border-radius: 4px; padding: 10px;
-            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.18);
-            display: flex; flex-direction: column; gap: 8px;
+            border-radius: 4px; padding: 8px;
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.12);
+            display: flex; flex-direction: column; gap: 6px;
             overflow: hidden; position: relative;
         }
 
-        .reactor-center-overlay {
-            position: absolute; top: 50%; left: 50%;
+        /* Stark Expo Central Arc Reactor Sight (Replicated from Blueprint) */
+        .expo-central-overlay {
+            position: absolute; top: 48%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 520px; height: 520px; border-radius: 50%;
-            border: 2px dashed rgba(0, 243, 255, 0.35);
+            width: 440px; height: 440px; border-radius: 50%;
+            border: 2px dashed rgba(0, 243, 255, 0.3);
             pointer-events: none; z-index: 0;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 50px rgba(0, 243, 255, 0.25), inset 0 0 40px rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
         }
 
-        .reactor-ring-outer {
-            width: 420px; height: 420px; border-radius: 50%;
+        .expo-ring-outer {
+            width: 340px; height: 340px; border-radius: 50%;
             border: 2px solid rgba(0, 243, 255, 0.5);
-            border-left-color: transparent; border-right-color: transparent;
+            border-top: 4px solid var(--stark-red);
             animation: spinCW 20s linear infinite;
         }
 
-        .reactor-ring-mid {
-            position: absolute; width: 290px; height: 290px; border-radius: 50%;
+        .expo-ring-mid {
+            position: absolute; width: 220px; height: 220px; border-radius: 50%;
             border: 2px dashed rgba(0, 243, 255, 0.7);
             animation: spinCCW 10s linear infinite;
         }
 
-        .reactor-core-symbol {
-            position: absolute; width: 130px; height: 130px; border-radius: 50%;
-            background: rgba(0, 243, 255, 0.18); border: 2px solid var(--stark-cyan);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 0.8rem; font-weight: bold; text-shadow: 0 0 12px var(--stark-cyan);
-            box-shadow: 0 0 25px var(--stark-cyan);
+        .expo-core-symbol {
+            position: absolute; width: 90px; height: 90px; border-radius: 50%;
+            background: rgba(0, 243, 255, 0.2); border: 2px solid var(--stark-cyan);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: bold; text-shadow: 0 0 10px var(--stark-cyan);
+            box-shadow: 0 0 20px var(--stark-cyan);
+        }
+
+        /* Central Floating Radial Menu Nodes */
+        .expo-radial-nodes {
+            position: absolute; left: 35%; top: 40%;
+            display: flex; flex-direction: column; gap: 6px;
+            font-size: 0.68rem; font-weight: bold; pointer-events: none;
+        }
+        .node-item {
+            background: rgba(0, 243, 255, 0.12); border: 1px solid var(--stark-cyan);
+            padding: 2px 6px; border-radius: 3px; width: fit-content;
+            box-shadow: 0 0 6px var(--stark-cyan);
         }
 
         @keyframes spinCW { 100% { transform: rotate(360deg); } }
         @keyframes spinCCW { 100% { transform: rotate(-360deg); } }
 
-        .car-diag-box {
-            width: 100%; height: 110px; border: 1px solid var(--stark-cyan);
-            border-radius: 3px; background-size: cover; background-position: center;
-            background-image: url('https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=600&q=80');
-            box-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
-            position: relative;
+        /* Left Panel Gauges & Arc Power Meter */
+        .power-arc-box {
+            width: 100px; height: 100px; border-radius: 50%;
+            border: 3px solid var(--stark-cyan);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            margin: 0 auto; box-shadow: 0 0 15px var(--stark-cyan);
         }
 
-        .badge-tag {
-            position: absolute; bottom: 4px; left: 4px;
-            background: rgba(0, 8, 20, 0.95); border: 1px solid var(--stark-cyan);
-            font-size: 0.62rem; padding: 2px 6px; border-radius: 2px;
-        }
-
-        .gauge-block { display: flex; flex-direction: column; gap: 3px; font-size: 0.7rem; }
-        .gauge-outer { background: rgba(0, 0, 0, 0.75); height: 7px; border: 1px solid var(--stark-cyan); border-radius: 2px; }
-        .gauge-inner { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 10px var(--stark-cyan); transition: width 0.4s ease; }
+        .gauge-block { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
+        .gauge-outer { background: rgba(0, 0, 0, 0.7); height: 6px; border: 1px solid var(--stark-cyan); border-radius: 2px; }
+        .gauge-inner { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 6px var(--stark-cyan); }
 
         #gps-map-container {
-            height: 160px; border: 1px solid var(--stark-cyan);
-            border-radius: 4px; overflow: hidden; display: none; margin-bottom: 6px; z-index: 1;
+            height: 150px; border: 1px solid var(--stark-cyan);
+            border-radius: 4px; overflow: hidden; display: none; margin-bottom: 4px; z-index: 1;
         }
         #leaflet-map { width: 100%; height: 100%; }
 
@@ -128,100 +138,106 @@
         }
         @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
 
-        /* Terminal & Dropzone Overlay */
+        /* Terminal Output Stream */
         #chat-terminal {
-            flex: 1; background: rgba(0, 0, 0, 0.9);
+            flex: 1; background: rgba(0, 0, 0, 0.88);
             border: 1px solid var(--stark-cyan);
-            border-radius: 4px; padding: 12px;
+            border-radius: 4px; padding: 10px;
             overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 18px rgba(0, 243, 255, 0.25); z-index: 1;
-            position: relative;
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.2); z-index: 1;
         }
 
-        #chat-terminal.drag-over {
-            border: 2px dashed #00f3ff;
-            background: rgba(0, 243, 255, 0.1);
-        }
-
-        .msg-line { line-height: 1.4; font-size: 0.85rem; word-break: break-word; white-space: pre-wrap; }
+        .msg-line { line-height: 1.4; font-size: 0.83rem; word-break: break-word; white-space: pre-wrap; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--stark-cyan); text-shadow: 0 0 4px var(--stark-glow); border-left: 2px solid var(--stark-cyan); padding-left: 6px; }
-        .msg-img-preview { max-width: 200px; border: 1px solid var(--stark-cyan); border-radius: 4px; margin-top: 4px; }
 
-        .hud-input-bar { display: flex; gap: 6px; margin-top: 4px; z-index: 1; align-items: center; }
+        .hud-input-bar { display: flex; gap: 6px; margin-top: 4px; z-index: 1; }
         textarea {
-            flex: 1; height: 44px; background: rgba(0, 0, 0, 0.9);
+            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.88);
             border: 1px solid var(--stark-cyan); border-radius: 4px;
             color: var(--stark-cyan); padding: 8px; font-family: inherit; resize: none; font-size: 0.85rem;
         }
         button {
-            background: rgba(0, 243, 255, 0.2); border: 1px solid var(--stark-cyan);
-            color: var(--stark-cyan); border-radius: 4px; font-weight: bold; cursor: pointer; padding: 0 16px; font-size: 0.82rem; height: 44px;
+            background: rgba(0, 243, 255, 0.15); border: 1px solid var(--stark-cyan);
+            color: var(--stark-cyan); border-radius: 4px; font-weight: bold; cursor: pointer; padding: 0 14px; font-size: 0.8rem;
         }
         button:hover { background: var(--stark-cyan); color: #000; }
 
+        /* Right Panel Weather Stack */
+        .weather-card-stack { display: flex; flex-direction: column; gap: 4px; font-size: 0.68rem; }
+        .weather-day-item { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(0,243,255,0.3); padding-bottom: 2px; }
+
+        /* Bottom Floating Circular Dock Launcher */
         .stark-bottom-dock {
             display: flex; justify-content: space-around; align-items: center;
-            padding: 6px 0; border-top: 1px solid var(--stark-border); margin-top: 4px;
-            background: rgba(0, 243, 255, 0.05);
+            padding: 4px 0; border-top: 1px solid var(--stark-border); margin-top: 4px;
+            background: rgba(0, 243, 255, 0.03);
         }
 
         .dock-circle {
-            width: 44px; height: 44px; border-radius: 50%;
-            border: 1px solid var(--stark-cyan); background: rgba(0, 15, 36, 0.95);
+            width: 38px; height: 38px; border-radius: 50%;
+            border: 1px solid var(--stark-cyan); background: rgba(0, 12, 28, 0.9);
             color: var(--stark-cyan); display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; cursor: pointer; box-shadow: 0 0 12px rgba(0, 243, 255, 0.35);
+            font-size: 0.85rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
             transition: all 0.2s ease;
         }
-        .dock-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 22px var(--stark-cyan); }
+        .dock-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
 
-        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 26px; }
+        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 24px; }
         .wave-bar { width: 3px; height: 10%; background: var(--stark-cyan); transition: height 0.1s ease; }
 
         .blackout-active { background: #000000 !important; background-image: none !important; }
-        .blackout-active .stark-top-ruler, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock, .blackout-active .reactor-center-overlay { display: none !important; }
+        .blackout-active .stark-top-ruler, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock, .blackout-active .expo-central-overlay { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="stark-top-ruler">
-        <div class="ruler-numbers">01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30</div>
-        <div>STARK INDUSTRIES // MARK-VII</div>
+    <!-- Top Numerical Timeline Ruler -->
+    <div class="stark-top-ruler" id="starkRuler">
+        <div class="ruler-numbers">
+            01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 <span class="ruler-active">21</span> 22 23 24 25 26 27 28 29 30
+        </div>
+        <div>STARK EXPO // MARK-VII</div>
         <div id="liveClock">00:00:00</div>
-        <div id="deviceBadge">DETECTING...</div>
+        <div id="deviceBadge">DETECTING ENVIRONMENT...</div>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
 
-    <div class="hud-workspace">
-        <div class="reactor-center-overlay">
-            <div class="reactor-ring-outer"></div>
-            <div class="reactor-ring-mid"></div>
-            <div class="reactor-core-symbol">
-                <span>IRON MAN</span>
-                <span style="font-size: 0.6rem; opacity: 0.8;">MARK-VII</span>
-            </div>
+    <!-- Workspace -->
+    <div class="hud-workspace" id="hudWorkspace">
+        
+        <!-- Central Arc Reactor Overlay -->
+        <div class="expo-central-overlay">
+            <div class="expo-ring-outer"></div>
+            <div class="expo-ring-mid"></div>
+            <div class="expo-core-symbol">STARK EXPO</div>
         </div>
 
+        <div class="expo-radial-nodes desktop-only">
+            <div class="node-item">• Dead Space</div>
+            <div class="node-item">• Limbo</div>
+            <div class="node-item">• Bastion</div>
+            <div class="node-item">• Arduino Link</div>
+        </div>
+
+        <!-- Left Diagnostic Stack -->
         <div class="stark-panel desktop-only" style="z-index: 1;">
-            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">SYSTEM DIAGNOSTICS</div>
-            <div class="car-diag-box">
-                <div class="badge-tag">🚘 PROTON e.MAS 7: 88% CHARGE</div>
-            </div>
+            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">ENERGY CORE & DISK</div>
             
-            <div class="gauge-block">
-                <div>PRIMARY SSD: 450 GB (209 GB FREE)</div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 53%;"></div></div>
+            <div class="power-arc-box">
+                <div style="font-size: 1.1rem; font-weight: bold;">100%</div>
+                <div style="font-size: 0.55rem; opacity: 0.8;">HIGH OUTPUT</div>
             </div>
 
-            <div class="gauge-block">
-                <div>ARC FUSION CORE: 100% NOMINAL</div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 100%;"></div></div>
+            <div class="gauge-block" style="margin-top: 6px;">
+                <div>PRIMARY SSD: 100 GB (2 GB FREE)</div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 98%;"></div></div>
             </div>
 
             <div style="font-size: 0.68rem; border-left: 2px solid var(--stark-cyan); padding-left: 6px;">
+                <div>🚘 PROTON e.MAS 7: 88% CHARGE</div>
                 <div>LOCATION: BAYAN LEPAS, MY</div>
-                <div>WEATHER: 76°F CLEAR SKY</div>
-                <div>GROK VISION ENGINE: ONLINE</div>
+                <div>UPTIME: 1d 4h 0m</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 6px;">
@@ -232,56 +248,58 @@
             <button style="margin-top:auto;" onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
         </div>
 
+        <!-- Center Command Core -->
         <div class="stark-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. Visual buffer drag-and-drop & Question reasoning subroutines online. How may I assist you today, Sir?</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. All Stark Expo 2010 subroutines online. How may I assist you today, Sir?</div>
             </div>
 
             <div class="hud-input-bar">
-                <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
-                <button onclick="document.getElementById('fileInput').click()" title="Attach Image">📷</button>
-                <textarea id="userInput" placeholder="Type question or drop an image here..."></textarea>
+                <textarea id="userInput" placeholder="Type command or query... (Enter to Send)"></textarea>
                 <button onclick="sendCommand()">SEND</button>
             </div>
         </div>
 
+        <!-- Right Weather & System Monitor Stack -->
         <div class="stark-panel desktop-only" style="z-index: 1;">
-            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">SYSTEM MONITOR</div>
+            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">WEATHER & MONITOR</div>
             
             <div class="gauge-block">
-                <div>CPU USAGE: <span id="cpuText">36%</span></div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 36%;"></div></div>
+                <div>CPU LOAD: 74%</div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 74%;"></div></div>
             </div>
 
             <div class="gauge-block">
-                <div>RAM ALLOCATION: <span id="ramText">20%</span></div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 20%;"></div></div>
+                <div>RAM ALLOCATION: 15%</div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 15%;"></div></div>
             </div>
 
             <div class="gauge-block">
-                <div>SWAP BUFFER: 16%</div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 16%;"></div></div>
+                <div>SWAP BUFFER: 49%</div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 49%;"></div></div>
             </div>
 
             <hr style="border-color: var(--stark-border); opacity: 0.4; width: 100%;">
 
-            <button onclick="request2FACode()">🔑 REQUEST 2FA AUTH CODE</button>
-
-            <div style="font-size: 0.68rem; display: flex; flex-direction: column; gap: 3px; margin-top: 4px;">
-                <div style="font-weight: bold;">ACTIVE SUBSYSTEMS:</div>
-                <div>• WebSocket Core: <span id="wsStatus">CONNECTING...</span></div>
-                <div>• Multimodal Engine: READY</div>
-                <div>• Web Speech Engine: ACTIVE</div>
-                <div>• Vision API Buffer: ONLINE</div>
+            <div class="weather-card-stack">
+                <div style="font-weight: bold;">FORECAST TELEMETRY:</div>
+                <div class="weather-day-item"><span>TODAY</span> <span>13°C // CLEAR</span></div>
+                <div class="weather-day-item"><span>FRIDAY</span> <span>23° / 11° SUNNY</span></div>
+                <div class="weather-day-item"><span>SATURDAY</span> <span>19° / 12° CLOUDY</span></div>
+                <div class="weather-day-item"><span>SUNDAY</span> <span>17° / 11° RAIN</span></div>
             </div>
+
+            <button style="margin-top: auto;" onclick="request2FACode()">🔑 REQUEST 2FA CODE</button>
         </div>
+
     </div>
 
-    <div class="stark-bottom-dock">
+    <!-- Bottom Circular Launcher Dock -->
+    <div class="stark-bottom-dock" id="starkDock">
         <div class="dock-circle" title="Map Overlay" onclick="sendCommandCustom('show map')">🗺️</div>
         <div class="dock-circle" title="Global News" onclick="fetchGlobalNews()">📰</div>
         <div class="dock-circle" title="Spotify Link" onclick="sendCommandCustom('open spotify')">🎵</div>
@@ -293,7 +311,6 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let map, userMarker, mapInitialized = false;
-        let pendingImages = [];
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         if (isMobile) {
@@ -307,69 +324,6 @@
             const now = new Date();
             document.getElementById('liveClock').innerText = now.toTimeString().split(' ')[0];
         }, 1000);
-
-        // --- Drag & Drop Image Handling ---
-        const chatTerminal = document.getElementById('chat-terminal');
-
-        chatTerminal.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            chatTerminal.classList.add('drag-over');
-        });
-
-        chatTerminal.addEventListener('dragleave', () => {
-            chatTerminal.classList.remove('drag-over');
-        });
-
-        chatTerminal.addEventListener('drop', (e) => {
-            e.preventDefault();
-            chatTerminal.classList.remove('drag-over');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) processFile(files[0]);
-        });
-
-        function handleFileSelect(e) {
-            const files = e.target.files;
-            if (files.length > 0) processFile(files[0]);
-        }
-
-        function processFile(file) {
-            if (!file.type.startsWith('image/')) return;
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const base64Data = evt.target.result;
-                pendingImages.push(base64Data);
-                chatTerminal.innerHTML += `<div class="msg-line msg-user"><b>ATTACHED IMAGE:</b><br><img src="${base64Data}" class="msg-img-preview"></div>`;
-                chatTerminal.scrollTop = chatTerminal.scrollHeight;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // --- WebSocket Setup ---
-        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-        let ws;
-
-        function connectWebSocket() {
-            ws = new WebSocket(wsUrl);
-
-            ws.onopen = () => {
-                document.getElementById('wsStatus').innerText = "ONLINE";
-                document.getElementById('wsStatus').style.color = "#00f3ff";
-            };
-
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleJarvisResponse(data);
-            };
-
-            ws.onclose = () => {
-                document.getElementById('wsStatus').innerText = "OFFLINE (RETRYING)";
-                document.getElementById('wsStatus').style.color = "#ff3333";
-                setTimeout(connectWebSocket, 3000);
-            };
-        }
-
-        connectWebSocket();
 
         async function toggleWakeLock() {
             try {
@@ -421,102 +375,90 @@
             sendCommand();
         }
 
-        function sendCommand() {
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if (!text && pendingImages.length === 0) return;
-
-            if (text) {
-                chatTerminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
-            }
-            input.value = '';
-
-            const payload = {
-                prompt: text,
-                images: pendingImages,
-                device_type: isMobile ? 'mobile' : 'desktop'
-            };
-
-            pendingImages = [];
-
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify(payload));
-            } else {
-                fetch('/api/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                })
-                .then(res => res.json())
-                .then(data => handleJarvisResponse(data))
-                .catch(() => {
-                    chatTerminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
-                });
-            }
-        }
-
-        function handleJarvisResponse(data) {
-            if (data.activate_map) activateMapOverlay();
-            if (data.blackout) document.body.classList.add('blackout-active');
-
-            if (data.text || data.response) {
-                const responseStr = data.text || data.response;
-                chatTerminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${responseStr}</div>`;
-                chatTerminal.scrollTop = chatTerminal.scrollHeight;
-                speakJarvisText(responseStr);
-            }
-
-            if (data.app_intent && isMobile) { 
-                window.location.href = data.app_intent; 
-            }
-        }
-
-        function speakJarvisText(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = 1.0;
-                utterance.pitch = 0.9;
-                
-                utterance.onstart = () => animateWaveform(true);
-                utterance.onend = () => animateWaveform(false);
-
-                window.speechSynthesis.speak(utterance);
-            }
-        }
-
-        let waveInterval;
-        function animateWaveform(active) {
-            const bars = document.querySelectorAll('.wave-bar');
-            if (active) {
-                clearInterval(waveInterval);
-                waveInterval = setInterval(() => {
-                    bars.forEach(b => { b.style.height = Math.floor(Math.random() * 85 + 15) + '%'; });
-                }, 100);
-            } else {
-                clearInterval(waveInterval);
-                bars.forEach(b => b.style.height = '10%');
-            }
-        }
-
         async function request2FACode() {
+            const terminal = document.getElementById('chat-terminal');
             try {
                 const res = await fetch('/api/request_2fa', { method: 'POST' });
                 const data = await res.json();
-                chatTerminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (SECURITY):</b> Security OTP Code Generated: <b>${data.demo_code}</b>, Sir.</div>`;
-                chatTerminal.scrollTop = chatTerminal.scrollHeight;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (SECURITY):</b> Security OTP Code Generated: <b>${data.demo_code}</b>, Sir.</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
             } catch (e) {}
         }
 
-        async function fetchGlobalNews() {
+        async function sendCommand() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const terminal = document.getElementById('chat-terminal');
+            terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
+            input.value = '';
+
             try {
-                const res = await fetch('/api/get_news');
+                const res = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: text, device_type: isMobile ? 'mobile' : 'desktop' })
+                });
                 const data = await res.json();
-                if (data.status === 'success') {
-                    chatTerminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (NEWS ENGINE):</b><br>${data.news.join('<br><br>')}</div>`;
-                    chatTerminal.scrollTop = chatTerminal.scrollHeight;
+
+                if (data.activate_map) {
+                    activateMapOverlay();
                 }
-            } catch(e) {}
+
+                if (data.blackout) { 
+                    document.body.classList.add('blackout-active'); 
+                }
+
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+
+                if (data.app_intent && isMobile) { 
+                    window.location.href = data.app_intent; 
+                }
+
+                if (data.audio) { 
+                    playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); 
+                }
+            } catch (e) {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
+            }
+        }
+
+        function playJarvisAudioWithDSP(audioUrl) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const audio = new Audio(audioUrl);
+            const source = audioCtx.createMediaElementSource(audio);
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "peaking";
+            filter.frequency.value = 3200;
+            filter.Q.value = 1.2;
+            filter.gain.value = 3.5;
+
+            source.connect(filter);
+            filter.connect(audioCtx.destination);
+
+            audio.play();
+            animateWaveform();
+        }
+
+        function animateWaveform() {
+            const bars = document.querySelectorAll('.wave-bar');
+            let interval = setInterval(() => {
+                bars.forEach(b => { b.style.height = Math.floor(Math.random() * 85 + 15) + '%'; });
+            }, 100);
+            setTimeout(() => { clearInterval(interval); bars.forEach(b => b.style.height = '10%'); }, 3000);
+        }
+
+        async function fetchGlobalNews() {
+            const terminal = document.getElementById('chat-terminal');
+            const res = await fetch('/api/get_news');
+            const data = await res.json();
+            if (data.status === 'success') {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (NEWS ENGINE):</b><br>${data.news.join('<br><br>')}</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+            }
         }
     </script>
 </body>
