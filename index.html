@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STARK INDUSTRIES J.A.R.V.I.S. HUD</title>
+    <title>STARK INDUSTRIES J.A.R.V.I.S. MARK-VII HUD</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --stark-cyan: #00f3ff;
-            --stark-blue-glow: rgba(0, 243, 255, 0.45);
-            --stark-dark-bg: #010a17;
-            --stark-panel-bg: rgba(2, 16, 36, 0.88);
-            --stark-border: rgba(0, 243, 255, 0.6);
+            --stark-blue-glow: rgba(0, 243, 255, 0.5);
+            --stark-dark-bg: #010813;
+            --stark-panel-bg: rgba(1, 14, 31, 0.88);
+            --stark-border: rgba(0, 243, 255, 0.45);
         }
 
         * { box-sizing: border-box; }
@@ -21,35 +21,35 @@
             background-color: var(--stark-dark-bg);
             color: var(--stark-cyan);
             font-family: 'Consolas', 'Courier New', monospace;
-            margin: 0; padding: 8px;
+            margin: 0; padding: 6px;
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
             user-select: none;
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.08) 0%, transparent 70%),
-                linear-gradient(0deg, rgba(1, 10, 23, 0.95) 0%, rgba(0, 5, 12, 0.98) 100%);
+                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.08) 0%, transparent 75%),
+                linear-gradient(0deg, rgba(1, 8, 19, 0.98) 0%, rgba(0, 4, 10, 0.99) 100%);
         }
 
-        /* Top Stark HUD Numerical Bar */
-        .stark-top-bar {
+        /* Top Stark Numerical Header Bar */
+        .stark-top-ruler {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--stark-border);
-            padding: 4px 10px; font-size: 0.72rem; letter-spacing: 1px;
-            background: rgba(0, 243, 255, 0.05);
-            box-shadow: 0 0 10px var(--stark-blue-glow);
+            padding: 4px 8px; font-size: 0.65rem; letter-spacing: 1.5px;
+            background: rgba(0, 243, 255, 0.04);
+            box-shadow: 0 0 8px var(--stark-blue-glow);
         }
 
-        .stark-logo { font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px var(--stark-cyan); }
+        .stark-top-numbers { display: flex; gap: 8px; font-weight: bold; opacity: 0.8; }
 
-        /* Main Workspace Layout */
+        /* HUD Workspace Grid */
         .hud-workspace {
             display: grid;
-            grid-template-columns: 270px 1fr 270px;
-            gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
+            grid-template-columns: 260px 1fr 280px;
+            gap: 8px; flex: 1; overflow: hidden; margin-top: 4px;
         }
 
-        /* Mobile Mode Override */
+        /* Mobile Viewport Adaptation */
         body.mobile-mode .hud-workspace {
             grid-template-columns: 1fr;
             grid-template-rows: auto 1fr;
@@ -59,42 +59,34 @@
         .stark-panel {
             background: var(--stark-panel-bg);
             border: 1px solid var(--stark-border);
-            border-radius: 4px; padding: 10px;
-            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.12);
+            border-radius: 4px; padding: 8px;
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.1);
             display: flex; flex-direction: column; gap: 8px;
             overflow: hidden; position: relative;
         }
 
-        /* Tactical Stark Centered Reactor Visualizer */
-        .reactor-center-box {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 10px; position: relative;
+        /* Stark Image Box & Proton EV Status Widget */
+        .diag-image-box {
+            width: 100%; height: 85px;
+            border: 1px solid var(--stark-cyan);
+            border-radius: 3px; background-size: cover; background-position: center;
+            background-image: url('https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=600&q=80');
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+            position: relative;
         }
 
-        .arc-outer-ring {
-            width: 140px; height: 140px; border-radius: 50%;
-            border: 2px dashed var(--stark-cyan);
-            box-shadow: 0 0 20px var(--stark-cyan), inset 0 0 15px var(--stark-cyan);
-            animation: spinClockwise 14s linear infinite;
-            display: flex; align-items: center; justify-content: center;
+        .ev-overlay-badge {
+            position: absolute; bottom: 4px; left: 4px;
+            background: rgba(0, 8, 19, 0.85); border: 1px solid var(--stark-cyan);
+            font-size: 0.6rem; padding: 2px 5px; border-radius: 2px;
         }
 
-        .arc-inner-ring {
-            width: 80px; height: 80px; border-radius: 50%;
-            border: 2px solid #fff; animation: spinCounterClockwise 7s linear infinite;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.65rem; font-weight: bold; text-shadow: 0 0 6px var(--stark-cyan);
-        }
+        /* Status Gauges */
+        .gauge-block { display: flex; flex-direction: column; gap: 2px; font-size: 0.7rem; }
+        .gauge-bar-outer { background: rgba(0, 0, 0, 0.7); height: 7px; border: 1px solid var(--stark-cyan); border-radius: 2px; }
+        .gauge-bar-inner { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 6px var(--stark-cyan); transition: width 0.3s; }
 
-        @keyframes spinClockwise { 100% { transform: rotate(360deg); } }
-        @keyframes spinCounterClockwise { 100% { transform: rotate(-360deg); } }
-
-        /* Armor Status Gauges */
-        .stat-gauge { display: flex; flex-direction: column; gap: 2px; font-size: 0.72rem; }
-        .stat-bar-container { background: rgba(0, 0, 0, 0.6); height: 8px; border: 1px solid var(--stark-cyan); border-radius: 2px; overflow: hidden; }
-        .stat-bar-fill { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 8px var(--stark-cyan); transition: width 0.3s; }
-
-        /* Map-on-Demand Box */
+        /* Map-on-Demand Overlay */
         #gps-map-container {
             height: 160px; border: 1px solid var(--stark-cyan);
             border-radius: 4px; overflow: hidden; display: none; margin-bottom: 6px;
@@ -107,20 +99,20 @@
         }
         @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
 
-        /* Terminal Output Box */
+        /* Terminal Chat Stream */
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--stark-cyan);
             border-radius: 4px; padding: 10px;
             overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.25);
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
         }
 
         .msg-line { line-height: 1.35; font-size: 0.85rem; word-break: break-word; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--stark-cyan); text-shadow: 0 0 4px var(--stark-blue-glow); border-left: 2px solid var(--stark-cyan); padding-left: 6px; }
 
-        /* Bottom Command Input Controls */
+        /* Input Controls */
         .hud-input-bar { display: flex; gap: 6px; margin-top: 6px; }
         textarea {
             flex: 1; height: 42px; background: rgba(0, 0, 0, 0.85);
@@ -133,63 +125,68 @@
         }
         button:hover { background: var(--stark-cyan); color: #000; }
 
-        /* Bottom Circular Module Navigation Bar */
+        /* Bottom Circular Module Dock */
         .stark-bottom-dock {
             display: flex; justify-content: space-around; align-items: center;
-            padding: 6px 0; border-top: 1px solid var(--stark-border); margin-top: 6px;
-            background: rgba(0, 243, 255, 0.04);
+            padding: 6px 0; border-top: 1px solid var(--stark-border); margin-top: 4px;
+            background: rgba(0, 243, 255, 0.03);
         }
 
-        .dock-circle-btn {
+        .dock-icon-circle {
             width: 38px; height: 38px; border-radius: 50%;
-            border: 1px solid var(--stark-cyan); background: rgba(0, 16, 36, 0.9);
+            border: 1px solid var(--stark-cyan); background: rgba(0, 14, 31, 0.9);
             color: var(--stark-cyan); display: flex; align-items: center; justify-content: center;
-            font-size: 0.9rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.2);
+            font-size: 0.9rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
             transition: all 0.2s ease;
         }
-        .dock-circle-btn:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
+        .dock-icon-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
 
-        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 28px; }
+        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 26px; }
         .wave-bar { width: 3px; height: 10%; background: var(--stark-cyan); transition: height 0.1s ease; }
 
         .blackout-active { background: #000000 !important; background-image: none !important; }
-        .blackout-active .stark-top-bar, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock { display: none !important; }
+        .blackout-active .stark-top-ruler, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Top Stark Numerical Telemetry Header -->
-    <div class="stark-top-bar" id="starkHeader">
-        <div class="stark-logo">⚡ STARK INDUSTRIES</div>
-        <div id="telemetryTime">00:00:00</div>
+    <!-- Top Stark Telemetry Header -->
+    <div class="stark-top-ruler" id="starkRuler">
+        <div class="stark-top-numbers">01 02 03 04 05 06 07 08 09 10</div>
+        <div>STARK INDUSTRIES // J.A.R.V.I.S.</div>
+        <div id="liveClock">00:00:00</div>
         <div id="deviceBadge">DETECTING ENVIRONMENT...</div>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
 
-    <!-- Main Workspace -->
+    <!-- Main HUD Workspace -->
     <div class="hud-workspace" id="hudWorkspace">
         
-        <!-- Left Panel (Diagnostics & Core Telemetry) -->
+        <!-- Left Panel: Diagnostics, EV Telemetry & Audio DSP -->
         <div class="stark-panel desktop-only">
-            <div style="font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">SYSTEM DIAGNOSTICS</div>
-            <div class="reactor-center-box">
-                <div class="arc-outer-ring"><div class="arc-inner-ring">MARK-VII</div></div>
+            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">SYSTEM DIAGNOSTICS</div>
+            
+            <div class="diag-image-box">
+                <div class="ev-overlay-badge">🚘 PROTON e.MAS 7: 88% CHARGE</div>
             </div>
             
-            <div class="stat-gauge">
-                <div>CPU CORE LOAD: 36%</div>
-                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 36%;"></div></div>
-            </div>
-            <div class="stat-gauge">
-                <div>RAM ALLOCATION: 20%</div>
-                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 20%;"></div></div>
-            </div>
-            <div class="stat-gauge">
-                <div>FUSION POWER: 100%</div>
-                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 100%;"></div></div>
+            <div class="gauge-block">
+                <div>PRIMARY SSD: 450 GB (209 GB FREE)</div>
+                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 53%;"></div></div>
             </div>
 
-            <div class="waveform-box" id="waveformBox" style="margin-top: 10px;">
+            <div class="gauge-block">
+                <div>ARC FUSION CORE: 100% NOMINAL</div>
+                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 100%;"></div></div>
+            </div>
+
+            <div style="font-size: 0.7rem; border-left: 2px solid var(--stark-cyan); padding-left: 6px;">
+                <div>LOCATION: BAYAN LEPAS, MY</div>
+                <div>WEATHER: 76°F CLEAR SKY</div>
+                <div>C-3PO ROUTING: STANDBY</div>
+            </div>
+
+            <div class="waveform-box" id="waveformBox" style="margin-top: 6px;">
                 <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
                 <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
             </div>
@@ -197,48 +194,64 @@
             <button style="margin-top:auto;" onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
         </div>
 
-        <!-- Center Active Terminal -->
+        <!-- Center Panel: Command Core & Map-on-Demand Overlay -->
         <div class="stark-panel" style="flex: 1; display: flex; flex-direction: column;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. All Stark Mark-VII subroutines online. How may I assist you today, Sir?</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. All Stark Mark-VII diagnostic subroutines online. How may I assist you today, Sir?</div>
             </div>
 
             <div class="hud-input-bar">
-                <textarea id="userInput" placeholder="Enter command or query... (Enter to Send)"></textarea>
+                <textarea id="userInput" placeholder="Type command or query... (Enter to Send)"></textarea>
                 <button onclick="sendCommand()">SEND</button>
             </div>
         </div>
 
-        <!-- Right Panel (Linked Subsystems & Activity Log) -->
+        <!-- Right Panel: Hardware Monitor, Security 2FA & Logs -->
         <div class="stark-panel desktop-only">
-            <div style="font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">LINKED MODULES</div>
-            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
-                <div>🚘 PROTON e.MAS 7: SYNCED</div>
-                <div>🎵 SPOTIFY MEDIA: READY</div>
-                <div>✈️ FLIGHT RADAR: ACTIVE</div>
-                <div>🛰️ HIGH-PRECISION GPS: ON DEMAND</div>
-                <div>💬 CHATGPT WEB CORE: CONNECTED</div>
+            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">SYSTEM MONITOR</div>
+            
+            <div class="gauge-block">
+                <div>CPU USAGE: 36%</div>
+                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 36%;"></div></div>
             </div>
-            <hr style="border-color: var(--stark-cyan); width: 100%; opacity: 0.3;">
-            <div style="font-size: 0.72rem; opacity: 0.8;">
-                <div>ENCRYPTION: 4096-BIT</div>
-                <div>AUDIO DSP: MCU MATCHED</div>
+
+            <div class="gauge-block">
+                <div>RAM ALLOCATION: 20%</div>
+                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 20%;"></div></div>
+            </div>
+
+            <div class="gauge-block">
+                <div>SWAP BUFFER: 16%</div>
+                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 16%;"></div></div>
+            </div>
+
+            <hr style="border-color: var(--stark-border); opacity: 0.4; width: 100%;">
+
+            <button onclick="request2FACode()">🔑 REQUEST 2FA AUTH CODE</button>
+
+            <div style="font-size: 0.7rem; display: flex; flex-direction: column; gap: 3px; margin-top: 4px;">
+                <div style="font-weight: bold;">ACTIVE SUBSYSTEMS:</div>
+                <div>• MCU Voice DSP Engine: ACTIVE</div>
+                <div>• Deep-Link Protocol Handler: READY</div>
+                <div>• Flight Radar & Cinema Engine: ONLINE</div>
+                <div>• ChatGPT Web Core Fallback: ACTIVE</div>
             </div>
         </div>
 
     </div>
 
-    <!-- Bottom Circular Dock Module Bar -->
+    <!-- Bottom Circular Dock Launcher -->
     <div class="stark-bottom-dock" id="starkDock">
-        <div class="dock-circle-btn" title="Map Overlay" onclick="sendCommandCustom('show map')">🗺️</div>
-        <div class="dock-circle-btn" title="Global News" onclick="fetchGlobalNews()">📰</div>
-        <div class="dock-circle-btn" title="Spotify Link" onclick="sendCommandCustom('open spotify')">🎵</div>
-        <div class="dock-circle-btn" title="YouTube Link" onclick="sendCommandCustom('open youtube')">▶️</div>
-        <div class="dock-circle-btn" title="Blackout Mode" onclick="sendCommandCustom('blackout')">🕶️</div>
+        <div class="dock-icon-circle" title="Map Overlay" onclick="sendCommandCustom('show map')">🗺️</div>
+        <div class="dock-icon-circle" title="Global News" onclick="fetchGlobalNews()">📰</div>
+        <div class="dock-icon-circle" title="Spotify Link" onclick="sendCommandCustom('open spotify')">🎵</div>
+        <div class="dock-icon-circle" title="YouTube Link" onclick="sendCommandCustom('open youtube')">▶️</div>
+        <div class="dock-icon-circle" title="Request 2FA" onclick="request2FACode()">🔑</div>
+        <div class="dock-icon-circle" title="Blackout Mode" onclick="sendCommandCustom('blackout')">🕶️</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -248,15 +261,14 @@
 
         if (isMobile) {
             document.body.classList.add('mobile-mode');
-            document.getElementById('deviceBadge').innerText = "ENVIRONMENT: MOBILE";
+            document.getElementById('deviceBadge').innerText = "ENV: MOBILE";
         } else {
-            document.getElementById('deviceBadge').innerText = "ENVIRONMENT: DESKTOP PC";
+            document.getElementById('deviceBadge').innerText = "ENV: DESKTOP TACTICAL";
         }
 
-        // Live HUD Header Clock
         setInterval(() => {
             const now = new Date();
-            document.getElementById('telemetryTime').innerText = now.toTimeString().split(' ')[0];
+            document.getElementById('liveClock').innerText = now.toTimeString().split(' ')[0];
         }, 1000);
 
         async function toggleWakeLock() {
@@ -268,7 +280,6 @@
             } catch (err) {}
         }
 
-        // Initialize On-Demand Map Overlay
         function activateMapOverlay() {
             const container = document.getElementById('gps-map-container');
             container.style.display = 'block';
@@ -298,7 +309,6 @@
             }
         }
 
-        // Keyboard Listener (Enter to send, Shift+Enter for newline)
         document.getElementById('userInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -309,6 +319,16 @@
         function sendCommandCustom(textCmd) {
             document.getElementById('userInput').value = textCmd;
             sendCommand();
+        }
+
+        async function request2FACode() {
+            const terminal = document.getElementById('chat-terminal');
+            try {
+                const res = await fetch('/api/request_2fa', { method: 'POST' });
+                const data = await res.json();
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (SECURITY):</b> Security OTP Code Generated: <b>${data.demo_code}</b>, Sir.</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+            } catch (e) {}
         }
 
         async function sendCommand() {
@@ -347,7 +367,7 @@
                     playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); 
                 }
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly encountered.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
             }
         }
 
