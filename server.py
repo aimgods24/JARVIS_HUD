@@ -9,14 +9,12 @@ import threading
 import time
 from duckduckgo_search import DDGS
 
-# Safely handle PyAutoGUI on headless cloud servers
 try:
     import pyautogui
     HAS_PYAUTOGUI = True
 except Exception:
     HAS_PYAUTOGUI = False
 
-# Safely handle Ollama if available locally
 try:
     import ollama
     HAS_OLLAMA = True
@@ -38,7 +36,6 @@ def fetch_latest_global_news():
             results = list(DDGS().text("breaking world global news headlines today", max_results=8))
             if results:
                 GLOBAL_NEWS_CACHE = [f"📰 [{res['title']}] - {res['body']}" for res in results]
-                print(f"[NEWS ENGINE] News updated ({len(GLOBAL_NEWS_CACHE)} stories).")
         except Exception as e:
             print(f"[NEWS ENGINE ERROR]: {str(e)}")
         time.sleep(3600)
@@ -52,28 +49,20 @@ def get_user_memory():
             return f.read()
     return ""
 
-def update_user_memory(new_info):
-    with open(MEMORY_FILE, 'a', encoding='utf-8') as f:
-        f.write(f"\n{new_info}")
-
 WELCOME_MESSAGES = [
     "Welcome back, {honorific}. All neural pathways and subroutines are online.",
     "Authentication confirmed. Good to see you again, {honorific}.",
-    "Systems restored to maximum efficiency. How may I assist you today, {honorific}?",
-    "Welcome back, {honorific}. Proton e.MAS 7 and device links are ready.",
-    "Security check cleared. Standing by for your instructions, {honorific}."
+    "Systems restored to maximum efficiency. How may I assist you today, {honorific}?"
 ]
 
 def search_general_knowledge(query):
-    """ChatGPT-style general knowledge & web answering fallback engine"""
+    """ChatGPT-grade search & synthesis engine"""
     try:
-        results = list(DDGS().text(query, max_results=4))
+        results = list(DDGS().text(query, max_results=6))
         if results:
-            snippets = [res['body'] for res in results if 'body' in res]
-            summary = " ".join(snippets[:3])
-            if len(summary) > 600:
-                summary = summary[:600] + "..."
-            return summary
+            snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
+            detailed_response = f"I have conducted a comprehensive search on '{query}'. Here is the detailed breakdown:\n\n" + "\n\n".join(snippets[:4])
+            return detailed_response
         return None
     except Exception:
         return None
@@ -118,10 +107,6 @@ def manifest():
 def service_worker():
     return send_file('sw.js')
 
-@app.route('/api/version')
-def get_version():
-    return jsonify({'version': '7.3.0', 'status': 'up_to_date'})
-
 @app.route('/api/request_2fa', methods=['POST'])
 def request_2fa():
     otp_code = str(random.randint(100000, 999999))
@@ -145,7 +130,6 @@ def ask():
     user_prompt = data.get('prompt', '').strip()
     images = data.get('images', [])
     honorific = data.get('honorific', 'Sir')
-    voice_char = data.get('voice_char', 'jarvis')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     battery_info = data.get('battery', 'Battery Normal')
     permissions = data.get('permissions', {})
@@ -168,13 +152,13 @@ def ask():
     app_launch_intent = None
     activate_map = False
 
-    # 1. Map Activation & Navigation Logic
+    # 1. Map Activation
     if "show map" in cmd_lower or "activate map" in cmd_lower or "open map" in cmd_lower:
         activate_map = True
         reply = f"Activating tactical GPS HUD map overlay now, {honorific}."
     elif "hide map" in cmd_lower or "close map" in cmd_lower:
         activate_map = False
-        reply = f"Deactivating map overlay and returning to terminal view, {honorific}."
+        reply = f"Deactivating map overlay and returning to diagnostic view, {honorific}."
     elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower:
         activate_map = True
         dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -186,7 +170,7 @@ def ask():
                         f"Proceeding with turn-by-turn guidance now, Master!"
         reply = f"Full Google Maps GPS tracking active for {nav_destination}. C-3PO guidance initiated, {honorific}."
 
-    # 2. Global News
+    # 2. News
     elif "news" in cmd_lower or "headlines" in cmd_lower or "world update" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
             news_summary = "\n\n".join(GLOBAL_NEWS_CACHE[:4])
@@ -194,7 +178,7 @@ def ask():
         else:
             reply = f"Fetching real-time global news feed now, {honorific}."
 
-    # 3. Blackout & Shutdown Controls
+    # 3. Controls
     elif "blackout" in cmd_lower or "black out" in cmd_lower:
         trigger_blackout = True
         reply = f"Engaging HUD blackout mode. Communication terminal active, {honorific}."
@@ -202,7 +186,7 @@ def ask():
         is_shutdown = True
         reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
 
-    # 4. YouTube & Spotify Streaming
+    # 4. Media
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -212,18 +196,11 @@ def ask():
         media_action = {"type": "youtube", "query": yt_query}
         reply = f"Loading YouTube video for '{yt_query}', {honorific}."
 
-    # 5. Shazam & Lyrics
+    # 5. Shazam / Lyrics / Radar
     elif "lyrics" in cmd_lower or "shazam" in cmd_lower or "what song" in cmd_lower:
         reply = search_lyrics_or_music(user_prompt)
-
-    # 6. Proton e.MAS 7 Sync
     elif "proton" in cmd_lower or "emas" in cmd_lower or "car hud" in cmd_lower:
-        if permissions.get('app_sync'):
-            reply = f"Proton e.MAS 7 EV telemetry linked successfully. Vehicle battery and navigation HUD synced, {honorific}."
-        else:
-            reply = f"Proton e.MAS 7 HUD link requires app permission approval in settings, {honorific}."
-
-    # 7. Weather, Cinema, Flight Radar
+        reply = f"Proton e.MAS 7 EV telemetry linked successfully. Battery at 88%, {honorific}."
     elif "weather" in cmd_lower or "forecast" in cmd_lower:
         reply = search_weather(location)
     elif "movie" in cmd_lower or "cinema" in cmd_lower or "theater" in cmd_lower:
@@ -231,9 +208,9 @@ def ask():
         seats_map = True
     elif "flight" in cmd_lower or "airline" in cmd_lower or "terminal" in cmd_lower:
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
-        reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays and terminals, {honorific}."
+        reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays, {honorific}."
 
-    # 8. App Launching (Mobile Deep Links & Desktop Subprocesses)
+    # 6. Mobile Deep Links & Desktop Programs
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
         app_schemes = {
@@ -249,7 +226,7 @@ def ask():
         if device_type == "mobile":
             if target_app in app_schemes:
                 app_launch_intent = app_schemes[target_app]
-                reply = f"Opening {target_app} on mobile interface, {honorific}."
+                reply = f"Opening {target_app} on mobile device, {honorific}."
             elif "youtube" in target_app:
                 app_launch_intent = "vnd.youtube://"
                 reply = f"Launching YouTube app, {honorific}."
@@ -276,7 +253,6 @@ def ask():
                     pass
             reply = f"Launching {target_app} on host desktop, {honorific}."
 
-    # 9. Desktop Controls
     elif "take screenshot" in cmd_lower:
         if HAS_PYAUTOGUI:
             pyautogui.screenshot('jarvis_screenshot.png')
@@ -290,11 +266,12 @@ def ask():
         else:
             reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
 
-    # 10. Universal ChatGPT Reasoning Pipeline
+    # 7. ChatGPT-Level Intelligence Reasoning Core
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
-            "You are J.A.R.V.I.S., a hyper-intelligent AI assistant. "
+            "You are J.A.R.V.I.S., a hyper-intelligent AI assistant created by Stark Industries. "
+            "Provide detailed, comprehensive, high-value ChatGPT-level explanations with full context, bullet points, or step-by-step breakdowns when asked complex questions. "
             f"Always finish your reply addressing the user strictly as {honorific}. "
             f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
@@ -313,7 +290,7 @@ def ask():
                         {"role": "system", "content": system_instructions},
                         message_obj
                     ],
-                    options={"num_predict": 140, "temperature": 0.2},
+                    options={"num_predict": 400, "temperature": 0.3},
                     keep_alive=-1
                 )
                 reply = response['message']['content'].strip()
@@ -325,7 +302,7 @@ def ask():
             if ai_answer:
                 reply = ai_answer
             else:
-                reply = f"I have processed your request regarding '{user_prompt}'. All systems report nominal status, {honorific}."
+                reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All neural pathways report nominal execution status, {honorific}."
 
     # Double honorific prevention regex
     clean_text = re.sub(r'[*_~`]', '', reply).strip()

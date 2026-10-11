@@ -3,53 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STARK INDUSTRIES J.A.R.V.I.S. MARK-VII HUD</title>
+    <title>STARK INDUSTRIES MARK-VII RADAR HUD</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --stark-cyan: #00f3ff;
-            --stark-blue-glow: rgba(0, 243, 255, 0.5);
-            --stark-dark-bg: #010813;
-            --stark-panel-bg: rgba(1, 14, 31, 0.88);
-            --stark-border: rgba(0, 243, 255, 0.45);
+            --stark-glow: rgba(0, 243, 255, 0.55);
+            --stark-bg: #010814;
+            --stark-panel: rgba(1, 12, 28, 0.82);
+            --stark-border: rgba(0, 243, 255, 0.5);
         }
 
         * { box-sizing: border-box; }
 
         body {
-            background-color: var(--stark-dark-bg);
+            background-color: var(--stark-bg);
             color: var(--stark-cyan);
             font-family: 'Consolas', 'Courier New', monospace;
-            margin: 0; padding: 6px;
+            margin: 0; padding: 4px;
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
             user-select: none;
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.08) 0%, transparent 75%),
-                linear-gradient(0deg, rgba(1, 8, 19, 0.98) 0%, rgba(0, 4, 10, 0.99) 100%);
+                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.08) 0%, transparent 80%),
+                linear-gradient(0deg, rgba(1, 8, 20, 0.98) 0%, rgba(0, 3, 8, 0.99) 100%);
         }
 
-        /* Top Stark Numerical Header Bar */
+        /* Top 01-30 Numerical Ruler Header */
         .stark-top-ruler {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--stark-border);
-            padding: 4px 8px; font-size: 0.65rem; letter-spacing: 1.5px;
+            padding: 3px 8px; font-size: 0.65rem; letter-spacing: 2px;
             background: rgba(0, 243, 255, 0.04);
-            box-shadow: 0 0 8px var(--stark-blue-glow);
+            box-shadow: 0 0 10px var(--stark-glow);
         }
 
-        .stark-top-numbers { display: flex; gap: 8px; font-weight: bold; opacity: 0.8; }
+        .ruler-numbers { display: flex; gap: 6px; font-weight: bold; opacity: 0.85; }
 
-        /* HUD Workspace Grid */
+        /* Main Workspace Overlay */
         .hud-workspace {
             display: grid;
             grid-template-columns: 260px 1fr 280px;
-            gap: 8px; flex: 1; overflow: hidden; margin-top: 4px;
+            gap: 6px; flex: 1; overflow: hidden; margin-top: 4px;
+            position: relative;
         }
 
-        /* Mobile Viewport Adaptation */
         body.mobile-mode .hud-workspace {
             grid-template-columns: 1fr;
             grid-template-rows: auto 1fr;
@@ -57,39 +57,58 @@
         body.mobile-mode .desktop-only { display: none !important; }
 
         .stark-panel {
-            background: var(--stark-panel-bg);
+            background: var(--stark-panel);
             border: 1px solid var(--stark-border);
             border-radius: 4px; padding: 8px;
-            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.1);
-            display: flex; flex-direction: column; gap: 8px;
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.12);
+            display: flex; flex-direction: column; gap: 6px;
             overflow: hidden; position: relative;
         }
 
-        /* Stark Image Box & Proton EV Status Widget */
-        .diag-image-box {
-            width: 100%; height: 85px;
-            border: 1px solid var(--stark-cyan);
+        /* Background Concentric Circular Radar Schematic */
+        .radar-center-background {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 380px; height: 380px; border-radius: 50%;
+            border: 1px dashed rgba(0, 243, 255, 0.22);
+            pointer-events: none; z-index: 0;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .radar-ring-inner {
+            width: 240px; height: 240px; border-radius: 50%;
+            border: 2px solid rgba(0, 243, 255, 0.3);
+            animation: spinCW 20s linear infinite;
+        }
+
+        .radar-crosshair {
+            position: absolute; width: 100%; height: 1px; background: rgba(0, 243, 255, 0.15);
+        }
+
+        @keyframes spinCW { 100% { transform: rotate(360deg); } }
+
+        /* Left Panel Widgets */
+        .car-diag-box {
+            width: 100%; height: 80px; border: 1px solid var(--stark-cyan);
             border-radius: 3px; background-size: cover; background-position: center;
             background-image: url('https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=600&q=80');
-            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+            box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);
             position: relative;
         }
 
-        .ev-overlay-badge {
-            position: absolute; bottom: 4px; left: 4px;
-            background: rgba(0, 8, 19, 0.85); border: 1px solid var(--stark-cyan);
-            font-size: 0.6rem; padding: 2px 5px; border-radius: 2px;
+        .badge-tag {
+            position: absolute; bottom: 3px; left: 3px;
+            background: rgba(0, 8, 20, 0.9); border: 1px solid var(--stark-cyan);
+            font-size: 0.58rem; padding: 1px 4px; border-radius: 2px;
         }
 
-        /* Status Gauges */
-        .gauge-block { display: flex; flex-direction: column; gap: 2px; font-size: 0.7rem; }
-        .gauge-bar-outer { background: rgba(0, 0, 0, 0.7); height: 7px; border: 1px solid var(--stark-cyan); border-radius: 2px; }
-        .gauge-bar-inner { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 6px var(--stark-cyan); transition: width 0.3s; }
+        .gauge-block { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
+        .gauge-outer { background: rgba(0, 0, 0, 0.7); height: 6px; border: 1px solid var(--stark-cyan); border-radius: 2px; }
+        .gauge-inner { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 6px var(--stark-cyan); }
 
-        /* Map-on-Demand Overlay */
         #gps-map-container {
-            height: 160px; border: 1px solid var(--stark-cyan);
-            border-radius: 4px; overflow: hidden; display: none; margin-bottom: 6px;
+            height: 150px; border: 1px solid var(--stark-cyan);
+            border-radius: 4px; overflow: hidden; display: none; margin-bottom: 4px; z-index: 1;
         }
         #leaflet-map { width: 100%; height: 100%; }
 
@@ -99,23 +118,22 @@
         }
         @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
 
-        /* Terminal Chat Stream */
+        /* Chat Terminal Stream */
         #chat-terminal {
-            flex: 1; background: rgba(0, 0, 0, 0.85);
+            flex: 1; background: rgba(0, 0, 0, 0.88);
             border: 1px solid var(--stark-cyan);
             border-radius: 4px; padding: 10px;
             overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.2); z-index: 1;
         }
 
-        .msg-line { line-height: 1.35; font-size: 0.85rem; word-break: break-word; }
+        .msg-line { line-height: 1.4; font-size: 0.83rem; word-break: break-word; white-space: pre-wrap; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
-        .msg-jarvis { color: var(--stark-cyan); text-shadow: 0 0 4px var(--stark-blue-glow); border-left: 2px solid var(--stark-cyan); padding-left: 6px; }
+        .msg-jarvis { color: var(--stark-cyan); text-shadow: 0 0 4px var(--stark-glow); border-left: 2px solid var(--stark-cyan); padding-left: 6px; }
 
-        /* Input Controls */
-        .hud-input-bar { display: flex; gap: 6px; margin-top: 6px; }
+        .hud-input-bar { display: flex; gap: 6px; margin-top: 4px; z-index: 1; }
         textarea {
-            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.85);
+            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.88);
             border: 1px solid var(--stark-cyan); border-radius: 4px;
             color: var(--stark-cyan); padding: 8px; font-family: inherit; resize: none; font-size: 0.85rem;
         }
@@ -125,62 +143,68 @@
         }
         button:hover { background: var(--stark-cyan); color: #000; }
 
-        /* Bottom Circular Module Dock */
+        /* Bottom Floating Circular Dock */
         .stark-bottom-dock {
             display: flex; justify-content: space-around; align-items: center;
-            padding: 6px 0; border-top: 1px solid var(--stark-border); margin-top: 4px;
+            padding: 4px 0; border-top: 1px solid var(--stark-border); margin-top: 4px;
             background: rgba(0, 243, 255, 0.03);
         }
 
-        .dock-icon-circle {
-            width: 38px; height: 38px; border-radius: 50%;
-            border: 1px solid var(--stark-cyan); background: rgba(0, 14, 31, 0.9);
+        .dock-circle {
+            width: 36px; height: 36px; border-radius: 50%;
+            border: 1px solid var(--stark-cyan); background: rgba(0, 12, 28, 0.9);
             color: var(--stark-cyan); display: flex; align-items: center; justify-content: center;
-            font-size: 0.9rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
+            font-size: 0.85rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
             transition: all 0.2s ease;
         }
-        .dock-icon-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
+        .dock-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
 
-        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 26px; }
+        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 24px; }
         .wave-bar { width: 3px; height: 10%; background: var(--stark-cyan); transition: height 0.1s ease; }
 
         .blackout-active { background: #000000 !important; background-image: none !important; }
-        .blackout-active .stark-top-ruler, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock { display: none !important; }
+        .blackout-active .stark-top-ruler, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock, .blackout-active .radar-center-background { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Top Stark Telemetry Header -->
+    <!-- Top Numerical Telemetry Header -->
     <div class="stark-top-ruler" id="starkRuler">
-        <div class="stark-top-numbers">01 02 03 04 05 06 07 08 09 10</div>
-        <div>STARK INDUSTRIES // J.A.R.V.I.S.</div>
+        <div class="ruler-numbers">01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30</div>
+        <div>STARK INDUSTRIES // MARK-VII</div>
         <div id="liveClock">00:00:00</div>
         <div id="deviceBadge">DETECTING ENVIRONMENT...</div>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
 
-    <!-- Main HUD Workspace -->
+    <!-- Workspace -->
     <div class="hud-workspace" id="hudWorkspace">
         
-        <!-- Left Panel: Diagnostics, EV Telemetry & Audio DSP -->
-        <div class="stark-panel desktop-only">
+        <!-- Background Concentric Radar Rings -->
+        <div class="radar-center-background">
+            <div class="radar-ring-inner"></div>
+            <div class="radar-crosshair"></div>
+        </div>
+
+        <!-- Left Diagnostic Stack -->
+        <div class="stark-panel desktop-only" style="z-index: 1;">
             <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">SYSTEM DIAGNOSTICS</div>
             
-            <div class="diag-image-box">
-                <div class="ev-overlay-badge">🚘 PROTON e.MAS 7: 88% CHARGE</div>
+            <div class="car-diag-box">
+                <div class="badge-tag">🚘 PROTON e.MAS 7: 88% CHARGE</div>
             </div>
             
             <div class="gauge-block">
                 <div>PRIMARY SSD: 450 GB (209 GB FREE)</div>
-                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 53%;"></div></div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 53%;"></div></div>
             </div>
 
             <div class="gauge-block">
                 <div>ARC FUSION CORE: 100% NOMINAL</div>
-                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 100%;"></div></div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 100%;"></div></div>
             </div>
 
-            <div style="font-size: 0.7rem; border-left: 2px solid var(--stark-cyan); padding-left: 6px;">
+            <div style="font-size: 0.68rem; border-left: 2px solid var(--stark-cyan); padding-left: 6px;">
                 <div>LOCATION: BAYAN LEPAS, MY</div>
                 <div>WEATHER: 76°F CLEAR SKY</div>
                 <div>C-3PO ROUTING: STANDBY</div>
@@ -194,14 +218,14 @@
             <button style="margin-top:auto;" onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
         </div>
 
-        <!-- Center Panel: Command Core & Map-on-Demand Overlay -->
-        <div class="stark-panel" style="flex: 1; display: flex; flex-direction: column;">
+        <!-- Center Command Core -->
+        <div class="stark-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. All Stark Mark-VII diagnostic subroutines online. How may I assist you today, Sir?</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. All Stark Mark-VII tactical radar subroutines online. How may I assist you today, Sir?</div>
             </div>
 
             <div class="hud-input-bar">
@@ -210,30 +234,30 @@
             </div>
         </div>
 
-        <!-- Right Panel: Hardware Monitor, Security 2FA & Logs -->
-        <div class="stark-panel desktop-only">
+        <!-- Right System Monitor Stack -->
+        <div class="stark-panel desktop-only" style="z-index: 1;">
             <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">SYSTEM MONITOR</div>
             
             <div class="gauge-block">
                 <div>CPU USAGE: 36%</div>
-                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 36%;"></div></div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 36%;"></div></div>
             </div>
 
             <div class="gauge-block">
                 <div>RAM ALLOCATION: 20%</div>
-                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 20%;"></div></div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 20%;"></div></div>
             </div>
 
             <div class="gauge-block">
                 <div>SWAP BUFFER: 16%</div>
-                <div class="gauge-bar-outer"><div class="gauge-bar-inner" style="width: 16%;"></div></div>
+                <div class="gauge-outer"><div class="gauge-inner" style="width: 16%;"></div></div>
             </div>
 
             <hr style="border-color: var(--stark-border); opacity: 0.4; width: 100%;">
 
             <button onclick="request2FACode()">🔑 REQUEST 2FA AUTH CODE</button>
 
-            <div style="font-size: 0.7rem; display: flex; flex-direction: column; gap: 3px; margin-top: 4px;">
+            <div style="font-size: 0.68rem; display: flex; flex-direction: column; gap: 3px; margin-top: 4px;">
                 <div style="font-weight: bold;">ACTIVE SUBSYSTEMS:</div>
                 <div>• MCU Voice DSP Engine: ACTIVE</div>
                 <div>• Deep-Link Protocol Handler: READY</div>
@@ -244,14 +268,14 @@
 
     </div>
 
-    <!-- Bottom Circular Dock Launcher -->
+    <!-- Bottom Circular Launcher Dock -->
     <div class="stark-bottom-dock" id="starkDock">
-        <div class="dock-icon-circle" title="Map Overlay" onclick="sendCommandCustom('show map')">🗺️</div>
-        <div class="dock-icon-circle" title="Global News" onclick="fetchGlobalNews()">📰</div>
-        <div class="dock-icon-circle" title="Spotify Link" onclick="sendCommandCustom('open spotify')">🎵</div>
-        <div class="dock-icon-circle" title="YouTube Link" onclick="sendCommandCustom('open youtube')">▶️</div>
-        <div class="dock-icon-circle" title="Request 2FA" onclick="request2FACode()">🔑</div>
-        <div class="dock-icon-circle" title="Blackout Mode" onclick="sendCommandCustom('blackout')">🕶️</div>
+        <div class="dock-circle" title="Map Overlay" onclick="sendCommandCustom('show map')">🗺️</div>
+        <div class="dock-circle" title="Global News" onclick="fetchGlobalNews()">📰</div>
+        <div class="dock-circle" title="Spotify Link" onclick="sendCommandCustom('open spotify')">🎵</div>
+        <div class="dock-circle" title="YouTube Link" onclick="sendCommandCustom('open youtube')">▶️</div>
+        <div class="dock-circle" title="Request 2FA" onclick="request2FACode()">🔑</div>
+        <div class="dock-circle" title="Blackout Mode" onclick="sendCommandCustom('blackout')">🕶️</div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
