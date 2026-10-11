@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. MARK-VII HUD OPERATING SYSTEM</title>
+    <title>J.A.R.V.I.S. MARK-VII OPERATING SYSTEM</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --neon-blue: #00f3ff;
-            --neon-glow: rgba(0, 243, 255, 0.45);
-            --bg-dark: #01060f;
-            --panel-bg: rgba(2, 14, 30, 0.90);
+            --neon-glow: rgba(0, 243, 255, 0.4);
+            --bg-dark: #020813;
+            --panel-bg: rgba(2, 18, 38, 0.92);
         }
 
         * { box-sizing: border-box; }
@@ -31,59 +31,56 @@
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 2px solid var(--neon-blue);
             padding-bottom: 6px; margin-bottom: 8px;
-            box-shadow: 0 2px 12px var(--neon-glow);
+            box-shadow: 0 2px 10px var(--neon-glow);
         }
 
         .hud-title { font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 8px var(--neon-blue); }
-        .device-badge { font-size: 0.75rem; background: rgba(0,243,255,0.15); border: 1px solid var(--neon-blue); padding: 3px 8px; border-radius: 4px; }
+        .device-badge { font-size: 0.75rem; background: rgba(0,243,255,0.15); border: 1px solid var(--neon-blue); padding: 2px 6px; border-radius: 4px; }
 
+        /* Adaptive HUD Layout */
         .hud-workspace {
             display: grid;
-            grid-template-columns: 240px 1fr 280px;
+            grid-template-columns: 280px 1fr 320px;
             gap: 10px; flex: 1; overflow: hidden;
         }
 
-        @media (max-width: 850px) {
-            .hud-workspace { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-            .left-panel, .right-panel { display: none; }
+        /* Phone Layout Mode */
+        body.mobile-mode .hud-workspace {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto 1fr;
         }
+        body.mobile-mode .desktop-only { display: none !important; }
 
         .hud-panel {
             background: var(--panel-bg);
             border: 1px solid var(--neon-blue);
             border-radius: 6px; padding: 10px;
-            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.12);
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.1);
             display: flex; flex-direction: column; gap: 8px;
+            overflow: hidden;
         }
 
-        .arc-assembly {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            margin: 10px 0; position: relative;
-        }
-
-        .arc-outer-ring {
-            width: 100px; height: 100px; border-radius: 50%;
-            border: 3px solid var(--neon-blue);
-            box-shadow: 0 0 25px var(--neon-blue), inset 0 0 20px var(--neon-blue);
-            animation: spinCW 8s linear infinite;
+        /* Movie-Style Arc HUD Ring Visuals */
+        .tactical-ring-container { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
+        .tactical-ring {
+            width: 120px; height: 120px; border-radius: 50%;
+            border: 2px dashed var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue), inset 0 0 10px var(--neon-blue);
+            animation: spinRing 12s linear infinite;
             display: flex; align-items: center; justify-content: center;
         }
-
-        .arc-mid-ring {
-            width: 70px; height: 70px; border-radius: 50%;
-            border: 2px dashed #ffffff;
-            animation: spinCCW 4s linear infinite;
-            display: flex; align-items: center; justify-content: center;
+        .ring-core {
+            width: 60px; height: 60px; border-radius: 50%;
+            border: 2px solid #fff; animation: spinRingRev 6s linear infinite;
+            display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold;
         }
 
-        .arc-inner-core {
-            width: 30px; height: 30px; border-radius: 50%;
-            background: #ffffff;
-            box-shadow: 0 0 18px #ffffff, 0 0 35px var(--neon-blue);
-        }
+        @keyframes spinRing { 100% { transform: rotate(360deg); } }
+        @keyframes spinRingRev { 100% { transform: rotate(-360deg); } }
 
-        @keyframes spinCW { 100% { transform: rotate(360deg); } }
-        @keyframes spinCCW { 100% { transform: rotate(-360deg); } }
+        /* Waveform Audio Visualizer Graphic */
+        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 35px; }
+        .wave-bar { width: 4px; height: 10%; background: var(--neon-blue); transition: height 0.1s ease; }
 
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.75);
@@ -93,33 +90,33 @@
             box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
         }
 
-        .msg-line { line-height: 1.4; font-size: 0.85rem; word-break: break-word; }
-        .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 8px; }
-        .msg-jarvis { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-glow); border-left: 2px solid var(--neon-blue); padding-left: 8px; }
+        .msg-line { line-height: 1.35; font-size: 0.85rem; word-break: break-word; }
+        .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
+        .msg-jarvis { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-glow); border-left: 2px solid var(--neon-blue); padding-left: 6px; }
 
-        #gps-map-container { height: 150px; border: 1px solid var(--neon-blue); border-radius: 4px; overflow: hidden; }
+        #gps-map-container { height: 140px; border: 1px solid var(--neon-blue); border-radius: 4px; overflow: hidden; }
         #leaflet-map { width: 100%; height: 100%; }
 
         .hud-orb-marker {
-            width: 18px; height: 18px; background: #00f3ff; border-radius: 50%;
-            box-shadow: 0 0 15px #00f3ff; border: 2px solid #fff; animation: orbPulse 1.5s infinite;
+            width: 16px; height: 16px; background: #00f3ff; border-radius: 50%;
+            box-shadow: 0 0 12px #00f3ff; border: 2px solid #fff; animation: orbPulse 1.5s infinite;
         }
         @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
 
-        .hud-input-bar { display: flex; gap: 8px; margin-top: 8px; }
+        .hud-input-bar { display: flex; gap: 6px; margin-top: 8px; }
         textarea {
-            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.85);
+            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.8);
             border: 1px solid var(--neon-blue); border-radius: 4px;
-            color: var(--neon-blue); padding: 8px; font-family: inherit; resize: none;
+            color: var(--neon-blue); padding: 6px; font-family: inherit; resize: none; font-size: 0.85rem;
         }
         button {
             background: rgba(0, 243, 255, 0.2); border: 1px solid var(--neon-blue);
-            color: var(--neon-blue); border-radius: 4px; font-weight: bold; cursor: pointer; padding: 0 16px;
+            color: var(--neon-blue); border-radius: 4px; font-weight: bold; cursor: pointer; padding: 0 12px; font-size: 0.8rem;
         }
         button:hover { background: var(--neon-blue); color: #000; }
 
         .blackout-active { background: #000000 !important; }
-        .blackout-active .hud-header, .blackout-active .left-panel, .blackout-active .right-panel, .blackout-active #gps-map-container { display: none !important; }
+        .blackout-active .hud-header, .blackout-active .desktop-only, .blackout-active #gps-map-container { display: none !important; }
     </style>
 </head>
 <body>
@@ -127,51 +124,56 @@
     <div class="hud-header" id="hudHeader">
         <div class="hud-title">⚡ J.A.R.V.I.S. MARK-VII</div>
         <div class="device-badge" id="deviceBadge">DETECTING ENVIRONMENT...</div>
-        <button onclick="toggleWakeLock()">🔒 SCREEN AWAKE</button>
+        <div style="display:flex; gap:6px;">
+            <button id="installBtn" style="display:none;" onclick="installApp()">📱 INSTALL APP</button>
+            <button onclick="toggleWakeLock()">🔒 AWAKE</button>
+        </div>
     </div>
 
     <div class="hud-workspace" id="hudWorkspace">
         
-        <div class="hud-panel left-panel">
-            <div style="font-weight: bold; font-size: 0.85rem;">STARK TELEMETRY</div>
-            <div class="arc-assembly">
-                <div class="arc-outer-ring">
-                    <div class="arc-mid-ring">
-                        <div class="arc-inner-core"></div>
-                    </div>
-                </div>
+        <!-- Left Panel (Desktop HUD Visualizer) -->
+        <div class="hud-panel desktop-only">
+            <div style="font-size: 0.8rem; font-weight: bold;">MISSION CONTROL</div>
+            <div class="tactical-ring-container">
+                <div class="tactical-ring"><div class="ring-core">J.A.R.V.I.S.</div></div>
             </div>
-            <div style="font-size: 0.75rem;">
-                <div>SYS STATUS: 100% ONLINE</div>
-                <div>POWER CORE: FUSION</div>
-                <div>NEURAL ENGINE: ACTIVE</div>
+            <div class="waveform-box" id="waveformBox">
+                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
             </div>
-            <hr style="border-color: var(--neon-blue); width: 100%;">
-            <button onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
+            <div style="font-size: 0.75rem; margin-top: 6px;">
+                <div>SYS STATUS: 100% NOMINAL</div>
+                <div>CORE PROCESS: ACTIVE</div>
+                <div>AUDIO DSP: MCU MATCHED</div>
+            </div>
+            <button style="margin-top:auto;" onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
         </div>
 
+        <!-- Center Dynamic Terminal -->
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. All Stark Mark-VII subroutines online. How may I assist you today, Sir?</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. Systems operational, Sir.</div>
             </div>
 
             <div class="hud-input-bar">
-                <textarea id="userInput" placeholder="Enter command or general query... (Enter to Send)"></textarea>
+                <textarea id="userInput" placeholder="Type command... (Enter to Send)"></textarea>
                 <button onclick="sendCommand()">SEND</button>
             </div>
         </div>
 
-        <div class="hud-panel right-panel">
-            <div style="font-weight: bold; font-size: 0.85rem;">LINKED MODULES</div>
-            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px;">
-                <div>🚘 PROTON e.MAS 7: SYNCED</div>
-                <div>🎵 SPOTIFY MEDIA: READY</div>
-                <div>✈️ FLIGHT RADAR: ACTIVE</div>
-                <div>🛰️ HIGH-PRECISION GPS: ON</div>
+        <!-- Right Panel (Desktop Activity Log) -->
+        <div class="hud-panel desktop-only">
+            <div style="font-size: 0.8rem; font-weight: bold;">ACTIVITY LOG & LINKS</div>
+            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 5px;">
+                <div>🚘 PROTON e.MAS 7: READY</div>
+                <div>🎵 SPOTIFY: ACTIVE</div>
+                <div>✈️ RADAR: ONLINE</div>
+                <div>🛰️ GPS: HIGH PRECISION</div>
             </div>
         </div>
 
@@ -179,26 +181,58 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map = null, userMarker = null, wakeLockObj = null;
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        let map, userMarker, deferredPrompt = null;
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        document.getElementById('deviceBadge').innerText = isMobileDevice ? "ENVIRONMENT: MOBILE" : "ENVIRONMENT: DESKTOP PC";
+        if (isMobile) {
+            document.body.classList.add('mobile-mode');
+            document.getElementById('deviceBadge').innerText = "HUD: MOBILE MODE";
+        } else {
+            document.getElementById('deviceBadge').innerText = "HUD: DESKTOP TACTICAL";
+        }
+
+        // PWA Installation & Updates
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            document.getElementById('installBtn').style.display = 'inline-block';
+        });
+
+        function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+            }
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            alert("J.A.R.V.I.S. Update Downloaded. Reloading system...");
+                            window.location.reload();
+                        }
+                    };
+                };
+            });
+        }
 
         async function toggleWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
-                    wakeLockObj = await navigator.wakeLock.request('screen');
-                    alert("Display Wake Lock Active: Display will remain lit while HUD is open.");
+                    await navigator.wakeLock.request('screen');
+                    alert("Wake Lock Active.");
                 }
-            } catch (err) { console.log(err); }
+            } catch (err) {}
         }
 
         function initMap() {
-            if (map !== null) return;
             try {
                 map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                const orbIcon = L.divIcon({ className: 'hud-orb-marker', iconSize: [18, 18] });
+                const orbIcon = L.divIcon({ className: 'hud-orb-marker', iconSize: [16, 16] });
 
                 if ("geolocation" in navigator) {
                     navigator.geolocation.watchPosition((pos) => {
@@ -210,9 +244,9 @@
                             userMarker.setLatLng([lat, lon]);
                         }
                         map.setView([lat, lon], 16);
-                    }, (err) => console.log("GPS Notice:", err), { enableHighAccuracy: true });
+                    }, null, { enableHighAccuracy: true });
                 }
-            } catch(e) { console.log("Map load deferred."); }
+            } catch(e) {}
         }
 
         document.getElementById('userInput').addEventListener('keydown', function(e) {
@@ -237,32 +271,48 @@
                 const res = await fetch('/api/ask', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: text,
-                        device_type: isMobileDevice ? 'mobile' : 'desktop'
-                    })
+                    body: JSON.stringify({ prompt: text, device_type: isMobile ? 'mobile' : 'desktop' })
                 });
-                
                 const data = await res.json();
 
-                if (data.blackout) {
-                    document.body.classList.add('blackout-active');
-                }
+                if (data.blackout) { document.body.classList.add('blackout-active'); }
 
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
 
-                if (data.app_intent && isMobileDevice) {
-                    window.location.href = data.app_intent;
-                }
+                if (data.app_intent && isMobile) { window.location.href = data.app_intent; }
 
-                if (data.audio_b64) {
-                    let audio = new Audio(data.audio_b64);
-                    audio.play();
-                }
+                if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Communication error: ${e.message}</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
             }
+        }
+
+        // MCU Audio Processing (Suit-Speaker Resonant DSP)
+        function playJarvisAudioWithDSP(audioUrl) {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const audio = new Audio(audioUrl);
+            const source = audioCtx.createMediaElementSource(audio);
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "peaking";
+            filter.frequency.value = 3200;
+            filter.Q.value = 1.2;
+            filter.gain.value = 3.5;
+
+            source.connect(filter);
+            filter.connect(audioCtx.destination);
+
+            audio.play();
+            animateWaveform();
+        }
+
+        function animateWaveform() {
+            const bars = document.querySelectorAll('.wave-bar');
+            let interval = setInterval(() => {
+                bars.forEach(b => { b.style.height = Math.floor(Math.random() * 85 + 15) + '%'; });
+            }, 100);
+            setTimeout(() => { clearInterval(interval); bars.forEach(b => b.style.height = '10%'); }, 3000);
         }
 
         async function fetchGlobalNews() {

@@ -1,0 +1,16 @@
+{{
+  "short_name": "JARVIS",
+  "name": "J.A.R.V.I.S. Mark-VII Operating System",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/512/iron-man.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#020813",
+  "theme_color": "#00f3ff",
+  "display": "standalone",
+  "orientation": "any"
+}
