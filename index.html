@@ -3,98 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>J.A.R.V.I.S. MARK-VII OPERATING SYSTEM</title>
+    <title>STARK INDUSTRIES J.A.R.V.I.S. HUD</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --neon-blue: #00f3ff;
-            --neon-glow: rgba(0, 243, 255, 0.4);
-            --bg-dark: #020813;
-            --panel-bg: rgba(2, 18, 38, 0.92);
+            --stark-cyan: #00f3ff;
+            --stark-blue-glow: rgba(0, 243, 255, 0.45);
+            --stark-dark-bg: #010a17;
+            --stark-panel-bg: rgba(2, 16, 36, 0.88);
+            --stark-border: rgba(0, 243, 255, 0.6);
         }
 
         * { box-sizing: border-box; }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--neon-blue);
+            background-color: var(--stark-dark-bg);
+            color: var(--stark-cyan);
             font-family: 'Consolas', 'Courier New', monospace;
-            margin: 0; padding: 10px;
+            margin: 0; padding: 8px;
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
             user-select: none;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.08) 0%, transparent 70%),
+                linear-gradient(0deg, rgba(1, 10, 23, 0.95) 0%, rgba(0, 5, 12, 0.98) 100%);
         }
 
-        .hud-header {
+        /* Top Stark HUD Numerical Bar */
+        .stark-top-bar {
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 2px solid var(--neon-blue);
-            padding-bottom: 6px; margin-bottom: 8px;
-            box-shadow: 0 2px 10px var(--neon-glow);
+            border-bottom: 1px solid var(--stark-border);
+            padding: 4px 10px; font-size: 0.72rem; letter-spacing: 1px;
+            background: rgba(0, 243, 255, 0.05);
+            box-shadow: 0 0 10px var(--stark-blue-glow);
         }
 
-        .hud-title { font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 8px var(--neon-blue); }
-        .device-badge { font-size: 0.75rem; background: rgba(0,243,255,0.15); border: 1px solid var(--neon-blue); padding: 2px 6px; border-radius: 4px; }
+        .stark-logo { font-weight: bold; letter-spacing: 3px; text-shadow: 0 0 8px var(--stark-cyan); }
 
-        /* Adaptive HUD Layout */
+        /* Main Workspace Layout */
         .hud-workspace {
             display: grid;
-            grid-template-columns: 280px 1fr 320px;
-            gap: 10px; flex: 1; overflow: hidden;
+            grid-template-columns: 270px 1fr 270px;
+            gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
         }
 
-        /* Phone Layout Mode */
+        /* Mobile Mode Override */
         body.mobile-mode .hud-workspace {
             grid-template-columns: 1fr;
             grid-template-rows: auto 1fr;
         }
         body.mobile-mode .desktop-only { display: none !important; }
 
-        .hud-panel {
-            background: var(--panel-bg);
-            border: 1px solid var(--neon-blue);
-            border-radius: 6px; padding: 10px;
-            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.1);
+        .stark-panel {
+            background: var(--stark-panel-bg);
+            border: 1px solid var(--stark-border);
+            border-radius: 4px; padding: 10px;
+            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.12);
             display: flex; flex-direction: column; gap: 8px;
-            overflow: hidden;
+            overflow: hidden; position: relative;
         }
 
-        /* Movie-Style Arc HUD Ring Visuals */
-        .tactical-ring-container { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
-        .tactical-ring {
-            width: 120px; height: 120px; border-radius: 50%;
-            border: 2px dashed var(--neon-blue);
-            box-shadow: 0 0 15px var(--neon-blue), inset 0 0 10px var(--neon-blue);
-            animation: spinRing 12s linear infinite;
+        /* Tactical Stark Centered Reactor Visualizer */
+        .reactor-center-box {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 10px; position: relative;
+        }
+
+        .arc-outer-ring {
+            width: 140px; height: 140px; border-radius: 50%;
+            border: 2px dashed var(--stark-cyan);
+            box-shadow: 0 0 20px var(--stark-cyan), inset 0 0 15px var(--stark-cyan);
+            animation: spinClockwise 14s linear infinite;
             display: flex; align-items: center; justify-content: center;
         }
-        .ring-core {
-            width: 60px; height: 60px; border-radius: 50%;
-            border: 2px solid #fff; animation: spinRingRev 6s linear infinite;
-            display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold;
+
+        .arc-inner-ring {
+            width: 80px; height: 80px; border-radius: 50%;
+            border: 2px solid #fff; animation: spinCounterClockwise 7s linear infinite;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.65rem; font-weight: bold; text-shadow: 0 0 6px var(--stark-cyan);
         }
 
-        @keyframes spinRing { 100% { transform: rotate(360deg); } }
-        @keyframes spinRingRev { 100% { transform: rotate(-360deg); } }
+        @keyframes spinClockwise { 100% { transform: rotate(360deg); } }
+        @keyframes spinCounterClockwise { 100% { transform: rotate(-360deg); } }
 
-        /* Waveform Audio Visualizer Graphic */
-        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 35px; }
-        .wave-bar { width: 4px; height: 10%; background: var(--neon-blue); transition: height 0.1s ease; }
+        /* Armor Status Gauges */
+        .stat-gauge { display: flex; flex-direction: column; gap: 2px; font-size: 0.72rem; }
+        .stat-bar-container { background: rgba(0, 0, 0, 0.6); height: 8px; border: 1px solid var(--stark-cyan); border-radius: 2px; overflow: hidden; }
+        .stat-bar-fill { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 8px var(--stark-cyan); transition: width 0.3s; }
 
-        #chat-terminal {
-            flex: 1; background: rgba(0, 0, 0, 0.75);
-            border: 1px solid var(--neon-blue);
-            border-radius: 4px; padding: 10px;
-            overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
+        /* Map-on-Demand Box */
+        #gps-map-container {
+            height: 160px; border: 1px solid var(--stark-cyan);
+            border-radius: 4px; overflow: hidden; display: none; margin-bottom: 6px;
         }
-
-        .msg-line { line-height: 1.35; font-size: 0.85rem; word-break: break-word; }
-        .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
-        .msg-jarvis { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-glow); border-left: 2px solid var(--neon-blue); padding-left: 6px; }
-
-        #gps-map-container { height: 140px; border: 1px solid var(--neon-blue); border-radius: 4px; overflow: hidden; }
         #leaflet-map { width: 100%; height: 100%; }
 
         .hud-orb-marker {
@@ -103,152 +107,198 @@
         }
         @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
 
-        .hud-input-bar { display: flex; gap: 6px; margin-top: 8px; }
+        /* Terminal Output Box */
+        #chat-terminal {
+            flex: 1; background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--stark-cyan);
+            border-radius: 4px; padding: 10px;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.25);
+        }
+
+        .msg-line { line-height: 1.35; font-size: 0.85rem; word-break: break-word; }
+        .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
+        .msg-jarvis { color: var(--stark-cyan); text-shadow: 0 0 4px var(--stark-blue-glow); border-left: 2px solid var(--stark-cyan); padding-left: 6px; }
+
+        /* Bottom Command Input Controls */
+        .hud-input-bar { display: flex; gap: 6px; margin-top: 6px; }
         textarea {
-            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.8);
-            border: 1px solid var(--neon-blue); border-radius: 4px;
-            color: var(--neon-blue); padding: 6px; font-family: inherit; resize: none; font-size: 0.85rem;
+            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--stark-cyan); border-radius: 4px;
+            color: var(--stark-cyan); padding: 8px; font-family: inherit; resize: none; font-size: 0.85rem;
         }
         button {
-            background: rgba(0, 243, 255, 0.2); border: 1px solid var(--neon-blue);
-            color: var(--neon-blue); border-radius: 4px; font-weight: bold; cursor: pointer; padding: 0 12px; font-size: 0.8rem;
+            background: rgba(0, 243, 255, 0.15); border: 1px solid var(--stark-cyan);
+            color: var(--stark-cyan); border-radius: 4px; font-weight: bold; cursor: pointer; padding: 0 14px; font-size: 0.8rem;
         }
-        button:hover { background: var(--neon-blue); color: #000; }
+        button:hover { background: var(--stark-cyan); color: #000; }
 
-        .blackout-active { background: #000000 !important; }
-        .blackout-active .hud-header, .blackout-active .desktop-only, .blackout-active #gps-map-container { display: none !important; }
+        /* Bottom Circular Module Navigation Bar */
+        .stark-bottom-dock {
+            display: flex; justify-content: space-around; align-items: center;
+            padding: 6px 0; border-top: 1px solid var(--stark-border); margin-top: 6px;
+            background: rgba(0, 243, 255, 0.04);
+        }
+
+        .dock-circle-btn {
+            width: 38px; height: 38px; border-radius: 50%;
+            border: 1px solid var(--stark-cyan); background: rgba(0, 16, 36, 0.9);
+            color: var(--stark-cyan); display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+        .dock-circle-btn:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
+
+        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 28px; }
+        .wave-bar { width: 3px; height: 10%; background: var(--stark-cyan); transition: height 0.1s ease; }
+
+        .blackout-active { background: #000000 !important; background-image: none !important; }
+        .blackout-active .stark-top-bar, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="hud-header" id="hudHeader">
-        <div class="hud-title">⚡ J.A.R.V.I.S. MARK-VII</div>
-        <div class="device-badge" id="deviceBadge">DETECTING ENVIRONMENT...</div>
-        <div style="display:flex; gap:6px;">
-            <button id="installBtn" style="display:none;" onclick="installApp()">📱 INSTALL APP</button>
-            <button onclick="toggleWakeLock()">🔒 AWAKE</button>
-        </div>
+    <!-- Top Stark Numerical Telemetry Header -->
+    <div class="stark-top-bar" id="starkHeader">
+        <div class="stark-logo">⚡ STARK INDUSTRIES</div>
+        <div id="telemetryTime">00:00:00</div>
+        <div id="deviceBadge">DETECTING ENVIRONMENT...</div>
+        <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
 
+    <!-- Main Workspace -->
     <div class="hud-workspace" id="hudWorkspace">
         
-        <!-- Left Panel (Desktop HUD Visualizer) -->
-        <div class="hud-panel desktop-only">
-            <div style="font-size: 0.8rem; font-weight: bold;">MISSION CONTROL</div>
-            <div class="tactical-ring-container">
-                <div class="tactical-ring"><div class="ring-core">J.A.R.V.I.S.</div></div>
+        <!-- Left Panel (Diagnostics & Core Telemetry) -->
+        <div class="stark-panel desktop-only">
+            <div style="font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">SYSTEM DIAGNOSTICS</div>
+            <div class="reactor-center-box">
+                <div class="arc-outer-ring"><div class="arc-inner-ring">MARK-VII</div></div>
             </div>
-            <div class="waveform-box" id="waveformBox">
+            
+            <div class="stat-gauge">
+                <div>CPU CORE LOAD: 36%</div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 36%;"></div></div>
+            </div>
+            <div class="stat-gauge">
+                <div>RAM ALLOCATION: 20%</div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 20%;"></div></div>
+            </div>
+            <div class="stat-gauge">
+                <div>FUSION POWER: 100%</div>
+                <div class="stat-bar-container"><div class="stat-bar-fill" style="width: 100%;"></div></div>
+            </div>
+
+            <div class="waveform-box" id="waveformBox" style="margin-top: 10px;">
                 <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
                 <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
             </div>
-            <div style="font-size: 0.75rem; margin-top: 6px;">
-                <div>SYS STATUS: 100% NOMINAL</div>
-                <div>CORE PROCESS: ACTIVE</div>
-                <div>AUDIO DSP: MCU MATCHED</div>
-            </div>
+
             <button style="margin-top:auto;" onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
         </div>
 
-        <!-- Center Dynamic Terminal -->
-        <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column;">
+        <!-- Center Active Terminal -->
+        <div class="stark-panel" style="flex: 1; display: flex; flex-direction: column;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. Systems operational, Sir.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. All Stark Mark-VII subroutines online. How may I assist you today, Sir?</div>
             </div>
 
             <div class="hud-input-bar">
-                <textarea id="userInput" placeholder="Type command... (Enter to Send)"></textarea>
+                <textarea id="userInput" placeholder="Enter command or query... (Enter to Send)"></textarea>
                 <button onclick="sendCommand()">SEND</button>
             </div>
         </div>
 
-        <!-- Right Panel (Desktop Activity Log) -->
-        <div class="hud-panel desktop-only">
-            <div style="font-size: 0.8rem; font-weight: bold;">ACTIVITY LOG & LINKS</div>
-            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 5px;">
-                <div>🚘 PROTON e.MAS 7: READY</div>
-                <div>🎵 SPOTIFY: ACTIVE</div>
-                <div>✈️ RADAR: ONLINE</div>
-                <div>🛰️ GPS: HIGH PRECISION</div>
+        <!-- Right Panel (Linked Subsystems & Activity Log) -->
+        <div class="stark-panel desktop-only">
+            <div style="font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;">LINKED MODULES</div>
+            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+                <div>🚘 PROTON e.MAS 7: SYNCED</div>
+                <div>🎵 SPOTIFY MEDIA: READY</div>
+                <div>✈️ FLIGHT RADAR: ACTIVE</div>
+                <div>🛰️ HIGH-PRECISION GPS: ON DEMAND</div>
+                <div>💬 CHATGPT WEB CORE: CONNECTED</div>
+            </div>
+            <hr style="border-color: var(--stark-cyan); width: 100%; opacity: 0.3;">
+            <div style="font-size: 0.72rem; opacity: 0.8;">
+                <div>ENCRYPTION: 4096-BIT</div>
+                <div>AUDIO DSP: MCU MATCHED</div>
             </div>
         </div>
 
     </div>
 
+    <!-- Bottom Circular Dock Module Bar -->
+    <div class="stark-bottom-dock" id="starkDock">
+        <div class="dock-circle-btn" title="Map Overlay" onclick="sendCommandCustom('show map')">🗺️</div>
+        <div class="dock-circle-btn" title="Global News" onclick="fetchGlobalNews()">📰</div>
+        <div class="dock-circle-btn" title="Spotify Link" onclick="sendCommandCustom('open spotify')">🎵</div>
+        <div class="dock-circle-btn" title="YouTube Link" onclick="sendCommandCustom('open youtube')">▶️</div>
+        <div class="dock-circle-btn" title="Blackout Mode" onclick="sendCommandCustom('blackout')">🕶️</div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, userMarker, deferredPrompt = null;
+        let map, userMarker, mapInitialized = false;
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         if (isMobile) {
             document.body.classList.add('mobile-mode');
-            document.getElementById('deviceBadge').innerText = "HUD: MOBILE MODE";
+            document.getElementById('deviceBadge').innerText = "ENVIRONMENT: MOBILE";
         } else {
-            document.getElementById('deviceBadge').innerText = "HUD: DESKTOP TACTICAL";
+            document.getElementById('deviceBadge').innerText = "ENVIRONMENT: DESKTOP PC";
         }
 
-        // PWA Installation & Updates
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            document.getElementById('installBtn').style.display = 'inline-block';
-        });
-
-        function installApp() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
-            }
-        }
-
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(reg => {
-                reg.onupdatefound = () => {
-                    const installingWorker = reg.installing;
-                    installingWorker.onstatechange = () => {
-                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            alert("J.A.R.V.I.S. Update Downloaded. Reloading system...");
-                            window.location.reload();
-                        }
-                    };
-                };
-            });
-        }
+        // Live HUD Header Clock
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('telemetryTime').innerText = now.toTimeString().split(' ')[0];
+        }, 1000);
 
         async function toggleWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     await navigator.wakeLock.request('screen');
-                    alert("Wake Lock Active.");
+                    alert("Screen Wake Lock Active.");
                 }
             } catch (err) {}
         }
 
-        function initMap() {
-            try {
-                map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                const orbIcon = L.divIcon({ className: 'hud-orb-marker', iconSize: [16, 16] });
+        // Initialize On-Demand Map Overlay
+        function activateMapOverlay() {
+            const container = document.getElementById('gps-map-container');
+            container.style.display = 'block';
 
-                if ("geolocation" in navigator) {
-                    navigator.geolocation.watchPosition((pos) => {
-                        const lat = pos.coords.latitude;
-                        const lon = pos.coords.longitude;
-                        if (!userMarker) {
-                            userMarker = L.marker([lat, lon], { icon: orbIcon }).addTo(map);
-                        } else {
-                            userMarker.setLatLng([lat, lon]);
-                        }
-                        map.setView([lat, lon], 16);
-                    }, null, { enableHighAccuracy: true });
-                }
-            } catch(e) {}
+            if (!mapInitialized) {
+                try {
+                    map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+                    const orbIcon = L.divIcon({ className: 'hud-orb-marker', iconSize: [16, 16] });
+
+                    if ("geolocation" in navigator) {
+                        navigator.geolocation.watchPosition((pos) => {
+                            const lat = pos.coords.latitude;
+                            const lon = pos.coords.longitude;
+                            if (!userMarker) {
+                                userMarker = L.marker([lat, lon], { icon: orbIcon }).addTo(map);
+                            } else {
+                                userMarker.setLatLng([lat, lon]);
+                            }
+                            map.setView([lat, lon], 16);
+                        }, null, { enableHighAccuracy: true });
+                    }
+                    mapInitialized = true;
+                } catch(e) {}
+            } else {
+                setTimeout(() => map.invalidateSize(), 200);
+            }
         }
 
+        // Keyboard Listener (Enter to send, Shift+Enter for newline)
         document.getElementById('userInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -256,7 +306,10 @@
             }
         });
 
-        window.onload = () => { initMap(); };
+        function sendCommandCustom(textCmd) {
+            document.getElementById('userInput').value = textCmd;
+            sendCommand();
+        }
 
         async function sendCommand() {
             const input = document.getElementById('userInput');
@@ -275,20 +328,29 @@
                 });
                 const data = await res.json();
 
-                if (data.blackout) { document.body.classList.add('blackout-active'); }
+                if (data.activate_map) {
+                    activateMapOverlay();
+                }
+
+                if (data.blackout) { 
+                    document.body.classList.add('blackout-active'); 
+                }
 
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
 
-                if (data.app_intent && isMobile) { window.location.href = data.app_intent; }
+                if (data.app_intent && isMobile) { 
+                    window.location.href = data.app_intent; 
+                }
 
-                if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
+                if (data.audio) { 
+                    playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); 
+                }
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly encountered.</div>`;
             }
         }
 
-        // MCU Audio Processing (Suit-Speaker Resonant DSP)
         function playJarvisAudioWithDSP(audioUrl) {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const audio = new Audio(audioUrl);
