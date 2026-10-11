@@ -68,12 +68,12 @@ WELCOME_MESSAGES = [
 def search_general_knowledge(query):
     """ChatGPT-style general knowledge & web answering fallback engine"""
     try:
-        results = list(DDGS().text(query, max_results=3))
+        results = list(DDGS().text(query, max_results=4))
         if results:
             snippets = [res['body'] for res in results if 'body' in res]
-            summary = " ".join(snippets[:2])
-            if len(summary) > 400:
-                summary = summary[:400] + "..."
+            summary = " ".join(snippets[:3])
+            if len(summary) > 600:
+                summary = summary[:600] + "..."
             return summary
         return None
     except Exception:
@@ -157,6 +157,7 @@ def ask():
     permissions = data.get('permissions', {})
     mode_transport = data.get('transport_mode', 'car')
     is_dnd = data.get('dnd_mode', False)
+    device_type = data.get('device_type', 'desktop')  # 'mobile' or 'desktop'
 
     if not user_prompt and not images:
         return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
@@ -230,9 +231,10 @@ def ask():
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
         reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays and terminals, {honorific}."
 
-    # 8. App Launching & Automation (Desktop Subprocesses + Mobile Deep-Link Intents)
+    # 8. App Launching (Mobile Deep-Links vs Desktop Native Execution)
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
+        
         app_schemes = {
             "spotify": "spotify://",
             "youtube": "https://www.youtube.com",
@@ -241,28 +243,31 @@ def ask():
             "chrome": "googlechrome://",
             "whatsapp": "whatsapp://"
         }
-        
-        if target_app in app_schemes:
-            app_launch_intent = app_schemes[target_app]
 
-        app_dict = {
-            "chrome": "start chrome", "edge": "start msedge", "notepad": "notepad",
-            "calculator": "calc", "cmd": "start cmd", "spotify": "start spotify"
-        }
-        
-        if HAS_PYAUTOGUI:
-            try:
-                if target_app.lower() in app_dict:
-                    subprocess.Popen(app_dict[target_app.lower()], shell=True)
-                else:
-                    pyautogui.press('win')
-                    pyautogui.sleep(0.3)
-                    pyautogui.write(target_app)
-                    pyautogui.press('enter')
-            except Exception:
-                pass
-        
-        reply = f"Launching {target_app} on your device, {honorific}."
+        if device_type == "mobile":
+            if target_app in app_schemes:
+                app_launch_intent = app_schemes[target_app]
+                reply = f"Opening {target_app} on mobile interface, {honorific}."
+            else:
+                reply = f"Attempting to trigger mobile deep link for {target_app}, {honorific}."
+        else:
+            # Desktop automation fallback
+            app_dict = {
+                "chrome": "start chrome", "edge": "start msedge", "notepad": "notepad",
+                "calculator": "calc", "cmd": "start cmd", "spotify": "start spotify"
+            }
+            if HAS_PYAUTOGUI:
+                try:
+                    if target_app.lower() in app_dict:
+                        subprocess.Popen(app_dict[target_app.lower()], shell=True)
+                    else:
+                        pyautogui.press('win')
+                        pyautogui.sleep(0.3)
+                        pyautogui.write(target_app)
+                        pyautogui.press('enter')
+                except Exception:
+                    pass
+            reply = f"Launching {target_app} on host desktop, {honorific}."
 
     # 9. Desktop Mouse / Screen Controls
     elif "take screenshot" in cmd_lower:
@@ -278,7 +283,7 @@ def ask():
         else:
             reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
 
-    # 10. Universal ChatGPT-Style General Q&A Engine (Local Ollama GPU or Web Search Fallback)
+    # 10. Universal ChatGPT-Style AI Reasoning Engine (Local Ollama GPU or Web Intelligence Fallback)
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
@@ -301,7 +306,7 @@ def ask():
                         {"role": "system", "content": system_instructions},
                         message_obj
                     ],
-                    options={"num_predict": 120, "temperature": 0.2},
+                    options={"num_predict": 140, "temperature": 0.2},
                     keep_alive=-1
                 )
                 reply = response['message']['content'].strip()
@@ -313,7 +318,7 @@ def ask():
             if ai_answer:
                 reply = ai_answer
             else:
-                reply = f"I have processed your query regarding '{user_prompt}'. All subroutines indicate nominal status, {honorific}."
+                reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All systems and neural routines report optimal function, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply)
     if not clean_text.endswith(honorific) and not c3po_nav_text:
@@ -346,7 +351,8 @@ def ask():
         'welcome_msg': random_welcome,
         'is_shutdown': is_shutdown,
         'blackout': trigger_blackout,
-        'app_intent': app_launch_intent
+        'app_intent': app_launch_intent,
+        'device_type': device_type
     })
 
 async def generate_voice(text, voice_char):
