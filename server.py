@@ -3,7 +3,6 @@ import edge_tts
 import asyncio
 import os
 import re
-import base64
 import random
 import subprocess
 import threading
@@ -157,7 +156,7 @@ def ask():
     permissions = data.get('permissions', {})
     mode_transport = data.get('transport_mode', 'car')
     is_dnd = data.get('dnd_mode', False)
-    device_type = data.get('device_type', 'desktop')  # 'mobile' or 'desktop'
+    device_type = data.get('device_type', 'desktop')
 
     if not user_prompt and not images:
         return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
@@ -231,10 +230,9 @@ def ask():
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
         reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays and terminals, {honorific}."
 
-    # 8. App Launching (Mobile Deep-Links vs Desktop Native Execution)
+    # 8. App Launching (Mobile Deep-Links vs Desktop Subprocesses)
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
-        
         app_schemes = {
             "spotify": "spotify://",
             "youtube": "https://www.youtube.com",
@@ -251,7 +249,6 @@ def ask():
             else:
                 reply = f"Attempting to trigger mobile deep link for {target_app}, {honorific}."
         else:
-            # Desktop automation fallback
             app_dict = {
                 "chrome": "start chrome", "edge": "start msedge", "notepad": "notepad",
                 "calculator": "calc", "cmd": "start cmd", "spotify": "start spotify"
@@ -283,7 +280,7 @@ def ask():
         else:
             reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
 
-    # 10. Universal ChatGPT-Style AI Reasoning Engine (Local Ollama GPU or Web Intelligence Fallback)
+    # 10. ChatGPT-Style AI Reasoning Core (Local Ollama GPU or Cloud Web Intelligence)
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
@@ -318,11 +315,12 @@ def ask():
             if ai_answer:
                 reply = ai_answer
             else:
-                reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All systems and neural routines report optimal function, {honorific}."
+                reply = f"I have processed your request regarding '{user_prompt}'. All systems report nominal status, {honorific}."
 
-    clean_text = re.sub(r'[*_~`]', '', reply)
+    # Clean double honorific formatting bug
+    clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific) and not c3po_nav_text:
-        clean_text += f", {honorific}."
+        clean_text = f"{clean_text}, {honorific}."
 
     has_audio = False
     if not is_dnd:
@@ -341,7 +339,7 @@ def ask():
     random_welcome = random.choice(WELCOME_MESSAGES).format(honorific=honorific)
 
     return jsonify({
-        'response': reply, 
+        'response': clean_text, 
         'audio': has_audio, 
         'c3po_text': c3po_nav_text,
         'media_action': media_action,

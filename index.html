@@ -12,7 +12,6 @@
             --neon-glow: rgba(0, 243, 255, 0.4);
             --bg-dark: #020813;
             --panel-bg: rgba(2, 18, 38, 0.88);
-            --danger-red: #ff3333;
         }
 
         * { box-sizing: border-box; }
@@ -28,7 +27,6 @@
             user-select: none;
         }
 
-        /* Top HUD Header Bar */
         .hud-header {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 2px solid var(--neon-blue);
@@ -39,14 +37,12 @@
         .hud-title { font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 8px var(--neon-blue); }
         .device-badge { font-size: 0.8rem; background: rgba(0,243,255,0.15); border: 1px solid var(--neon-blue); padding: 3px 8px; border-radius: 4px; }
 
-        /* Multi-Panel Main Workspace */
         .hud-workspace {
             display: grid;
             grid-template-columns: 240px 1fr 280px;
             gap: 12px; flex: 1; overflow: hidden;
         }
 
-        /* Mobile Viewport Adaptation */
         @media (max-width: 850px) {
             .hud-workspace { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
             .left-panel, .right-panel { display: none; }
@@ -60,7 +56,6 @@
             display: flex; flex-direction: column; gap: 10px;
         }
 
-        /* Arc Reactor Core Animation */
         .arc-container { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0; }
         .arc-reactor {
             width: 80px; height: 80px; border-radius: 50%;
@@ -74,7 +69,6 @@
         @keyframes spinCore { 100% { transform: rotate(360deg); } }
         @keyframes spinCoreRev { 100% { transform: rotate(-360deg); } }
 
-        /* Scrollable Terminal Chat History Log */
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.7);
             border: 1px solid var(--neon-blue);
@@ -87,18 +81,15 @@
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 8px; }
         .msg-jarvis { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-glow); border-left: 2px solid var(--neon-blue); padding-left: 8px; }
 
-        /* Embedded Google / GPS Map Container */
         #gps-map-container { height: 160px; border: 1px solid var(--neon-blue); border-radius: 4px; overflow: hidden; }
         #leaflet-map { width: 100%; height: 100%; }
 
-        /* Dynamic HUD Orb GPS Marker */
         .hud-orb-marker {
             width: 18px; height: 18px; background: #00f3ff; border-radius: 50%;
             box-shadow: 0 0 15px #00f3ff; border: 2px solid #fff; animation: orbPulse 1.5s infinite;
         }
         @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
 
-        /* Command Input Bar */
         .hud-input-bar { display: flex; gap: 8px; margin-top: 10px; }
         textarea {
             flex: 1; height: 44px; background: rgba(0, 0, 0, 0.8);
@@ -111,7 +102,6 @@
         }
         button:hover { background: var(--neon-blue); color: #000; }
 
-        /* Blackout Mode Overlay */
         .blackout-active { background: #000000 !important; }
         .blackout-active .hud-header, .blackout-active .left-panel, .blackout-active .right-panel, .blackout-active #gps-map-container { display: none !important; }
     </style>
@@ -126,7 +116,6 @@
 
     <div class="hud-workspace" id="hudWorkspace">
         
-        <!-- Left Subsystems Sidebar -->
         <div class="hud-panel left-panel">
             <div style="font-weight: bold;">CORE TELEMETRY</div>
             <div class="arc-container">
@@ -141,7 +130,6 @@
             <button onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
         </div>
 
-        <!-- Center Workspace & Scrollable Terminal -->
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
@@ -152,12 +140,11 @@
             </div>
 
             <div class="hud-input-bar">
-                <textarea id="userInput" placeholder="Enter command or general query..."></textarea>
+                <textarea id="userInput" placeholder="Enter command or general query... (Enter to Send)"></textarea>
                 <button onclick="sendCommand()">SEND</button>
             </div>
         </div>
 
-        <!-- Right Environment Sidebar -->
         <div class="hud-panel right-panel">
             <div style="font-weight: bold;">LINKED MODULES</div>
             <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;">
@@ -177,35 +164,45 @@
 
         document.getElementById('deviceBadge').innerText = isMobileDevice ? "ENVIRONMENT: MOBILE" : "ENVIRONMENT: DESKTOP PC";
 
-        // Screen Wake Lock API to prevent display dimming
+        // Screen Wake Lock API
         async function toggleWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     wakeLockObj = await navigator.wakeLock.request('screen');
-                    alert("Display Wake Lock Active: Screen will stay lit while J.A.R.V.I.S. is open.");
+                    alert("Display Wake Lock Active: Screen will stay lit while HUD is open.");
                 }
             } catch (err) { console.log(err); }
         }
 
-        // Initialize GPS Leaflet Google Maps Engine
+        // Initialize GPS Leaflet Map safely
         function initMap() {
-            map = L.map('leaflet-map').setView([0, 0], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-            const orbIcon = L.divIcon({ className: 'hud-orb-marker', iconSize: [18, 18] });
+            try {
+                map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+                const orbIcon = L.divIcon({ className: 'hud-orb-marker', iconSize: [18, 18] });
 
-            if ("geolocation" in navigator) {
-                navigator.geolocation.watchPosition((pos) => {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
-                    if (!userMarker) {
-                        userMarker = L.marker([lat, lon], { icon: orbIcon }).addTo(map);
-                    } else {
-                        userMarker.setLatLng([lat, lon]);
-                    }
-                    map.setView([lat, lon], 16);
-                }, (err) => console.log(err), { enableHighAccuracy: true });
-            }
+                if ("geolocation" in navigator) {
+                    navigator.geolocation.watchPosition((pos) => {
+                        const lat = pos.coords.latitude;
+                        const lon = pos.coords.longitude;
+                        if (!userMarker) {
+                            userMarker = L.marker([lat, lon], { icon: orbIcon }).addTo(map);
+                        } else {
+                            userMarker.setLatLng([lat, lon]);
+                        }
+                        map.setView([lat, lon], 16);
+                    }, (err) => console.log("GPS Notice:", err), { enableHighAccuracy: true });
+                }
+            } catch(e) { console.log("Map load deferred."); }
         }
+
+        // Keyboard Listener (Press Enter to send command, Shift+Enter for newline)
+        document.getElementById('userInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendCommand();
+            }
+        });
 
         window.onload = () => { initMap(); };
 
