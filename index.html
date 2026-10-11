@@ -31,7 +31,7 @@
                 linear-gradient(0deg, rgba(1, 8, 20, 0.98) 0%, rgba(0, 3, 8, 0.99) 100%);
         }
 
-        /* Top 01-30 Numerical Ruler Header */
+        /* Top 01-30 Numerical Telemetry Ruler Header */
         .stark-top-ruler {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--stark-border);
@@ -65,29 +65,30 @@
             overflow: hidden; position: relative;
         }
 
-        /* Background Concentric Circular Radar Schematic */
+        /* Background Concentric Arc Reactor Radar Schematic */
         .radar-center-background {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 380px; height: 380px; border-radius: 50%;
-            border: 1px dashed rgba(0, 243, 255, 0.22);
+            width: 450px; height: 450px; border-radius: 50%;
+            border: 2px dashed rgba(0, 243, 255, 0.28);
             pointer-events: none; z-index: 0;
             display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15), inset 0 0 20px rgba(0, 243, 255, 0.15);
         }
 
         .radar-ring-inner {
-            width: 240px; height: 240px; border-radius: 50%;
-            border: 2px solid rgba(0, 243, 255, 0.3);
-            animation: spinCW 20s linear infinite;
+            width: 280px; height: 280px; border-radius: 50%;
+            border: 2px solid rgba(0, 243, 255, 0.4);
+            animation: spinCW 18s linear infinite;
         }
 
         .radar-crosshair {
-            position: absolute; width: 100%; height: 1px; background: rgba(0, 243, 255, 0.15);
+            position: absolute; width: 100%; height: 1px; background: rgba(0, 243, 255, 0.2);
         }
 
         @keyframes spinCW { 100% { transform: rotate(360deg); } }
 
-        /* Left Panel Widgets */
+        /* Left Panel Diagnostics */
         .car-diag-box {
             width: 100%; height: 80px; border: 1px solid var(--stark-cyan);
             border-radius: 3px; background-size: cover; background-position: center;
@@ -151,13 +152,13 @@
         }
 
         .dock-circle {
-            width: 36px; height: 36px; border-radius: 50%;
+            width: 38px; height: 38px; border-radius: 50%;
             border: 1px solid var(--stark-cyan); background: rgba(0, 12, 28, 0.9);
             color: var(--stark-cyan); display: flex; align-items: center; justify-content: center;
-            font-size: 0.85rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
+            font-size: 0.9rem; cursor: pointer; box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
             transition: all 0.2s ease;
         }
-        .dock-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
+        .dock-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 18px var(--stark-cyan); }
 
         .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 24px; }
         .wave-bar { width: 3px; height: 10%; background: var(--stark-cyan); transition: height 0.1s ease; }
@@ -168,7 +169,7 @@
 </head>
 <body>
 
-    <!-- Top Numerical Telemetry Header -->
+    <!-- Top Numerical Header -->
     <div class="stark-top-ruler" id="starkRuler">
         <div class="ruler-numbers">01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30</div>
         <div>STARK INDUSTRIES // MARK-VII</div>
@@ -180,7 +181,7 @@
     <!-- Workspace -->
     <div class="hud-workspace" id="hudWorkspace">
         
-        <!-- Background Concentric Radar Rings -->
+        <!-- Background Concentric Arc Reactor Radar -->
         <div class="radar-center-background">
             <div class="radar-ring-inner"></div>
             <div class="radar-crosshair"></div>

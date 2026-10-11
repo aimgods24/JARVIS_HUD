@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify, send_file
+from flask import Flask, render_template_string, request, jsonify, send_file, make_response
 import edge_tts
 import asyncio
 import os
@@ -22,9 +22,7 @@ except Exception:
     HAS_OLLAMA = False
 
 app = Flask(__name__)
-
-with open('index.html', 'r', encoding='utf-8') as f:
-    HTML_TEMPLATE = f.read()
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 MEMORY_FILE = "jarvis_memory.txt"
 GLOBAL_NEWS_CACHE = []
@@ -61,7 +59,7 @@ def search_general_knowledge(query):
         results = list(DDGS().text(query, max_results=6))
         if results:
             snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
-            detailed_response = f"I have conducted a comprehensive search on '{query}'. Here is the detailed breakdown:\n\n" + "\n\n".join(snippets[:4])
+            detailed_response = f"I have conducted a comprehensive analysis on '{query}'. Here is the breakdown:\n\n" + "\n\n".join(snippets[:4])
             return detailed_response
         return None
     except Exception:
@@ -97,7 +95,13 @@ def search_nearby_cinemas(location_str):
 
 @app.route('/')
 def home():
-    return render_template_string(HTML_TEMPLATE)
+    with open('index.html', 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    response = make_response(render_template_string(html_content))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @app.route('/manifest.json')
 def manifest():
