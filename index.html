@@ -9,9 +9,9 @@
     <style>
         :root {
             --neon-blue: #00f3ff;
-            --neon-glow: rgba(0, 243, 255, 0.4);
-            --bg-dark: #020813;
-            --panel-bg: rgba(2, 18, 38, 0.88);
+            --neon-glow: rgba(0, 243, 255, 0.45);
+            --bg-dark: #01060f;
+            --panel-bg: rgba(2, 14, 30, 0.90);
         }
 
         * { box-sizing: border-box; }
@@ -20,7 +20,7 @@
             background-color: var(--bg-dark);
             color: var(--neon-blue);
             font-family: 'Consolas', 'Courier New', monospace;
-            margin: 0; padding: 12px;
+            margin: 0; padding: 10px;
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
@@ -30,17 +30,17 @@
         .hud-header {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 2px solid var(--neon-blue);
-            padding-bottom: 8px; margin-bottom: 10px;
-            box-shadow: 0 2px 10px var(--neon-glow);
+            padding-bottom: 6px; margin-bottom: 8px;
+            box-shadow: 0 2px 12px var(--neon-glow);
         }
 
-        .hud-title { font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 8px var(--neon-blue); }
-        .device-badge { font-size: 0.8rem; background: rgba(0,243,255,0.15); border: 1px solid var(--neon-blue); padding: 3px 8px; border-radius: 4px; }
+        .hud-title { font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; text-shadow: 0 0 8px var(--neon-blue); }
+        .device-badge { font-size: 0.75rem; background: rgba(0,243,255,0.15); border: 1px solid var(--neon-blue); padding: 3px 8px; border-radius: 4px; }
 
         .hud-workspace {
             display: grid;
             grid-template-columns: 240px 1fr 280px;
-            gap: 12px; flex: 1; overflow: hidden;
+            gap: 10px; flex: 1; overflow: hidden;
         }
 
         @media (max-width: 850px) {
@@ -52,36 +52,52 @@
             background: var(--panel-bg);
             border: 1px solid var(--neon-blue);
             border-radius: 6px; padding: 10px;
-            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.1);
-            display: flex; flex-direction: column; gap: 10px;
+            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.12);
+            display: flex; flex-direction: column; gap: 8px;
         }
 
-        .arc-container { display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 10px 0; }
-        .arc-reactor {
-            width: 80px; height: 80px; border-radius: 50%;
+        .arc-assembly {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            margin: 10px 0; position: relative;
+        }
+
+        .arc-outer-ring {
+            width: 100px; height: 100px; border-radius: 50%;
             border: 3px solid var(--neon-blue);
-            box-shadow: 0 0 20px var(--neon-blue), inset 0 0 15px var(--neon-blue);
-            animation: spinCore 8s linear infinite;
+            box-shadow: 0 0 25px var(--neon-blue), inset 0 0 20px var(--neon-blue);
+            animation: spinCW 8s linear infinite;
             display: flex; align-items: center; justify-content: center;
         }
-        .arc-inner { width: 40px; height: 40px; border-radius: 50%; border: 2px dashed #fff; animation: spinCoreRev 4s linear infinite; }
 
-        @keyframes spinCore { 100% { transform: rotate(360deg); } }
-        @keyframes spinCoreRev { 100% { transform: rotate(-360deg); } }
+        .arc-mid-ring {
+            width: 70px; height: 70px; border-radius: 50%;
+            border: 2px dashed #ffffff;
+            animation: spinCCW 4s linear infinite;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .arc-inner-core {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 0 18px #ffffff, 0 0 35px var(--neon-blue);
+        }
+
+        @keyframes spinCW { 100% { transform: rotate(360deg); } }
+        @keyframes spinCCW { 100% { transform: rotate(-360deg); } }
 
         #chat-terminal {
-            flex: 1; background: rgba(0, 0, 0, 0.7);
+            flex: 1; background: rgba(0, 0, 0, 0.75);
             border: 1px solid var(--neon-blue);
-            border-radius: 4px; padding: 12px;
-            overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+            border-radius: 4px; padding: 10px;
+            overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
             box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2);
         }
 
-        .msg-line { line-height: 1.4; font-size: 0.9rem; word-break: break-word; }
+        .msg-line { line-height: 1.4; font-size: 0.85rem; word-break: break-word; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 8px; }
         .msg-jarvis { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-glow); border-left: 2px solid var(--neon-blue); padding-left: 8px; }
 
-        #gps-map-container { height: 160px; border: 1px solid var(--neon-blue); border-radius: 4px; overflow: hidden; }
+        #gps-map-container { height: 150px; border: 1px solid var(--neon-blue); border-radius: 4px; overflow: hidden; }
         #leaflet-map { width: 100%; height: 100%; }
 
         .hud-orb-marker {
@@ -90,9 +106,9 @@
         }
         @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
 
-        .hud-input-bar { display: flex; gap: 8px; margin-top: 10px; }
+        .hud-input-bar { display: flex; gap: 8px; margin-top: 8px; }
         textarea {
-            flex: 1; height: 44px; background: rgba(0, 0, 0, 0.8);
+            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--neon-blue); border-radius: 4px;
             color: var(--neon-blue); padding: 8px; font-family: inherit; resize: none;
         }
@@ -110,18 +126,22 @@
 
     <div class="hud-header" id="hudHeader">
         <div class="hud-title">⚡ J.A.R.V.I.S. MARK-VII</div>
-        <div class="device-badge" id="deviceBadge">DETECTING DEVICE...</div>
+        <div class="device-badge" id="deviceBadge">DETECTING ENVIRONMENT...</div>
         <button onclick="toggleWakeLock()">🔒 SCREEN AWAKE</button>
     </div>
 
     <div class="hud-workspace" id="hudWorkspace">
         
         <div class="hud-panel left-panel">
-            <div style="font-weight: bold;">CORE TELEMETRY</div>
-            <div class="arc-container">
-                <div class="arc-reactor"><div class="arc-inner"></div></div>
+            <div style="font-weight: bold; font-size: 0.85rem;">STARK TELEMETRY</div>
+            <div class="arc-assembly">
+                <div class="arc-outer-ring">
+                    <div class="arc-mid-ring">
+                        <div class="arc-inner-core"></div>
+                    </div>
+                </div>
             </div>
-            <div style="font-size: 0.8rem;">
+            <div style="font-size: 0.75rem;">
                 <div>SYS STATUS: 100% ONLINE</div>
                 <div>POWER CORE: FUSION</div>
                 <div>NEURAL ENGINE: ACTIVE</div>
@@ -146,8 +166,8 @@
         </div>
 
         <div class="hud-panel right-panel">
-            <div style="font-weight: bold;">LINKED MODULES</div>
-            <div style="font-size: 0.8rem; display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-weight: bold; font-size: 0.85rem;">LINKED MODULES</div>
+            <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px;">
                 <div>🚘 PROTON e.MAS 7: SYNCED</div>
                 <div>🎵 SPOTIFY MEDIA: READY</div>
                 <div>✈️ FLIGHT RADAR: ACTIVE</div>
@@ -159,23 +179,22 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, userMarker, wakeLockObj = null;
+        let map = null, userMarker = null, wakeLockObj = null;
         const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
         document.getElementById('deviceBadge').innerText = isMobileDevice ? "ENVIRONMENT: MOBILE" : "ENVIRONMENT: DESKTOP PC";
 
-        // Screen Wake Lock API
         async function toggleWakeLock() {
             try {
                 if ('wakeLock' in navigator) {
                     wakeLockObj = await navigator.wakeLock.request('screen');
-                    alert("Display Wake Lock Active: Screen will stay lit while HUD is open.");
+                    alert("Display Wake Lock Active: Display will remain lit while HUD is open.");
                 }
             } catch (err) { console.log(err); }
         }
 
-        // Initialize GPS Leaflet Map safely
         function initMap() {
+            if (map !== null) return;
             try {
                 map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
@@ -196,7 +215,6 @@
             } catch(e) { console.log("Map load deferred."); }
         }
 
-        // Keyboard Listener (Press Enter to send command, Shift+Enter for newline)
         document.getElementById('userInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();

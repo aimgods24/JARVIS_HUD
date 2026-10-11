@@ -7,16 +7,17 @@ import random
 import subprocess
 import threading
 import time
+import io
+import json
 from duckduckgo_search import DDGS
 
-# Safely handle PyAutoGUI on headless cloud servers like Render
+# Cloud Compatibility: Guard headless environments (Render)
 try:
     import pyautogui
     HAS_PYAUTOGUI = True
 except Exception:
     HAS_PYAUTOGUI = False
 
-# Safely handle Ollama if available locally
 try:
     import ollama
     HAS_OLLAMA = True
@@ -38,9 +39,8 @@ def fetch_latest_global_news():
             results = list(DDGS().text("breaking world global news headlines today", max_results=8))
             if results:
                 GLOBAL_NEWS_CACHE = [f"📰 [{res['title']}] - {res['body']}" for res in results]
-                print(f"[NEWS ENGINE] News updated ({len(GLOBAL_NEWS_CACHE)} stories).")
         except Exception as e:
-            print(f"[NEWS ENGINE ERROR]: {str(e)}")
+            print(f"[NEWS ENGINE NOTICE]: {str(e)}")
         time.sleep(3600)
 
 news_thread = threading.Thread(target=fetch_latest_global_news, daemon=True)
@@ -60,20 +60,18 @@ WELCOME_MESSAGES = [
     "Welcome back, {honorific}. All neural pathways and subroutines are online.",
     "Authentication confirmed. Good to see you again, {honorific}.",
     "Systems restored to maximum efficiency. How may I assist you today, {honorific}?",
-    "Welcome back, {honorific}. Proton e.MAS 7 and device links are ready.",
+    "Welcome back, {honorific}. Proton e.MAS 7 EV links and global telemetry are ready.",
     "Security check cleared. Standing by for your instructions, {honorific}."
 ]
 
 def search_general_knowledge(query):
-    """ChatGPT-style general knowledge & web answering fallback engine"""
+    """ChatGPT-style web intelligence fallback engine"""
     try:
         results = list(DDGS().text(query, max_results=4))
         if results:
             snippets = [res['body'] for res in results if 'body' in res]
             summary = " ".join(snippets[:3])
-            if len(summary) > 600:
-                summary = summary[:600] + "..."
-            return summary
+            return summary[:600] + "..." if len(summary) > 600 else summary
         return None
     except Exception:
         return None
@@ -81,21 +79,21 @@ def search_general_knowledge(query):
 def search_lyrics_or_music(query):
     try:
         results = list(DDGS().text(f"{query} song lyrics music", max_results=3))
-        return "\n".join([f"🎵 {res['title']}\n{res['body']}" for res in results]) if results else "No music info found."
+        return "\n".join([f"🎵 {res['title']}\n{res['body']}" for res in results]) if results else "No music data found."
     except Exception as e:
         return f"Search error: {str(e)}"
 
 def search_flight_details(flight_num):
     try:
         results = list(DDGS().text(f"flight status schedule departure arrival delay {flight_num}", max_results=3))
-        return "\n".join([f"✈️ {res['title']}\n{res['body']}" for res in results]) if results else f"No radar info for flight {flight_num}."
+        return "\n".join([f"✈️ {res['title']}\n{res['body']}" for res in results]) if results else f"No radar data for flight {flight_num}."
     except Exception as e:
         return f"Flight error: {str(e)}"
 
 def search_weather(location_str):
     try:
         results = list(DDGS().text(f"current weather forecast in {location_str}", max_results=2))
-        return "\n".join([f"🌤️ {res['title']}\n{res['body']}" for res in results]) if results else "Weather data unavailable."
+        return "\n".join([f"🌤️ {res['title']}\n{res['body']}" for res in results]) if results else "Weather telemetry unavailable."
     except Exception as e:
         return f"Weather error: {str(e)}"
 
@@ -135,15 +133,6 @@ def get_news():
         except Exception:
             return jsonify({'status': 'error', 'news': ["Global news service temporarily offline."]})
 
-@app.route('/api/save_interests', methods=['POST'])
-def save_interests():
-    data = request.json or {}
-    interests = data.get('interests', '')
-    if interests:
-        update_user_memory(f"User Saved Preferences/Interests: {interests}")
-        return jsonify({'status': 'saved', 'message': 'Interests recorded in memory.'})
-    return jsonify({'status': 'error'})
-
 @app.route('/api/ask', methods=['POST'])
 def ask():
     data = request.json or {}
@@ -172,7 +161,7 @@ def ask():
     trigger_blackout = False
     app_launch_intent = None
 
-    # 1. Global News Engine
+    # 1. Global News Subroutine
     if "news" in cmd_lower or "headlines" in cmd_lower or "world update" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
             news_summary = "\n\n".join(GLOBAL_NEWS_CACHE[:4])
@@ -180,7 +169,7 @@ def ask():
         else:
             reply = f"Fetching real-time global news feed now, {honorific}."
 
-    # 2. Blackout & Shutdown Controls
+    # 2. Blackout & Shutdown Overrides
     elif "blackout" in cmd_lower or "black out" in cmd_lower:
         trigger_blackout = True
         reply = f"Engaging HUD blackout mode. Communication terminal active, {honorific}."
@@ -199,7 +188,7 @@ def ask():
                         f"Proceeding with turn-by-turn guidance now, Master!"
         reply = f"Full Google Maps GPS tracking active for {nav_destination}. C-3PO guidance initiated, {honorific}."
 
-    # 4. YouTube & Spotify Streaming
+    # 4. YouTube & Spotify Streaming Controls
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -213,7 +202,7 @@ def ask():
     elif "lyrics" in cmd_lower or "shazam" in cmd_lower or "what song" in cmd_lower:
         reply = search_lyrics_or_music(user_prompt)
 
-    # 6. Proton e.MAS 7 Sync
+    # 6. Proton e.MAS 7 Sync Subroutine
     elif "proton" in cmd_lower or "emas" in cmd_lower or "car hud" in cmd_lower:
         if permissions.get('app_sync'):
             reply = f"Proton e.MAS 7 EV telemetry linked successfully. Vehicle battery and navigation HUD synced, {honorific}."
@@ -230,7 +219,7 @@ def ask():
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
         reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays and terminals, {honorific}."
 
-    # 8. App Launching (Mobile Deep-Links vs Desktop Subprocesses)
+    # 8. Adaptive Mobile / Desktop Application Launching
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
         app_schemes = {
@@ -247,7 +236,7 @@ def ask():
                 app_launch_intent = app_schemes[target_app]
                 reply = f"Opening {target_app} on mobile interface, {honorific}."
             else:
-                reply = f"Attempting to trigger mobile deep link for {target_app}, {honorific}."
+                reply = f"Attempting mobile deep link for {target_app}, {honorific}."
         else:
             app_dict = {
                 "chrome": "start chrome", "edge": "start msedge", "notepad": "notepad",
@@ -266,7 +255,7 @@ def ask():
                     pass
             reply = f"Launching {target_app} on host desktop, {honorific}."
 
-    # 9. Desktop Mouse / Screen Controls
+    # 9. Desktop Automation Tools
     elif "take screenshot" in cmd_lower:
         if HAS_PYAUTOGUI:
             pyautogui.screenshot('jarvis_screenshot.png')
@@ -280,7 +269,7 @@ def ask():
         else:
             reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
 
-    # 10. ChatGPT-Style AI Reasoning Core (Local Ollama GPU or Cloud Web Intelligence)
+    # 10. ChatGPT-Grade Dual-Core Intelligence (Local GPU or Cloud Fallback)
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
@@ -315,9 +304,8 @@ def ask():
             if ai_answer:
                 reply = ai_answer
             else:
-                reply = f"I have processed your request regarding '{user_prompt}'. All systems report nominal status, {honorific}."
+                reply = f"I have processed your request regarding '{user_prompt}'. All subroutines report nominal status, {honorific}."
 
-    # Clean double honorific formatting bug
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific) and not c3po_nav_text:
         clean_text = f"{clean_text}, {honorific}."
