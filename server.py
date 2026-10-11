@@ -17,7 +17,7 @@ try:
 except Exception:
     HAS_PYAUTOGUI = False
 
-# Safely handle Ollama on cloud environments without local Ollama daemon
+# Safely handle Ollama if available locally
 try:
     import ollama
     HAS_OLLAMA = True
@@ -64,6 +64,21 @@ WELCOME_MESSAGES = [
     "Welcome back, {honorific}. Proton e.MAS 7 and device links are ready.",
     "Security check cleared. Standing by for your instructions, {honorific}."
 ]
+
+def search_general_knowledge(query):
+    """ChatGPT-style general knowledge & web answering fallback engine"""
+    try:
+        results = list(DDGS().text(query, max_results=3))
+        if results:
+            snippets = [res['body'] for res in results if 'body' in res]
+            summary = " ".join(snippets[:2])
+            # Keep answers concise and readable for HUD display
+            if len(summary) > 400:
+                summary = summary[:400] + "..."
+            return summary
+        return None
+    except Exception as e:
+        return None
 
 def search_lyrics_or_music(query):
     try:
@@ -157,6 +172,7 @@ def ask():
     is_shutdown = False
     trigger_blackout = False
 
+    # 1. Global News
     if "news" in cmd_lower or "headlines" in cmd_lower or "world update" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
             news_summary = "\n\n".join(GLOBAL_NEWS_CACHE[:4])
@@ -164,6 +180,7 @@ def ask():
         else:
             reply = f"Fetching real-time global news feed now, {honorific}."
 
+    # 2. Blackout & Shutdown Controls
     elif "blackout" in cmd_lower or "black out" in cmd_lower:
         trigger_blackout = True
         reply = f"Engaging HUD blackout mode. Communication terminal active, {honorific}."
@@ -171,6 +188,7 @@ def ask():
         is_shutdown = True
         reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
 
+    # 3. Navigation & C-3PO Routing
     elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower:
         dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to', '', user_prompt, flags=re.IGNORECASE).strip()
         nav_destination = dest_match if dest_match else "Target Destination"
@@ -181,6 +199,7 @@ def ask():
                         f"Proceeding with turn-by-turn guidance now, Master!"
         reply = f"Full Google Maps navigation active for {nav_destination}. C-3PO guidance initiated, {honorific}."
 
+    # 4. YouTube & Spotify Streaming
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -190,15 +209,18 @@ def ask():
         media_action = {"type": "youtube", "query": yt_query}
         reply = f"Loading YouTube video for '{yt_query}', {honorific}."
 
+    # 5. Shazam & Lyrics
     elif "lyrics" in cmd_lower or "shazam" in cmd_lower or "what song" in cmd_lower:
         reply = search_lyrics_or_music(user_prompt)
 
+    # 6. Proton e.MAS 7 Sync
     elif "proton" in cmd_lower or "emas" in cmd_lower or "car hud" in cmd_lower:
         if permissions.get('app_sync'):
             reply = f"Proton e.MAS 7 EV telemetry linked successfully. Vehicle battery and navigation HUD synced, {honorific}."
         else:
             reply = f"Proton e.MAS 7 HUD link requires app permission approval in settings, {honorific}."
 
+    # 7. Weather, Cinema, Flight Radar
     elif "weather" in cmd_lower or "forecast" in cmd_lower:
         reply = search_weather(location)
     elif "movie" in cmd_lower or "cinema" in cmd_lower or "theater" in cmd_lower:
@@ -208,6 +230,7 @@ def ask():
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
         reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays and terminals, {honorific}."
 
+    # 8. Desktop App Automation
     elif "take screenshot" in cmd_lower:
         if HAS_PYAUTOGUI:
             pyautogui.screenshot('jarvis_screenshot.png')
@@ -220,7 +243,7 @@ def ask():
             reply = f"Screen action performed, {honorific}."
         else:
             reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
-    elif "open" in cmd_lower:
+    elif "open" in cmd_lower and len(cmd_lower.split()) < 4:
         app_name = cmd_lower.replace("open", "").strip()
         app_dict = {
             "chrome": "start chrome", "edge": "start msedge", "notepad": "notepad",
@@ -241,18 +264,19 @@ def ask():
         except Exception as e:
             reply = f"Unable to open {app_name}: {str(e)}"
 
+    # 9. UNIVERSAL CHATGPT-STYLE AI ENGINE (Ollama GPU local OR Web-Intelligence Cloud Fallback)
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
             "You are J.A.R.V.I.S., a hyper-intelligent AI assistant. "
             f"Always finish your reply addressing the user strictly as {honorific}. "
             f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
-            "Help with any homework problem, code debugging, or image analysis thoroughly. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
         )
 
-        model_to_use = 'moondream' if images else 'qwen2.5:0.5b'
+        # Priority A: Local Ollama (if running on GPU PC)
         if HAS_OLLAMA:
+            model_to_use = 'moondream' if images else 'qwen2.5:0.5b'
             try:
                 message_obj = {"role": "user", "content": user_prompt}
                 if images:
@@ -264,14 +288,20 @@ def ask():
                         {"role": "system", "content": system_instructions},
                         message_obj
                     ],
-                    options={"num_predict": 80, "temperature": 0.2},
+                    options={"num_predict": 120, "temperature": 0.2},
                     keep_alive=-1
                 )
                 reply = response['message']['content'].strip()
-            except Exception as e:
-                reply = f"Online cloud core operational. Direct command processed, {honorific}."
-        else:
-            reply = f"Cloud terminal online and fully active. Standing by for instructions, {honorific}."
+            except Exception:
+                reply = None
+
+        # Priority B: Universal Real-Time Knowledge Engine (Render / Cloud / General Q&A)
+        if not reply:
+            ai_answer = search_general_knowledge(user_prompt)
+            if ai_answer:
+                reply = ai_answer
+            else:
+                reply = f"I have processed your query regarding '{user_prompt}'. All subroutines indicate nominal status, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply)
     if not clean_text.endswith(honorific) and not c3po_nav_text:
