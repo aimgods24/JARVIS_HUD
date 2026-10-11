@@ -242,6 +242,7 @@
                         device_type: isMobileDevice ? 'mobile' : 'desktop'
                     })
                 });
+                
                 const data = await res.json();
 
                 if (data.blackout) {
@@ -255,12 +256,12 @@
                     window.location.href = data.app_intent;
                 }
 
-                if (data.audio) {
-                    let audio = new Audio('/api/audio?t=' + new Date().getTime());
+                if (data.audio_b64) {
+                    let audio = new Audio(data.audio_b64);
                     audio.play();
                 }
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System error encountered connecting to cloud core.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Communication error: ${e.message}</div>`;
             }
         }
 
