@@ -225,7 +225,6 @@ def scan_cctv():
 
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
-    honorific = request.args.get('honorific', 'Sir')
     anomalies = []
     status_summary = {}
 
@@ -264,18 +263,11 @@ def run_diagnostics():
         status_summary['free_disk'] = 'UNKNOWN'
 
     if anomalies:
-        diagnostic_report = (
-            f"Diagnostic Scan Complete, {honorific}.\n\n"
-            f"• Local LLM Engine: {status_summary.get('ollama')}\n"
-            f"• Weather Telemetry: {status_summary.get('weather_api')}\n"
-            f"• Memory Archive: {status_summary.get('memory_archive')}\n"
-            f"• Disk Space Remaining: {status_summary.get('free_disk')}\n\n"
-            f"⚠️ Detected Anomalies:\n" + "\n".join([f"  - {a}" for a in anomalies])
-        )
+        report = "⚠️ System Check Anomaly Report:\n" + "\n".join([f"  - {a}" for a in anomalies])
     else:
-        diagnostic_report = f"Systems up and ready, {honorific}."
+        report = "Systems up and ready."
 
-    return jsonify({'status': 'success', 'report': diagnostic_report, 'has_anomalies': len(anomalies) > 0})
+    return jsonify({'status': 'success', 'report': report, 'has_anomalies': len(anomalies) > 0})
 
 @app.route('/api/download_generated/<filename>')
 def download_generated(filename):
@@ -366,9 +358,13 @@ def ask():
     open_translate_hud = False
     close_translate_hud = False
 
-    if "system check" in cmd_lower or "diagnostics" in cmd_lower or "check anomalies" in cmd_lower or "scan system" in cmd_lower:
+    if "system check" in cmd_lower or "run system check" in cmd_lower or "full system check" in cmd_lower:
         diag_res = run_diagnostics().get_json()
-        reply = diag_res.get('report', f'Systems up and ready, {honorific}.')
+        rep = diag_res.get('report', '')
+        if "Systems up and ready" in rep:
+            reply = f"Systems up and ready, {honorific}."
+        else:
+            reply = f"{rep}, {honorific}."
 
     elif "open translate" in cmd_lower or "activate translate" in cmd_lower or "start translate" in cmd_lower:
         open_translate_hud = True
