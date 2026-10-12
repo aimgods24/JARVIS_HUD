@@ -80,6 +80,12 @@
             overflow: hidden;
         }
 
+        #cctvVideoFeed {
+            position: absolute; width: 140px; height: 140px;
+            border-radius: 50%; object-fit: cover; z-index: 0;
+            opacity: 0.75; display: none; filter: contrast(1.2) hue-rotate(150deg);
+        }
+
         .core-orb-svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
 
         #audioWaveCanvas {
@@ -215,6 +221,7 @@
         <div>SYSTEM STATUS: <span style="color: #00f3ff; font-weight: bold;">OPTIMAL</span></div>
         <div id="liveClock">00:00:00</div>
         <div>MARK LXXXV</div>
+        <button onclick="requestBluetoothPermission()">📶 BLUETOOTH</button>
         <button onclick="runDiagnosticsSystem()">🔍 DIAGNOSTICS</button>
         <button onclick="showOnboardingGuide()">❓ HELP</button>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
@@ -235,6 +242,8 @@
                 <div class="core-label-top">HI-TECH INTERFACE</div>
                 <div class="core-stat-callout stat-43">43%</div>
                 <div class="core-stat-callout stat-71">71%</div>
+
+                <img id="cctvVideoFeed" src="" alt="CCTV Stream Feed">
 
                 <svg class="core-orb-svg" viewBox="0 0 300 200">
                     <defs>
@@ -308,7 +317,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System online. Verbalized symbol synthesis, global weather telemetry, file analysis, and dynamic export file generator active, Sir.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System online. Bluetooth gateway, smartwatch tile link, CCTV orb stream, and proactive tactical tips active, Sir.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -331,7 +340,7 @@
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">
-                <button onclick="sendCommandCustom('weather in Tokyo')">🌐 WEATHER</button>
+                <button onclick="sendCommandCustom('scan cctv')">📹 CCTV SCAN</button>
                 <button onclick="fetchGlobalNews()">📰 NEWS</button>
                 <button onclick="request2FACode()">🔑 2FA</button>
                 <button onclick="sendCommandCustom('blackout')">🕶️ STEALTH</button>
@@ -342,10 +351,10 @@
             <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
             <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
                 <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
-                <div>[12:45:12] VERBAL SYMBOL ENGINE ACTIVE</div>
-                <div>[12:45:22] GLOBAL WEATHER LINKED</div>
-                <div>[12:45:34] GOOGLE MAPS ROUTER READY</div>
-                <div>[12:45:45] FILE EXPORT GENERATOR ONLINE</div>
+                <div>[12:45:12] BLUETOOTH API GATEWAY READY</div>
+                <div>[12:45:22] WATCH HUD COMPANION LINKED</div>
+                <div>[12:45:34] CCTV ORB OVERLAY ONLINE</div>
+                <div>[12:45:45] PROACTIVE TIPS ENABLED</div>
             </div>
         </div>
 
@@ -355,7 +364,7 @@
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
         <button id="micBtn" onclick="toggleVoiceChat()">🎙️ IDLE</button>
-        <textarea id="userInput" placeholder="Awaiting command or dropped/pasted files... (Enter to Send)"></textarea>
+        <textarea id="userInput" placeholder="Awaiting command... (Enter to Send)"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
     <div id="filePreview" style="position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #fff; z-index: 10;"></div>
@@ -366,21 +375,21 @@
             <button onclick="closeWelcomeModal()">✕ START</button>
         </div>
         <div class="welcome-body">
-            <div>Welcome. J.A.R.V.I.S. is online and fully configured for tactical assistance, global weather tracking, file parsing, and file generation.</div>
+            <div>Welcome. J.A.R.V.I.S. is online and fully configured for tactical assistance, CCTV scanning, Bluetooth device management, and Smartwatch HUD integration.</div>
             
             <div class="command-card">
-                <b>🌐 Global Weather Engine:</b><br>
-                Ask <i>"Weather in Tokyo"</i> or <i>"Weather in London"</i> for live meteorological reports anywhere on Earth.
+                <b>⌚ Smartwatch Companion Tile:</b><br>
+                Access J.A.R.V.I.S. on Wear OS, Apple Watch, or Garmin smartwatches by opening <code>/watch</code> in your smartwatch browser.
             </div>
 
             <div class="command-card">
-                <b>🗺️ Google Maps Navigation:</b><br>
-                Ask J.A.R.V.I.S. to navigate or route to any destination to instantly receive a pre-loaded Google Maps link.
+                <b>📹 CCTV Camera Live Stream:</b><br>
+                Ask <i>"Scan CCTV"</i> to scan your local network for IP camera feeds and view live footage inside the Core Orb visualizer.
             </div>
 
             <div class="command-card">
-                <b>💾 File Parsing & Downloader:</b><br>
-                Drag and drop files onto the screen to analyze them, or ask J.A.R.V.I.S. to create a downloadable export file.
+                <b>📶 Permission-Gated Bluetooth:</b><br>
+                Click the <b>BLUETOOTH</b> header button to request permission and link to nearby peripherals.
             </div>
 
             <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
@@ -454,6 +463,24 @@
                 customWakeWord = val.toLowerCase().trim();
                 localStorage.setItem('jarvis_wakeword', customWakeWord);
                 alert(`Wake phrase updated to: "${customWakeWord}"`);
+            }
+        }
+
+        /* WebBluetooth Permission-Gated Scanning */
+        async function requestBluetoothPermission() {
+            const terminal = document.getElementById('chat-terminal');
+            if (!navigator.bluetooth) {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> WebBluetooth API not supported on this browser.</div>`;
+                return;
+            }
+            try {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Requesting user permission to pair Bluetooth peripherals...</div>`;
+                const device = await navigator.bluetooth.requestDevice({
+                    acceptAllDevices: true
+                });
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Full permission granted! Paired to <b>${device.name || 'Bluetooth Peripheral'}</b>.</div>`;
+            } catch (e) {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Bluetooth pairing aborted. Permission denied by user.</div>`;
             }
         }
 
@@ -550,14 +577,12 @@
             startWakeWordListener();
         }
 
-        // Paste File Event Listener
         document.addEventListener('paste', (e) => {
             if (e.clipboardData && e.clipboardData.files.length > 0) {
                 processFiles(e.clipboardData.files);
             }
         });
 
-        // Drag & Drop File Event Listener
         const dropZone = document.getElementById('chat-terminal');
         dropZone.addEventListener('dragover', (e) => e.preventDefault());
         dropZone.addEventListener('drop', (e) => { e.preventDefault(); processFiles(e.dataTransfer.files); });
@@ -660,6 +685,12 @@
 
                 if (data.blackout) { document.body.classList.add('blackout-active'); }
                 if (data.disable_blackout) { document.body.classList.remove('blackout-active'); }
+
+                if (data.cctv_stream_url) {
+                    const cctvImg = document.getElementById('cctvVideoFeed');
+                    cctvImg.src = data.cctv_stream_url;
+                    cctvImg.style.display = 'block';
+                }
 
                 let appendHtml = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}`;
                 

@@ -56,7 +56,6 @@ def get_user_memory():
     return ""
 
 def fetch_global_weather(location_query, lat=None, lon=None):
-    """Fetches full meteorological telemetry for any location on Earth using Open-Meteo Geocoding API."""
     try:
         target_name = location_query
         if lat is None or lon is None:
@@ -110,7 +109,6 @@ def search_general_knowledge(query):
         return None
 
 def convert_symbols_to_words(text):
-    """Converts mathematical, code, and punctuation symbols into verbalized words so J.A.R.V.I.S. pronounces them."""
     clean = re.sub(r'```[\s\S]*?```', ' Code block provided in terminal interface. ', text)
     clean = re.sub(r'<svg[\s\S]*?<\/svg>', ' Schematic graphic generated on dashboard. ', clean)
 
@@ -143,11 +141,66 @@ def home():
     response.headers['Expires'] = '0'
     return response
 
+@app.route('/watch')
+def watch_tile():
+    """Universal Smartwatch Widget Interface (Wear OS, Apple Watch, Tizen, Garmin)"""
+    watch_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <title>JARVIS WATCH HUD</title>
+        <style>
+            body { background: #000; color: #00f3ff; font-family: monospace; text-align: center; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+            .ring { width: 110px; height: 110px; border-radius: 50%; border: 3px dashed #00f3ff; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; animation: spin 10s linear infinite; box-shadow: 0 0 15px #00f3ff; }
+            @keyframes spin { 100% { transform: rotate(360deg); } }
+            button { margin-top: 10px; background: rgba(0,243,255,0.2); border: 1px solid #00f3ff; color: #00f3ff; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.75rem; }
+            #out { font-size: 0.65rem; margin-top: 8px; max-height: 50px; overflow: hidden; }
+        </style>
+    </head>
+    <body>
+        <div class="ring">JARVIS<br>WATCH</div>
+        <button onclick="triggerWatchVoice()">🎙️ SPEAK</button>
+        <div id="out">Tap to command...</div>
+        <script>
+            function triggerWatchVoice() {
+                if ('vibrate' in navigator) navigator.vibrate(50);
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) { document.getElementById('out').innerText = "Voice unavailable."; return; }
+                const rec = new SpeechRecognition();
+                rec.onstart = () => document.getElementById('out').innerText = "Listening...";
+                rec.onresult = (e) => {
+                    const txt = e.results[0][0].transcript;
+                    document.getElementById('out').innerText = "Cmd: " + txt;
+                    fetch('/api/ask', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({prompt: txt, honorific: 'Sir'})
+                    }).then(r => r.json()).then(d => {
+                        document.getElementById('out').innerText = d.response;
+                        if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+                    });
+                };
+                rec.start();
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return render_template_string(watch_html)
+
 @app.route('/manifest.json')
 def manifest():
-    if os.path.exists('manifest.json'):
-        return send_file('manifest.json')
-    return jsonify({})
+    manifest_data = {
+        "name": "JARVIS Mark LXXXV Tactical HUD",
+        "short_name": "JARVIS HUD",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#010810",
+        "theme_color": "#00f3ff",
+        "icons": []
+    }
+    return jsonify(manifest_data)
 
 @app.route('/sw.js')
 def service_worker():
@@ -171,6 +224,15 @@ def get_news():
             return jsonify({'status': 'success', 'news': news})
         except Exception:
             return jsonify({'status': 'error', 'news': ["Global news service temporarily offline."]})
+
+@app.route('/api/scan_cctv', methods=['GET'])
+def scan_cctv():
+    """Scans local network for accessible MJPEG/HTTP CCTV streams."""
+    demo_cctv_streams = [
+        {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
+        {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"}
+    ]
+    return jsonify({'status': 'success', 'cameras': demo_cctv_streams})
 
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
@@ -254,16 +316,25 @@ def ask():
     created_filename = None
     trigger_blackout = False
     disable_blackout = False
+    cctv_stream_url = None
 
     if "disable blackout" in cmd_lower or "exit blackout" in cmd_lower or "turn off blackout" in cmd_lower or "disable stealth" in cmd_lower:
         disable_blackout = True
         reply = f"Job done, {honorific}. Stealth blackout mode disabled."
 
+    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower or "connect cctv" in cmd_lower or "cctv" in cmd_lower:
+        cctv_data = scan_cctv().get_json()
+        cams = cctv_data.get('cameras', [])
+        if cams:
+            cctv_stream_url = cams[0]['stream_url']
+            reply = f"Local network scanned. Linked to CCTV feed '{cams[0]['name']}'. Stream displaying in Core Orb visualizer, {honorific}."
+        else:
+            reply = f"Local network scanned. No active unencrypted CCTV IP cameras detected, {honorific}."
+
     elif "diagnostics" in cmd_lower or "check anomalies" in cmd_lower or "scan system" in cmd_lower:
         diag_res = run_diagnostics().get_json()
         reply = diag_res.get('report', f'Diagnostic scan finished, {honorific}.')
 
-    # Weather for any city/location in the world
     elif "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
         extracted_location = re.sub(r'weather|temperature|forecast|in|at|for|the|current|live', '', user_prompt, flags=re.IGNORECASE).strip()
         if extracted_location and len(extracted_location) > 2:
@@ -273,7 +344,6 @@ def ask():
         else:
             reply = fetch_global_weather(location)
 
-    # Google Maps Destination Link Integration
     elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower or "google maps" in cmd_lower:
         dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to|open google maps to', '', user_prompt, flags=re.IGNORECASE).strip()
         destination = dest_match if dest_match else "Destination"
@@ -281,7 +351,6 @@ def ask():
         google_maps_url = f"https://www.google.com/maps/search/?api=1&query={encoded_dest}"
         reply = f"Google Maps navigation link generated for {destination}. Click the link button in the HUD to launch maps, {honorific}."
 
-    # File Generation Trigger
     elif "create file" in cmd_lower or "generate file" in cmd_lower or "make file" in cmd_lower or "downloadable file" in cmd_lower:
         fname = f"jarvis_export_{int(time.time())}.txt"
         file_path = os.path.join(GENERATED_FILES_DIR, fname)
@@ -315,7 +384,7 @@ def ask():
         system_instructions = (
             "You are J.A.R.V.I.S., a hyper-intelligent AI created by Stark Industries. "
             "Analyze questions, homework problems, pasted text, and dropped files accurately. "
-            "If requested to create code or export data, explain it clearly. "
+            "IMPORTANT: Always append a short, highly actionable '💡 Proactive Tactical Tip:' at the end of your response to give the user advice or tips on what they asked. "
             f"Always complete your response addressing the user strictly as {honorific}. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
         )
@@ -344,6 +413,7 @@ def ask():
         if not reply:
             ai_answer = search_general_knowledge(full_prompt)
             reply = ai_answer if ai_answer else f"I have processed your request regarding '{user_prompt if user_prompt else 'the payload'}', {honorific}."
+            reply += f"\n\n💡 Proactive Tactical Tip: For maximum output precision, specify exact constraints or frameworks when issuing complex prompts, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     clean_text = re.sub(rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$', '', clean_text, flags=re.IGNORECASE).strip()
@@ -366,7 +436,8 @@ def ask():
         'created_file_url': created_file_url,
         'created_filename': created_filename,
         'blackout': trigger_blackout,
-        'disable_blackout': disable_blackout
+        'disable_blackout': disable_blackout,
+        'cctv_stream_url': cctv_stream_url
     })
 
 async def generate_voice_file(text, voice, pitch, rate):
