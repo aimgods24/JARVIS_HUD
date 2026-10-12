@@ -8,6 +8,8 @@ import subprocess
 import threading
 import time
 import requests
+import sys
+import io
 from duckduckgo_search import DDGS
 
 try:
@@ -142,6 +144,25 @@ def get_news():
         except Exception:
             return jsonify({'status': 'error', 'news': ["Global news service temporarily offline."]})
 
+@app.route('/api/run_python', methods=['POST'])
+def run_python():
+    data = request.json or {}
+    code_str = data.get('code', '')
+    if not code_str:
+        return jsonify({'output': 'No code provided.'})
+        
+    old_stdout = sys.stdout
+    redirected_output = sys.stdout = io.StringIO()
+    try:
+        exec(code_str, {'__builtins__': __builtins__})
+        output = redirected_output.getvalue()
+    except Exception as e:
+        output = f"Execution Error: {str(e)}"
+    finally:
+        sys.stdout = old_stdout
+        
+    return jsonify({'output': output if output else 'Code executed successfully with no print output.'})
+
 @app.route('/api/ask', methods=['POST'])
 def ask():
     data = request.json or {}
@@ -171,14 +192,14 @@ def ask():
     app_launch_intent = None
     activate_map = False
 
-    # 1. Weather with GPS Detection
+    # 1. Weather with Precise GPS
     if "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
         if lat and lon:
             reply = fetch_accurate_weather(lat, lon, "Your Current Position")
         else:
             reply = fetch_accurate_weather(5.2971, 100.2588, location)
 
-    # 2. Map & Routing
+    # 2. Map & GPS Navigation
     elif "show map" in cmd_lower or "activate map" in cmd_lower or "open map" in cmd_lower:
         activate_map = True
         reply = f"Activating tactical GPS HUD map overlay now, {honorific}."
@@ -207,7 +228,7 @@ def ask():
         is_shutdown = True
         reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
 
-    # 4. Media Commands
+    # 4. Media & Entertainment
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -217,7 +238,7 @@ def ask():
         media_action = {"type": "youtube", "query": yt_query}
         reply = f"Loading YouTube video for '{yt_query}', {honorific}."
 
-    # 5. Mobile Deep Links / Desktop Apps
+    # 5. Mobile Deep Links / Desktop Launcher
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
         app_schemes = {
@@ -235,7 +256,7 @@ def ask():
                     pass
             reply = f"Launching {target_app} on host system, {honorific}."
 
-    # 6. File Context Ingestion
+    # 6. Attached Files Ingestion
     file_context_str = ""
     if files:
         file_snippets = []
@@ -245,24 +266,23 @@ def ask():
             file_snippets.append(f"--- [ATTACHED FILE: {file_name}] ---\n{file_content}\n")
         file_context_str = "\n".join(file_snippets)
 
-    # 7. ChatGPT Reasoning, Vision Analysis, & Dynamic SVG Blueprint Engine
+    # 7. Homework Tutor, Python Script Generator, Vision Analysis & Blueprint Engine
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
-            "You are J.A.R.V.I.S., a hyper-intelligent AI created by Stark Industries. "
-            "Provide detailed, structured, ChatGPT-level technical explanations. "
-            "If asked to analyze a photo or image, examine every detail (objects, text, layout, colors) accurately. "
-            "If asked to draft, design, or generate a blueprint, schematic, or visual diagram, "
-            "you MUST generate valid SVG vector graphics wrapped inside <svg>...</svg> tags directly in your text response. "
-            "Style all SVG visual graphics with futuristic cyan line-art (#00f3ff, stroke-width 1.5, dark background elements). "
-            f"Always complete your answer addressing the user strictly as {honorific}. "
+            "You are J.A.R.V.I.S., a hyper-intelligent AI assistant created by Stark Industries. "
+            "Examine all user requests, homework problems, math equations, attached documents, and photo image uploads with complete accuracy. "
+            "ACADEMIC & HOMEWORK GUIDELINES: Provide step-by-step educational breakdowns, formula definitions, and clear final solutions. "
+            "PYTHON SCRIPTING: When generating Python scripts, provide complete runnable code blocks inside ```python ``` tags with clear line-by-line explanations. "
+            "BLUEPRINT GRAPHICS: If asked to draft or design a schematic or blueprint, generate valid SVG vector graphics wrapped in <svg>...</svg> tags. "
+            f"Always finish your response addressing the user strictly as {honorific}. "
             f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
         )
 
         full_prompt = user_prompt
         if file_context_str:
-            full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt if user_prompt else 'Analyze attached payload.'}"
+            full_prompt = f"{file_context_str}\n\nUser Question/Instruction:\n{user_prompt if user_prompt else 'Analyze the attached file and solve any homework questions present.'}"
 
         if HAS_OLLAMA:
             try:
@@ -277,7 +297,7 @@ def ask():
                         {"role": "system", "content": system_instructions},
                         message_obj
                     ],
-                    options={"num_predict": 600, "temperature": 0.2},
+                    options={"num_predict": 700, "temperature": 0.2},
                     keep_alive=-1
                 )
                 reply = response['message']['content'].strip()
@@ -289,9 +309,9 @@ def ask():
             if ai_answer:
                 reply = ai_answer
             else:
-                reply = f"I have thoroughly processed your input regarding '{user_prompt if user_prompt else 'the attached payload'}'. All subroutines nominal, {honorific}."
+                reply = f"I have thoroughly processed your request regarding '{user_prompt if user_prompt else 'the attached payload'}'. All neural pathways nominal, {honorific}."
 
-    # Double honorific prevention regex
+    # Prevent double honorific occurrences
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     clean_text = re.sub(rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$', '', clean_text, flags=re.IGNORECASE).strip()
     

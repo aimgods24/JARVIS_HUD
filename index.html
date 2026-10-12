@@ -32,7 +32,7 @@
                 linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
         }
 
-        /* Top Header Bar */
+        /* Top Bar */
         .hud-top-bar {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--hud-border);
@@ -69,7 +69,7 @@
             overflow: hidden; position: relative;
         }
 
-        /* Bracketed Tactical Panel Header */
+        /* Bracketed Header */
         .panel-header {
             font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
             display: flex; justify-content: space-between; opacity: 0.8;
@@ -107,12 +107,11 @@
         @keyframes rotateCW { 100% { transform: rotate(360deg); } }
         @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
 
-        /* Gauges & Progress Bars */
+        /* Progress Bars */
         .gauge-row { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
         .gauge-bg { background: rgba(0, 0, 0, 0.6); height: 5px; border: 1px solid var(--hud-border); border-radius: 2px; }
         .gauge-fill { height: 100%; background: var(--hud-cyan); box-shadow: 0 0 6px var(--hud-cyan); }
 
-        /* ECG Waveform Pulse */
         .ecg-box { height: 32px; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 
         #gps-map-container {
@@ -121,7 +120,7 @@
         }
         #leaflet-map { width: 100%; height: 100%; }
 
-        /* Terminal Chat Display */
+        /* Terminal Output Box */
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
@@ -134,7 +133,7 @@
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
-        /* Center Floating Action Pill Bar */
+        /* Center Command Pill */
         .hud-center-pill {
             position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
             width: 80%; max-width: 580px;
@@ -155,7 +154,7 @@
         }
         button:hover { background: var(--hud-cyan); color: #000; }
 
-        /* Schematic Blueprint Viewer Modal */
+        /* Vector Blueprint Modal */
         #blueprintModal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -179,6 +178,35 @@
 
         .blueprint-viewport svg { width: 90%; height: 90%; filter: drop-shadow(0 0 8px var(--hud-cyan)); }
 
+        /* First-Time Onboarding Modal */
+        #welcomeModal {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85vw; max-width: 650px;
+            background: rgba(1, 10, 22, 0.96);
+            border: 2px solid var(--hud-cyan); border-radius: 6px;
+            box-shadow: 0 0 35px rgba(0, 243, 255, 0.4);
+            z-index: 2000; flex-direction: column; padding: 16px; color: var(--hud-cyan);
+        }
+
+        .welcome-header {
+            font-size: 0.9rem; font-weight: bold; letter-spacing: 1px;
+            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .welcome-body {
+            margin-top: 10px; font-size: 0.78rem; line-height: 1.5;
+            display: flex; flex-direction: column; gap: 8px;
+            max-height: 60vh; overflow-y: auto;
+        }
+
+        .command-card {
+            background: rgba(0, 243, 255, 0.06);
+            border-left: 3px solid var(--hud-cyan);
+            padding: 6px 10px; border-radius: 2px;
+        }
+
         .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 18px; }
         .wave-bar { width: 2px; height: 15%; background: var(--hud-cyan); transition: height 0.1s ease; }
 
@@ -194,6 +222,7 @@
         <div>SYSTEM STATUS: <span style="color: #00f3ff; font-weight: bold;">OPTIMAL</span></div>
         <div id="liveClock">00:00:00</div>
         <div>MARK LXXXV</div>
+        <button onclick="showOnboardingGuide()">❓ HELP</button>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
 
@@ -261,7 +290,7 @@
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System integrity check complete. Bio-sync stable at 98.4%. How may I assist you today, Sir?</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System integrity check complete. Academic engine, Python code generator, and wake-word listener ready, Sir.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -297,15 +326,15 @@
             <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
                 <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
                 <div>[12:45:12] BIO-SYNC STABLE AT 98.4%</div>
-                <div>[12:45:22] ARC REACTOR OUTPUT OPTIMAL</div>
-                <div>[12:45:34] SAT-LINK ESTABLISHED</div>
+                <div>[12:45:22] WAKE WORD DAEMON ACTIVE</div>
+                <div>[12:45:34] HOMEWORK/PYTHON ENGINE ONLINE</div>
                 <div>[12:45:45] AWAITING COMMAND...</div>
             </div>
         </div>
 
     </div>
 
-    <!-- Center Floating Action Command Pill Bar -->
+    <!-- Center Floating Command Pill -->
     <div class="hud-center-pill">
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
@@ -315,7 +344,7 @@
     </div>
     <div id="filePreview" style="position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #fff; z-index: 10;"></div>
 
-    <!-- High-Tech Vector Blueprint Modal -->
+    <!-- Blueprint SVG Modal -->
     <div id="blueprintModal">
         <div class="blueprint-header">
             <div>📐 STARK INDUSTRIES // SCHEMATIC BLUEPRINT DRAWING</div>
@@ -324,14 +353,48 @@
         <div class="blueprint-viewport" id="blueprintViewport"></div>
     </div>
 
+    <!-- First-Time Onboarding Modal -->
+    <div id="welcomeModal">
+        <div class="welcome-header">
+            <div>STARK INDUSTRIES // MARK LXXXV INITIALIZATION GUIDE</div>
+            <button onclick="closeWelcomeModal()">✕ START</button>
+        </div>
+        <div class="welcome-body">
+            <div>Welcome. J.A.R.V.I.S. is online and fully configured for tactical assistance, homework problem solving, and Python script generation.</div>
+            
+            <div class="command-card">
+                <b>📚 Homework & Math Tutor Engine:</b><br>
+                Ask complex calculus, physics, or history questions. Drag and drop photos of worksheets directly onto the screen for step-by-step answers.
+            </div>
+
+            <div class="command-card">
+                <b>🐍 Python Script Generator:</b><br>
+                Request custom scripts (e.g., <i>"Write a Python script for automated file sorting"</i>). J.A.R.V.I.S. provides runnable code and tutorials.
+            </div>
+
+            <div class="command-card">
+                <b>🎙️ Hands-Free Voice Wake Activation:</b><br>
+                Say <b>"Jarvis"</b> aloud to activate voice dictation automatically. You can customize your wake phrase below.
+            </div>
+
+            <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
+                <label style="font-size: 0.72rem;">Custom Wake Phrase:</label>
+                <input type="text" id="wakePhraseInput" placeholder="jarvis" style="background:#000; border:1px solid var(--hud-cyan); color:#00f3ff; padding:3px 6px; border-radius:3px; flex:1;">
+                <button onclick="saveWakeWordFromInput()">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let map, userMarker, mapInitialized = false;
         let pendingImages = [];
         let pendingFiles = [];
         let recognition = null;
+        let wakeWordRecognition = null;
         let isListening = false;
         let userLat = null, userLon = null;
+        let customWakeWord = "jarvis";
 
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobile) { document.body.classList.add('mobile-mode'); }
@@ -355,7 +418,86 @@
             } catch (e) {}
         }
 
-        /* Voice Chat Integration */
+        /* First-Time User Onboarding Modal */
+        window.addEventListener('load', () => {
+            const savedWake = localStorage.getItem('jarvis_wakeword');
+            if (savedWake) customWakeWord = savedWake;
+
+            const isFirstTime = !localStorage.getItem('jarvis_onboarded');
+            if (isFirstTime) {
+                showOnboardingGuide();
+            }
+            initWakeWordListener();
+        });
+
+        function showOnboardingGuide() {
+            document.getElementById('welcomeModal').style.display = 'flex';
+            document.getElementById('wakePhraseInput').value = customWakeWord;
+        }
+
+        function closeWelcomeModal() {
+            localStorage.setItem('jarvis_onboarded', 'true');
+            document.getElementById('welcomeModal').style.display = 'none';
+        }
+
+        function saveWakeWordFromInput() {
+            const val = document.getElementById('wakePhraseInput').value;
+            if (val) {
+                customWakeWord = val.toLowerCase().trim();
+                localStorage.setItem('jarvis_wakeword', customWakeWord);
+                alert(`Wake phrase updated to: "${customWakeWord}"`);
+            }
+        }
+
+        /* Hands-Free Background Wake-Word Daemon */
+        function initWakeWordListener() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            wakeWordRecognition = new SpeechRecognition();
+            wakeWordRecognition.continuous = true;
+            wakeWordRecognition.interimResults = true;
+            wakeWordRecognition.lang = 'en-US';
+
+            wakeWordRecognition.onresult = function(e) {
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    const transcript = e.results[i][0].transcript.toLowerCase().trim();
+                    if (transcript.includes(customWakeWord)) {
+                        wakeWordRecognition.stop();
+                        playChime();
+                        const query = transcript.split(customWakeWord)[1]?.trim();
+                        if (query && query.length > 2) {
+                            document.getElementById('userInput').value = query;
+                            sendCommand();
+                        } else {
+                            toggleVoiceChat();
+                        }
+                        break;
+                    }
+                }
+            };
+
+            wakeWordRecognition.onerror = function() { setTimeout(startWakeWordListener, 2000); };
+            wakeWordRecognition.onend = function() { startWakeWordListener(); };
+            startWakeWordListener();
+        }
+
+        function startWakeWordListener() {
+            try {
+                if (wakeWordRecognition && !isListening) { wakeWordRecognition.start(); }
+            } catch(e) {}
+        }
+
+        function playChime() {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        /* Voice Speech Dictation Listener */
         if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRecognition();
@@ -387,9 +529,10 @@
             isListening = false;
             const micBtn = document.getElementById('micBtn');
             if (micBtn) { micBtn.innerText = '🎙️'; micBtn.style.background = 'rgba(0, 243, 255, 0.12)'; micBtn.style.color = 'var(--hud-cyan)'; }
+            startWakeWordListener();
         }
 
-        /* Drag-and-Drop & File Attachment Handler */
+        /* File Attachment Handler */
         const dropZone = document.getElementById('chat-terminal');
         dropZone.addEventListener('dragover', (e) => e.preventDefault());
         dropZone.addEventListener('drop', (e) => { e.preventDefault(); processFiles(e.dataTransfer.files); });
@@ -489,11 +632,11 @@
                 if (data.app_intent && isMobile) { window.location.href = data.app_intent; }
                 if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Telemetry connection error.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
             }
         }
 
-        /* Blueprint SVG Renderer */
+        /* Blueprint SVG Modal Render */
         function renderBlueprintFromResponse(responseText) {
             const svgMatch = responseText.match(/<svg[\s\S]*?<\/svg>/i);
             if (svgMatch) {
