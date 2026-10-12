@@ -12,12 +12,14 @@ import sys
 import io
 from duckduckgo_search import DDGS
 
+# Safely check PyAutoGUI for headless cloud servers (Render)
 try:
     import pyautogui
     HAS_PYAUTOGUI = True
 except Exception:
     HAS_PYAUTOGUI = False
 
+# Safely check local Ollama availability
 try:
     import ollama
     HAS_OLLAMA = True
@@ -102,17 +104,14 @@ def search_flight_details(flight_num):
     except Exception as e:
         return f"Flight error: {str(e)}"
 
-def search_nearby_cinemas(location_str):
-    try:
-        results = list(DDGS().text(f"cinemas movie theaters near {location_str} showtimes", max_results=3))
-        return "\n".join([f"🎬 {res['title']}\n{res['body']}" for res in results]) if results else "No nearby cinemas found."
-    except Exception as e:
-        return f"Cinema error: {str(e)}"
-
 @app.route('/')
 def home():
-    with open('index.html', 'r', encoding='utf-8') as f:
-        html_content = f.read()
+    if os.path.exists('index.html'):
+        with open('index.html', 'r', encoding='utf-8') as f:
+            html_content = f.read()
+    else:
+        html_content = "<h1>J.A.R.V.I.S. HUD Core Active. Add index.html to workspace.</h1>"
+    
     response = make_response(render_template_string(html_content))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
@@ -121,11 +120,15 @@ def home():
 
 @app.route('/manifest.json')
 def manifest():
-    return send_file('manifest.json')
+    if os.path.exists('manifest.json'):
+        return send_file('manifest.json')
+    return jsonify({})
 
 @app.route('/sw.js')
 def service_worker():
-    return send_file('sw.js')
+    if os.path.exists('sw.js'):
+        return send_file('sw.js')
+    return ("", 204)
 
 @app.route('/api/request_2fa', methods=['POST'])
 def request_2fa():
@@ -228,7 +231,7 @@ def ask():
         is_shutdown = True
         reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
 
-    # 4. Media & Entertainment
+    # 4. Media & Deep Links
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -238,7 +241,6 @@ def ask():
         media_action = {"type": "youtube", "query": yt_query}
         reply = f"Loading YouTube video for '{yt_query}', {honorific}."
 
-    # 5. Mobile Deep Links / Desktop Launcher
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
         app_schemes = {
@@ -256,7 +258,7 @@ def ask():
                     pass
             reply = f"Launching {target_app} on host system, {honorific}."
 
-    # 6. Attached Files Ingestion
+    # 5. Attached Files Ingestion
     file_context_str = ""
     if files:
         file_snippets = []
@@ -266,7 +268,7 @@ def ask():
             file_snippets.append(f"--- [ATTACHED FILE: {file_name}] ---\n{file_content}\n")
         file_context_str = "\n".join(file_snippets)
 
-    # 7. Homework Tutor, Python Script Generator, Vision Analysis & Blueprint Engine
+    # 6. Reasoning, Vision, Homework & Blueprint Core
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
@@ -318,18 +320,19 @@ def ask():
     if not c3po_nav_text:
         clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
 
+    # Render-Safe Async Audio Processing
     has_audio = False
     if not is_dnd:
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            if c3po_nav_text:
-                loop.run_until_complete(generate_c3po_voice(c3po_nav_text))
-            else:
-                loop.run_until_complete(generate_jarvis_movie_voice(clean_text))
-            loop.close()
+            target_text = c3po_nav_text if c3po_nav_text else clean_text
+            voice = "en-GB-ThomasNeural" if c3po_nav_text else "en-GB-RyanNeural"
+            pitch = "+4Hz" if c3po_nav_text else "-3Hz"
+            rate = "+10%" if c3po_nav_text else "+2%"
+            
+            asyncio.run(generate_voice_file(target_text, voice, pitch, rate))
             has_audio = True
-        except Exception:
+        except Exception as e:
+            print(f"[AUDIO GENERATION ERROR]: {e}")
             has_audio = False
 
     return jsonify({
@@ -346,17 +349,16 @@ def ask():
         'activate_map': activate_map
     })
 
-async def generate_jarvis_movie_voice(text):
-    communicate = edge_tts.Communicate(text, "en-GB-RyanNeural", pitch="-3Hz", rate="+2%")
-    await communicate.save("static_speech.mp3")
-
-async def generate_c3po_voice(text):
-    communicate = edge_tts.Communicate(text, "en-GB-ThomasNeural", pitch="+4Hz", rate="+10%")
+async def generate_voice_file(text, voice, pitch, rate):
+    communicate = edge_tts.Communicate(text, voice, pitch=pitch, rate=rate)
     await communicate.save("static_speech.mp3")
 
 @app.route('/api/audio')
 def get_audio():
-    return send_file('static_speech.mp3', mimetype='audio/mpeg')
+    if os.path.exists('static_speech.mp3'):
+        return send_file('static_speech.mp3', mimetype='audio/mpeg')
+    return ("", 404)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
