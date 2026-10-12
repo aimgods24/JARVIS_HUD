@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>JARVIS // MARK LXXXV TACTICAL HUD</title>
     <link rel="manifest" href="/manifest.json">
     <style>
         :root {
             --hud-cyan: #00f3ff;
-            --hud-blue: #0088ff;
             --hud-glow: rgba(0, 243, 255, 0.5);
             --hud-bg: #010810;
             --hud-panel: rgba(1, 12, 24, 0.9);
@@ -27,7 +26,7 @@
             overflow: hidden;
             user-select: none;
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.08) 0%, transparent 85%),
+                radial-gradient(circle at 50% 50%, var(--hud-glow) 0%, transparent 85%),
                 linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
         }
 
@@ -36,6 +35,7 @@
             border-bottom: 1px solid var(--hud-border);
             padding: 4px 10px; font-size: 0.7rem; letter-spacing: 1px;
             background: rgba(0, 243, 255, 0.03);
+            flex-wrap: wrap; gap: 4px;
         }
 
         .status-pill {
@@ -51,31 +51,35 @@
             position: relative;
         }
 
-        body.mobile-mode .hud-workspace {
-            grid-template-columns: 1fr;
-            grid-template-rows: auto 1fr;
-        }
-        body.mobile-mode .desktop-only { display: none !important; }
-
         .hud-panel {
             background: var(--hud-panel);
             border: 1px solid var(--hud-border);
             border-radius: 3px; padding: 8px;
-            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.08);
+            box-shadow: inset 0 0 10px var(--hud-glow);
             display: flex; flex-direction: column; gap: 6px;
-            overflow: hidden; position: relative;
+            overflow-y: auto; position: relative;
         }
 
         .panel-header {
             font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
             display: flex; justify-content: space-between; opacity: 0.8;
-            border-bottom: 1px dashed rgba(0,243,255,0.25); padding-bottom: 3px;
+            border-bottom: 1px dashed var(--hud-border); padding-bottom: 3px;
+            cursor: pointer;
+        }
+
+        @media (max-width: 850px) {
+            body { height: auto; overflow-y: auto; padding-bottom: 70px; }
+            .hud-workspace { display: flex; flex-direction: column; overflow: visible; }
+            .hud-panel { overflow: visible; width: 100%; }
+            .hud-top-bar { font-size: 0.6rem; justify-content: center; text-align: center; }
+            .arc-radar-container { display: none !important; }
+            .mobile-toggle { display: block !important; }
         }
 
         .core-orb-widget {
             position: relative; width: 100%; height: 210px;
             display: flex; align-items: center; justify-content: center;
-            margin: 4px 0; border: 1px solid rgba(0,243,255,0.2);
+            margin: 4px 0; border: 1px solid var(--hud-border);
             border-radius: 4px; background: rgba(0, 5, 12, 0.85);
             overflow: hidden;
         }
@@ -108,14 +112,14 @@
             position: absolute; top: 48%; left: 50%;
             transform: translate(-50%, -50%);
             width: 360px; height: 360px; border-radius: 50%;
-            border: 1px dashed rgba(0, 243, 255, 0.25);
+            border: 1px dashed var(--hud-border);
             pointer-events: none; z-index: 0;
             display: flex; align-items: center; justify-content: center;
         }
 
         .radar-ring-out {
             width: 280px; height: 280px; border-radius: 50%;
-            border: 1px solid rgba(0, 243, 255, 0.4);
+            border: 1px solid var(--hud-border);
             animation: rotateCW 18s linear infinite;
         }
 
@@ -143,9 +147,9 @@
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
-            border-radius: 3px; padding: 10px;
+            border-radius: 3px; padding: 10px; min-height: 250px;
             overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.15); z-index: 1;
+            box-shadow: inset 0 0 10px var(--hud-glow); z-index: 1;
         }
 
         .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
@@ -154,18 +158,18 @@
 
         .hud-action-badge {
             display: inline-block; margin-top: 6px; padding: 4px 10px;
-            background: rgba(0, 243, 255, 0.2); border: 1px solid var(--hud-cyan);
+            background: var(--hud-glow); border: 1px solid var(--hud-cyan);
             border-radius: 4px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.72rem;
         }
         .hud-action-badge:hover { background: var(--hud-cyan); color: #000; }
 
         .hud-center-pill {
-            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
-            width: 80%; max-width: 580px;
+            position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+            width: 95%; max-width: 580px;
             background: rgba(1, 12, 24, 0.95);
             border: 1px solid var(--hud-cyan); border-radius: 20px;
-            padding: 6px 14px; display: flex; align-items: center; gap: 8px;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.25); z-index: 10;
+            padding: 6px 10px; display: flex; align-items: center; gap: 6px;
+            box-shadow: 0 0 15px var(--hud-glow); z-index: 100;
         }
 
         textarea {
@@ -173,26 +177,47 @@
             color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.82rem; outline: none;
         }
 
-        button {
+        button, select, input[type="text"] {
             background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
-            color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 10px; font-size: 0.72rem;
+            color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 8px; font-size: 0.7rem; outline: none;
         }
         button:hover { background: var(--hud-cyan); color: #000; }
 
-        #welcomeModal {
+        /* Modal Overlays */
+        .hud-modal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 85vw; max-width: 650px;
-            background: rgba(1, 10, 22, 0.96);
+            width: 90vw; max-width: 680px;
+            background: rgba(1, 10, 22, 0.98);
             border: 2px solid var(--hud-cyan); border-radius: 6px;
-            box-shadow: 0 0 35px rgba(0, 243, 255, 0.4);
-            z-index: 2000; flex-direction: column; padding: 16px; color: var(--hud-cyan);
+            box-shadow: 0 0 35px var(--hud-glow);
+            z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
         }
 
-        .welcome-header {
-            font-size: 0.9rem; font-weight: bold; letter-spacing: 1px;
+        .modal-header {
+            font-size: 0.85rem; font-weight: bold; letter-spacing: 1px;
             border-bottom: 1px solid var(--hud-cyan); padding-bottom: 8px;
             display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-top: 10px; gap: 10px; flex-wrap: wrap;
+        }
+
+        .setting-label { font-size: 0.75rem; font-weight: bold; }
+
+        .theme-swatch {
+            width: 22px; height: 22px; border-radius: 50%; border: 1px solid #fff; cursor: pointer; display: inline-block;
+        }
+
+        .translate-subtitle-box {
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--hud-border);
+            padding: 12px; border-radius: 4px; margin-top: 10px;
+            font-size: 1rem; line-height: 1.5; color: #fff;
+            box-shadow: inset 0 0 15px var(--hud-glow);
+            min-height: 80px; word-break: break-word;
         }
 
         .welcome-body {
@@ -211,18 +236,19 @@
         .wave-bar { width: 2px; height: 15%; background: var(--hud-cyan); transition: height 0.1s ease; }
 
         .blackout-active { background: #000 !important; background-image: none !important; }
-        .blackout-active .hud-top-bar, .blackout-active .desktop-only, .blackout-active .arc-radar-container { display: none !important; }
+        .blackout-active .hud-top-bar, .blackout-active .arc-radar-container { display: none !important; }
     </style>
 </head>
 <body>
 
     <div class="hud-top-bar" id="hudHeader">
-        <div><span class="status-pill"></span>JARVIS // JUST A RATHER VERY INTELLIGENT SYSTEM</div>
-        <div>SYSTEM STATUS: <span style="color: #00f3ff; font-weight: bold;">OPTIMAL</span></div>
+        <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
+        <div>STATUS: <span style="color: var(--hud-cyan); font-weight: bold;">OPTIMAL</span></div>
         <div id="liveClock">00:00:00</div>
-        <div>MARK LXXXV</div>
-        <button onclick="requestBluetoothPermission()">📶 BLUETOOTH</button>
-        <button onclick="runDiagnosticsSystem()">🔍 DIAGNOSTICS</button>
+        <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
+        <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
+        <button onclick="requestBluetoothPermission()">📶 BT</button>
+        <button onclick="runDiagnosticsSystem()">🔍 SCAN</button>
         <button onclick="showOnboardingGuide()">❓ HELP</button>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
@@ -235,89 +261,84 @@
             <div class="radar-core-tag">CORE<br>ACTIVE</div>
         </div>
 
-        <div class="hud-panel desktop-only" style="z-index: 1;">
-            <div class="panel-header"><span>HI-TECH INTERFACE //</span> <span>CORE DIAL</span></div>
-            
-            <div class="core-orb-widget">
-                <div class="core-label-top">HI-TECH INTERFACE</div>
-                <div class="core-stat-callout stat-43">43%</div>
-                <div class="core-stat-callout stat-71">71%</div>
-
-                <img id="cctvVideoFeed" src="" alt="CCTV Stream Feed">
-
-                <svg class="core-orb-svg" viewBox="0 0 300 200">
-                    <defs>
-                        <filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%">
-                            <feGaussianBlur stdDeviation="3" result="blur" />
-                            <feMerge>
-                                <feMergeNode in="blur" />
-                                <feMergeNode in="SourceGraphic" />
-                            </feMerge>
-                        </filter>
-                    </defs>
-
-                    <g stroke="#00f3ff" stroke-width="0.8" fill="none" opacity="0.4">
-                        <polygon points="30,25 38,20 46,25 46,35 38,40 30,35" />
-                        <polygon points="46,25 54,20 62,25 62,35 54,40 46,35" />
-                        <polygon points="38,40 46,35 54,40 54,50 46,55 38,50" />
-                        <polygon points="230,150 238,145 246,150 246,160 238,165 230,160" />
-                        <polygon points="246,150 254,145 262,150 262,160 254,165 246,160" />
-                    </g>
-
-                    <path d="M 65 60 A 80 80 0 0 0 65 140" stroke="#00f3ff" stroke-width="2.5" fill="none" filter="url(#cyanGlow)" />
-                    <path d="M 235 60 A 80 80 0 0 1 235 140" stroke="#00f3ff" stroke-width="2.5" fill="none" filter="url(#cyanGlow)" />
-
-                    <g stroke="#00f3ff" stroke-width="1" opacity="0.7">
-                        <line x1="58" y1="75" x2="48" y2="72" /><line x1="55" y1="88" x2="45" y2="87" /><line x1="54" y1="100" x2="44" y2="100" />
-                        <line x1="55" y1="112" x2="45" y2="113" /><line x1="58" y1="125" x2="48" y2="128" />
-                        <line x1="242" y1="75" x2="252" y2="72" /><line x1="245" y1="88" x2="255" y2="87" /><line x1="246" y1="100" x2="256" y2="100" />
-                        <line x1="245" y1="112" x2="255" y2="113" /><line x1="242" y1="125" x2="252" y2="128" />
-                    </g>
-
-                    <circle cx="150" cy="100" r="70" stroke="#00f3ff" stroke-width="3" fill="none" filter="url(#cyanGlow)" />
-                    <circle cx="150" cy="100" r="62" stroke="#00f3ff" stroke-width="6" fill="none" stroke-dasharray="8 4 12 4 4 4 16 6 8 8" opacity="0.9" />
-                    <circle cx="150" cy="100" r="48" stroke="#00f3ff" stroke-width="1.5" fill="none" stroke-dasharray="3 3" />
-                    <circle cx="150" cy="100" r="32" stroke="#00f3ff" stroke-width="2" fill="none" filter="url(#cyanGlow)" />
-                    <circle cx="150" cy="100" r="18" stroke="#00f3ff" stroke-width="1" fill="none" opacity="0.6" />
-
-                    <path d="M 180 35 L 220 35 L 245 50" stroke="#00f3ff" stroke-width="1.2" fill="none" />
-                    <path d="M 120 165 L 85 165 L 55 185" stroke="#00f3ff" stroke-width="1.2" fill="none" />
-                    
-                    <g stroke="#00f3ff" stroke-width="2" fill="none">
-                        <path d="M 85 168 L 92 160 L 99 168" />
-                        <path d="M 85 174 L 92 166 L 99 174" />
-                    </g>
-                </svg>
-
-                <canvas id="audioWaveCanvas" width="160" height="160"></canvas>
-            </div>
-
-            <div class="panel-header"><span>SYSTEM //</span> <span>VITAL SIGNS</span></div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 0.68rem;">Heart Rate</span>
-                <span style="font-size: 1.1rem; font-weight: bold;">72 <span style="font-size: 0.6rem;">BPM</span></span>
+        <div class="hud-panel" id="leftPanel">
+            <div class="panel-header" onclick="toggleDrawer('leftDrawer')">
+                <span>HI-TECH INTERFACE // CORE DIAL</span>
+                <span class="mobile-toggle" style="display:none;">▼ TOGGLE</span>
             </div>
             
-            <div class="ecg-box">
-                <svg width="100%" height="24" viewBox="0 0 200 24" fill="none" stroke="#00f3ff" stroke-width="1.5">
-                    <path d="M0 12 H40 L45 2 L50 22 L55 8 L60 16 L65 12 H200" />
-                </svg>
-            </div>
+            <div id="leftDrawer">
+                <div class="core-orb-widget">
+                    <div class="core-label-top">HI-TECH INTERFACE</div>
+                    <div class="core-stat-callout stat-43">43%</div>
+                    <div class="core-stat-callout stat-71">71%</div>
 
-            <div class="panel-header"><span>SYSTEM //</span> <span>RT-MONITOR</span></div>
-            <div class="gauge-row">
-                <div>CPU Load: 24%</div>
-                <div class="gauge-bg"><div class="gauge-fill" style="width: 24%;"></div></div>
-            </div>
-            <div class="gauge-row">
-                <div>Memory: 12.4 GB</div>
-                <div class="gauge-bg"><div class="gauge-fill" style="width: 45%;"></div></div>
+                    <img id="cctvVideoFeed" src="" alt="CCTV Stream Feed">
+
+                    <svg class="core-orb-svg" viewBox="0 0 300 200">
+                        <g stroke="var(--hud-cyan)" stroke-width="0.8" fill="none" opacity="0.4">
+                            <polygon points="30,25 38,20 46,25 46,35 38,40 30,35" />
+                            <polygon points="46,25 54,20 62,25 62,35 54,40 46,35" />
+                            <polygon points="38,40 46,35 54,40 54,50 46,55 38,50" />
+                            <polygon points="230,150 238,145 246,150 246,160 238,165 230,160" />
+                            <polygon points="246,150 254,145 262,150 262,160 254,165 246,160" />
+                        </g>
+
+                        <path d="M 65 60 A 80 80 0 0 0 65 140" stroke="var(--hud-cyan)" stroke-width="2.5" fill="none" />
+                        <path d="M 235 60 A 80 80 0 0 1 235 140" stroke="var(--hud-cyan)" stroke-width="2.5" fill="none" />
+
+                        <g stroke="var(--hud-cyan)" stroke-width="1" opacity="0.7">
+                            <line x1="58" y1="75" x2="48" y2="72" /><line x1="55" y1="88" x2="45" y2="87" /><line x1="54" y1="100" x2="44" y2="100" />
+                            <line x1="55" y1="112" x2="45" y2="113" /><line x1="58" y1="125" x2="48" y2="128" />
+                            <line x1="242" y1="75" x2="252" y2="72" /><line x1="245" y1="88" x2="255" y2="87" /><line x1="246" y1="100" x2="256" y2="100" />
+                            <line x1="245" y1="112" x2="255" y2="113" /><line x1="242" y1="125" x2="252" y2="128" />
+                        </g>
+
+                        <circle cx="150" cy="100" r="70" stroke="var(--hud-cyan)" stroke-width="3" fill="none" />
+                        <circle cx="150" cy="100" r="62" stroke="var(--hud-cyan)" stroke-width="6" fill="none" stroke-dasharray="8 4 12 4 4 4 16 6 8 8" opacity="0.9" />
+                        <circle cx="150" cy="100" r="48" stroke="var(--hud-cyan)" stroke-width="1.5" fill="none" stroke-dasharray="3 3" />
+                        <circle cx="150" cy="100" r="32" stroke="var(--hud-cyan)" stroke-width="2" fill="none" />
+                        <circle cx="150" cy="100" r="18" stroke="var(--hud-cyan)" stroke-width="1" fill="none" opacity="0.6" />
+
+                        <path d="M 180 35 L 220 35 L 245 50" stroke="var(--hud-cyan)" stroke-width="1.2" fill="none" />
+                        <path d="M 120 165 L 85 165 L 55 185" stroke="var(--hud-cyan)" stroke-width="1.2" fill="none" />
+                        
+                        <g stroke="var(--hud-cyan)" stroke-width="2" fill="none">
+                            <path d="M 85 168 L 92 160 L 99 168" />
+                            <path d="M 85 174 L 92 166 L 99 174" />
+                        </g>
+                    </svg>
+
+                    <canvas id="audioWaveCanvas" width="160" height="160"></canvas>
+                </div>
+
+                <div class="panel-header"><span>SYSTEM //</span> <span>VITAL SIGNS</span></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top:4px;">
+                    <span style="font-size: 0.68rem;">Heart Rate</span>
+                    <span style="font-size: 1.1rem; font-weight: bold;">72 <span style="font-size: 0.6rem;">BPM</span></span>
+                </div>
+                
+                <div class="ecg-box">
+                    <svg width="100%" height="24" viewBox="0 0 200 24" fill="none" stroke="var(--hud-cyan)" stroke-width="1.5">
+                        <path d="M0 12 H40 L45 2 L50 22 L55 8 L60 16 L65 12 H200" />
+                    </svg>
+                </div>
+
+                <div class="panel-header"><span>SYSTEM //</span> <span>RT-MONITOR</span></div>
+                <div class="gauge-row">
+                    <div>CPU Load: 24%</div>
+                    <div class="gauge-bg"><div class="gauge-fill" style="width: 24%;"></div></div>
+                </div>
+                <div class="gauge-row">
+                    <div>Memory: 12.4 GB</div>
+                    <div class="gauge-bg"><div class="gauge-fill" style="width: 45%;"></div></div>
+                </div>
             </div>
         </div>
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System online. Bluetooth gateway, smartwatch tile link, CCTV orb stream, and proactive tactical tips active, Sir.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System online. Initialized with personalized user configuration. Awaiting command.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -326,35 +347,39 @@
             </div>
         </div>
 
-        <div class="hud-panel desktop-only" style="z-index: 1;">
-            <div class="panel-header"><span>SYSTEM //</span> <span>ARMOR STATUS</span></div>
+        <div class="hud-panel" id="rightPanel">
+            <div class="panel-header" onclick="toggleDrawer('rightDrawer')">
+                <span>SYSTEM // ARMOR STATUS</span>
+                <span class="mobile-toggle" style="display:none;">▼ TOGGLE</span>
+            </div>
             
-            <div class="gauge-row">
-                <div>POWER CORE: 98%</div>
-                <div class="gauge-bg"><div class="gauge-fill" style="width: 98%;"></div></div>
-            </div>
+            <div id="rightDrawer">
+                <div class="gauge-row" style="margin-top:4px;">
+                    <div>POWER CORE: 98%</div>
+                    <div class="gauge-bg"><div class="gauge-fill" style="width: 98%;"></div></div>
+                </div>
 
-            <div class="gauge-row">
-                <div>STRUCTURAL: 100%</div>
-                <div class="gauge-bg"><div class="gauge-fill" style="width: 100%;"></div></div>
-            </div>
+                <div class="gauge-row">
+                    <div>STRUCTURAL: 100%</div>
+                    <div class="gauge-bg"><div class="gauge-fill" style="width: 100%;"></div></div>
+                </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">
-                <button onclick="sendCommandCustom('scan cctv')">📹 CCTV SCAN</button>
-                <button onclick="fetchGlobalNews()">📰 NEWS</button>
-                <button onclick="request2FACode()">🔑 2FA</button>
-                <button onclick="sendCommandCustom('blackout')">🕶️ STEALTH</button>
-            </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px;">
+                    <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
+                    <button onclick="sendCommandCustom('scan cctv')">📹 CCTV</button>
+                    <button onclick="fetchGlobalNews()">📰 NEWS</button>
+                    <button onclick="request2FACode()">🔑 2FA</button>
+                </div>
 
-            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
+                <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
 
-            <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
-            <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
-                <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
-                <div>[12:45:12] BLUETOOTH API GATEWAY READY</div>
-                <div>[12:45:22] WATCH HUD COMPANION LINKED</div>
-                <div>[12:45:34] CCTV ORB OVERLAY ONLINE</div>
-                <div>[12:45:45] PROACTIVE TIPS ENABLED</div>
+                <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
+                <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px; margin-top:4px;">
+                    <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
+                    <div>[12:45:12] CUSTOM SETTINGS LOADED</div>
+                    <div>[12:45:22] HONORIFIC CONFIRMED</div>
+                    <div>[12:45:34] ALL SUBROUTINES ACTIVE</div>
+                </div>
             </div>
         </div>
 
@@ -364,39 +389,108 @@
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
         <button id="micBtn" onclick="toggleVoiceChat()">🎙️ IDLE</button>
-        <textarea id="userInput" placeholder="Awaiting command... (Enter to Send)"></textarea>
+        <textarea id="userInput" placeholder="Command J.A.R.V.I.S..."></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
     <div id="filePreview" style="position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #fff; z-index: 10;"></div>
 
+    <!-- Interactive Settings Modal -->
+    <div class="hud-modal" id="settingsModal">
+        <div class="modal-header">
+            <div>⚙️ STARK INDUSTRIES // SYSTEM CONFIGURATION</div>
+            <button onclick="closeSettingsHUD()">✕ CLOSE</button>
+        </div>
+
+        <div class="setting-row">
+            <span class="setting-label">Preferred Honorific Title:</span>
+            <select id="settingHonorific" onchange="saveCustomSettings()">
+                <option value="Sir">Sir</option>
+                <option value="Ma'am">Ma'am</option>
+                <option value="Commander">Commander</option>
+                <option value="Boss">Boss</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <span class="setting-label">Custom Wake Word:</span>
+            <input type="text" id="settingWakeWord" style="width: 130px;" placeholder="jarvis" onchange="saveCustomSettings()">
+        </div>
+
+        <div class="setting-row">
+            <span class="setting-label">Primary HUD Theme Color:</span>
+            <div>
+                <span class="theme-swatch" style="background: #00f3ff;" onclick="applyHUDTheme('#00f3ff')"></span>
+                <span class="theme-swatch" style="background: #ff2200;" onclick="applyHUDTheme('#ff2200')"></span>
+                <span class="theme-swatch" style="background: #ffb700;" onclick="applyHUDTheme('#ffb700')"></span>
+                <span class="theme-swatch" style="background: #00ff66;" onclick="applyHUDTheme('#00ff66')"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Translate HUD Modal -->
+    <div class="hud-modal" id="translateModal">
+        <div class="modal-header">
+            <div>🌐 STARK INDUSTRIES // NEURAL TRANSLATION HUD</div>
+            <button onclick="closeTranslateHUD()">✕ CLOSE</button>
+        </div>
+        <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+            <label style="font-size: 0.72rem;">Target Language:</label>
+            <select id="targetLangSelect" style="flex:1;">
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Mandarin Chinese">Mandarin Chinese</option>
+            </select>
+            <button onclick="triggerTranslateDictation()">🎙️ SPEAK INPUT</button>
+        </div>
+
+        <div style="margin-top: 10px; font-size: 0.7rem; opacity: 0.8;">Live Subtitle Output:</div>
+        <div class="translate-subtitle-box" id="translateSubtitleBox">
+            <span style="color: var(--hud-cyan); font-style: italic;">Awaiting foreign language speech or text input...</span>
+        </div>
+    </div>
+
+    <!-- Initial Onboarding & Customization Welcome Modal -->
     <div id="welcomeModal">
-        <div class="welcome-header">
-            <div>STARK INDUSTRIES // MARK LXXXV INITIALIZATION GUIDE</div>
-            <button onclick="closeWelcomeModal()">✕ START</button>
+        <div class="modal-header">
+            <div>STARK INDUSTRIES // MARK LXXXV SYSTEM INITIALIZATION</div>
         </div>
         <div class="welcome-body">
-            <div>Welcome. J.A.R.V.I.S. is online and fully configured for tactical assistance, CCTV scanning, Bluetooth device management, and Smartwatch HUD integration.</div>
+            <div>Welcome. J.A.R.V.I.S. is online. Please configure your identity and HUD presentation preferences:</div>
             
             <div class="command-card">
-                <b>⌚ Smartwatch Companion Tile:</b><br>
-                Access J.A.R.V.I.S. on Wear OS, Apple Watch, or Garmin smartwatches by opening <code>/watch</code> in your smartwatch browser.
+                <b>👤 Address Me As:</b><br>
+                <div style="margin-top: 4px; display: flex; gap: 6px;">
+                    <button onclick="setWelcomeHonorific('Sir')">Sir</button>
+                    <button onclick="setWelcomeHonorific('Ma\'am')">Ma'am</button>
+                    <button onclick="setWelcomeHonorific('Commander')">Commander</button>
+                </div>
             </div>
 
             <div class="command-card">
-                <b>📹 CCTV Camera Live Stream:</b><br>
-                Ask <i>"Scan CCTV"</i> to scan your local network for IP camera feeds and view live footage inside the Core Orb visualizer.
+                <b>🎨 Preferred HUD Color Theme:</b><br>
+                <div style="margin-top: 4px; display: flex; gap: 10px;">
+                    <span class="theme-swatch" style="background: #00f3ff;" onclick="applyHUDTheme('#00f3ff')"></span> Cyan
+                    <span class="theme-swatch" style="background: #ff2200;" onclick="applyHUDTheme('#ff2200')"></span> Red
+                    <span class="theme-swatch" style="background: #ffb700;" onclick="applyHUDTheme('#ffb700')"></span> Gold
+                    <span class="theme-swatch" style="background: #00ff66;" onclick="applyHUDTheme('#00ff66')"></span> Emerald
+                </div>
             </div>
 
             <div class="command-card">
-                <b>📶 Permission-Gated Bluetooth:</b><br>
-                Click the <b>BLUETOOTH</b> header button to request permission and link to nearby peripherals.
+                <b>⚡ Integrated System Capabilities:</b><br>
+                • Verbalized Symbol Math Synthesis & Clean Speech<br>
+                • Open-Meteo Global Weather Telemetry<br>
+                • Pre-Loaded Google Maps Search Navigation<br>
+                • Multi-Format File Reader & Dynamic Exporter<br>
+                • CCTV Network Scan & Core Orb Live Stream<br>
+                • Neural Universal Translation with Accurate Subtitles<br>
+                • WebBluetooth Permission Gateways & Watch HUD (`/watch`)
             </div>
 
-            <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
-                <label style="font-size: 0.72rem;">Custom Wake Phrase:</label>
-                <input type="text" id="wakePhraseInput" placeholder="jarvis" style="background:#000; border:1px solid var(--hud-cyan); color:#00f3ff; padding:3px 6px; border-radius:3px; flex:1;">
-                <button onclick="saveWakeWordFromInput()">Save</button>
-            </div>
+            <button style="margin-top: 10px; padding: 8px; width: 100%;" onclick="closeWelcomeModal()">🚀 LAUNCH HUD INITIALIZATION</button>
         </div>
     </div>
 
@@ -408,6 +502,7 @@
         let isListening = false;
         let userLat = null, userLon = null;
         let customWakeWord = "jarvis";
+        let userHonorific = "Sir";
 
         let currentAudio = null;
         let audioCtx = null;
@@ -429,6 +524,13 @@
             );
         }
 
+        function toggleDrawer(id) {
+            if (window.innerWidth <= 850) {
+                const el = document.getElementById(id);
+                if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+            }
+        }
+
         async function toggleWakeLock() {
             try {
                 if ('wakeLock' in navigator) { await navigator.wakeLock.request('screen'); alert("Wake Lock Active."); }
@@ -438,6 +540,12 @@
         window.addEventListener('load', () => {
             const savedWake = localStorage.getItem('jarvis_wakeword');
             if (savedWake) customWakeWord = savedWake;
+
+            const savedHonorific = localStorage.getItem('jarvis_honorific');
+            if (savedHonorific) userHonorific = savedHonorific;
+
+            const savedTheme = localStorage.getItem('jarvis_theme');
+            if (savedTheme) applyHUDTheme(savedTheme);
 
             const isFirstTime = !localStorage.getItem('jarvis_onboarded');
             if (isFirstTime) {
@@ -449,7 +557,6 @@
 
         function showOnboardingGuide() {
             document.getElementById('welcomeModal').style.display = 'flex';
-            document.getElementById('wakePhraseInput').value = customWakeWord;
         }
 
         function closeWelcomeModal() {
@@ -457,16 +564,85 @@
             document.getElementById('welcomeModal').style.display = 'none';
         }
 
-        function saveWakeWordFromInput() {
-            const val = document.getElementById('wakePhraseInput').value;
-            if (val) {
-                customWakeWord = val.toLowerCase().trim();
-                localStorage.setItem('jarvis_wakeword', customWakeWord);
-                alert(`Wake phrase updated to: "${customWakeWord}"`);
-            }
+        function setWelcomeHonorific(title) {
+            userHonorific = title;
+            localStorage.setItem('jarvis_honorific', title);
+            alert(`Title updated to: ${title}`);
         }
 
-        /* WebBluetooth Permission-Gated Scanning */
+        function openSettingsHUD() {
+            document.getElementById('settingWakeWord').value = customWakeWord;
+            document.getElementById('settingHonorific').value = userHonorific;
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        function closeSettingsHUD() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function saveCustomSettings() {
+            customWakeWord = document.getElementById('settingWakeWord').value.toLowerCase().trim() || "jarvis";
+            userHonorific = document.getElementById('settingHonorific').value || "Sir";
+            localStorage.setItem('jarvis_wakeword', customWakeWord);
+            localStorage.setItem('jarvis_honorific', userHonorific);
+        }
+
+        function applyHUDTheme(hexColor) {
+            document.documentElement.style.setProperty('--hud-cyan', hexColor);
+            document.documentElement.style.setProperty('--hud-border', hexColor + '55');
+            document.documentElement.style.setProperty('--hud-glow', hexColor + '44');
+            localStorage.setItem('jarvis_theme', hexColor);
+        }
+
+        function openTranslateHUD() {
+            document.getElementById('translateModal').style.display = 'flex';
+        }
+
+        function closeTranslateHUD() {
+            document.getElementById('translateModal').style.display = 'none';
+        }
+
+        function triggerTranslateDictation() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const transRec = new SpeechRecognition();
+            transRec.continuous = false;
+            transRec.interimResults = false;
+
+            transRec.onstart = () => {
+                document.getElementById('translateSubtitleBox').innerHTML = `<span style="color:var(--hud-cyan);">[LISTENING FOR FOREIGN SPEECH...]</span>`;
+            };
+
+            transRec.onresult = async (e) => {
+                const textSpoken = e.results[0][0].transcript;
+                const targetLang = document.getElementById('targetLangSelect').value;
+
+                document.getElementById('translateSubtitleBox').innerHTML = `<b>Input:</b> "${textSpoken}"<br><span style="color:var(--hud-cyan);">[TRANSLATING TO ${targetLang.toUpperCase()}...]</span>`;
+
+                try {
+                    const res = await fetch('/api/translate', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({text: textSpoken, target_lang: targetLang, honorific: userHonorific})
+                    });
+                    const data = await res.json();
+                    
+                    document.getElementById('translateSubtitleBox').innerHTML = `
+                        <div style="font-size:0.75rem; opacity:0.8; margin-bottom:4px;">INPUT (${data.target_lang}): "${data.original_text}"</div>
+                        <div style="color:var(--hud-cyan); font-weight:bold;">SUBTITLE: "${data.translated_text}"</div>
+                    `;
+
+                    if (data.audio) {
+                        playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime());
+                    }
+                } catch(e) {
+                    document.getElementById('translateSubtitleBox').innerHTML = `<span style="color:red;">Translation Anomaly. Check connection.</span>`;
+                }
+            };
+
+            transRec.start();
+        }
+
         async function requestBluetoothPermission() {
             const terminal = document.getElementById('chat-terminal');
             if (!navigator.bluetooth) {
@@ -474,13 +650,11 @@
                 return;
             }
             try {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Requesting user permission to pair Bluetooth peripherals...</div>`;
-                const device = await navigator.bluetooth.requestDevice({
-                    acceptAllDevices: true
-                });
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Full permission granted! Paired to <b>${device.name || 'Bluetooth Peripheral'}</b>.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Requesting permission to pair Bluetooth device...</div>`;
+                const device = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Permission granted! Paired to <b>${device.name || 'Device'}</b>.</div>`;
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Bluetooth pairing aborted. Permission denied by user.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (BLUETOOTH):</b> Pairing aborted or denied by user.</div>`;
             }
         }
 
@@ -542,7 +716,7 @@
             recognition.onstart = function() {
                 isListening = true;
                 const micBtn = document.getElementById('micBtn');
-                micBtn.innerText = '🔊 RECORDING';
+                micBtn.innerText = '🔊 REC';
                 micBtn.style.background = 'var(--hud-cyan)';
                 micBtn.style.color = '#000';
             };
@@ -635,7 +809,7 @@
             try {
                 const res = await fetch('/api/request_2fa', { method: 'POST' });
                 const data = await res.json();
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (SECURITY):</b> Security OTP Code Generated: <b>${data.demo_code}</b>, Sir.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (SECURITY):</b> Security OTP Code Generated: <b>${data.demo_code}</b>, ${userHonorific}.</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
             } catch (e) {}
         }
@@ -669,6 +843,7 @@
                 files: pendingFiles,
                 latitude: userLat,
                 longitude: userLon,
+                honorific: userHonorific,
                 device_type: isMobile ? 'mobile' : 'desktop'
             };
 
@@ -683,6 +858,9 @@
                 });
                 const data = await res.json();
 
+                if (data.open_translate_hud) { openTranslateHUD(); }
+                if (data.close_translate_hud) { closeTranslateHUD(); }
+
                 if (data.blackout) { document.body.classList.add('blackout-active'); }
                 if (data.disable_blackout) { document.body.classList.remove('blackout-active'); }
 
@@ -695,11 +873,11 @@
                 let appendHtml = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}`;
                 
                 if (data.google_maps_url) {
-                    appendHtml += `<br><a class="hud-action-badge" href="${data.google_maps_url}" target="_blank">🗺️ Open Google Maps Destination</a>`;
+                    appendHtml += `<br><a class="hud-action-badge" href="${data.google_maps_url}" target="_blank">MAPS LINK</a>`;
                 }
 
                 if (data.created_file_url) {
-                    appendHtml += `<br><a class="hud-action-badge" href="${data.created_file_url}" download>💾 Download ${data.created_filename}</a>`;
+                    appendHtml += `<br><a class="hud-action-badge" href="${data.created_file_url}" download>SAVE FILE</a>`;
                 }
 
                 appendHtml += `</div>`;
@@ -766,9 +944,9 @@
                 const radius = 32;
 
                 ctx.beginPath();
-                ctx.strokeStyle = '#00f3ff';
+                ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--hud-cyan').trim() || '#00f3ff';
                 ctx.lineWidth = 2;
-                ctx.shadowColor = '#00f3ff';
+                ctx.shadowColor = ctx.strokeStyle;
                 ctx.shadowBlur = 8;
 
                 const bars = dataArray.length;

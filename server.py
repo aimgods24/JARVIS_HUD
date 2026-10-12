@@ -143,7 +143,6 @@ def home():
 
 @app.route('/watch')
 def watch_tile():
-    """Universal Smartwatch Widget Interface (Wear OS, Apple Watch, Tizen, Garmin)"""
     watch_html = """
     <!DOCTYPE html>
     <html>
@@ -191,16 +190,7 @@ def watch_tile():
 
 @app.route('/manifest.json')
 def manifest():
-    manifest_data = {
-        "name": "JARVIS Mark LXXXV Tactical HUD",
-        "short_name": "JARVIS HUD",
-        "start_url": "/",
-        "display": "standalone",
-        "background_color": "#010810",
-        "theme_color": "#00f3ff",
-        "icons": []
-    }
-    return jsonify(manifest_data)
+    return jsonify({"name": "JARVIS Mark LXXXV HUD", "short_name": "JARVIS", "start_url": "/", "display": "standalone", "theme_color": "#00f3ff"})
 
 @app.route('/sw.js')
 def service_worker():
@@ -227,7 +217,6 @@ def get_news():
 
 @app.route('/api/scan_cctv', methods=['GET'])
 def scan_cctv():
-    """Scans local network for accessible MJPEG/HTTP CCTV streams."""
     demo_cctv_streams = [
         {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
         {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"}
@@ -274,7 +263,7 @@ def run_diagnostics():
         status_summary['free_disk'] = 'UNKNOWN'
 
     diagnostic_report = (
-        f"Diagnostic Scan Complete, Sir.\n\n"
+        f"Diagnostic Scan Complete.\n\n"
         f"• Local LLM Engine: {status_summary.get('ollama')}\n"
         f"• Weather Telemetry: {status_summary.get('weather_api')}\n"
         f"• Memory Archive: {status_summary.get('memory_archive')}\n"
@@ -291,6 +280,63 @@ def run_diagnostics():
 @app.route('/api/download_generated/<filename>')
 def download_generated(filename):
     return send_from_directory(GENERATED_FILES_DIR, filename, as_attachment=True)
+
+@app.route('/api/translate', methods=['POST'])
+def translate_audio_or_text():
+    data = request.json or {}
+    text = data.get('text', '').strip()
+    target_lang = data.get('target_lang', 'English').strip()
+
+    if not text:
+        return jsonify({'status': 'error', 'response': 'No speech or text provided to translate.'})
+
+    system_instructions = (
+        f"You are J.A.R.V.I.S.'s Real-Time Neural Translation Subroutine. "
+        f"Translate the following input text accurately into {target_lang}. "
+        f"Provide ONLY a clean JSON response with two keys: "
+        f"'original_text' (containing original input) and 'translated_text' (containing high-accuracy translation in {target_lang})."
+    )
+
+    translated_text = ""
+    if HAS_OLLAMA:
+        try:
+            response = ollama.chat(
+                model='qwen2.5:0.5b',
+                messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": text}],
+                options={"temperature": 0.1}
+            )
+            raw = response['message']['content'].strip()
+            translated_text = raw
+        except Exception:
+            translated_text = ""
+
+    if not translated_text:
+        try:
+            res = list(DDGS().text(f"translate '{text}' to {target_lang}", max_results=1))
+            if res:
+                translated_text = res[0]['body']
+        except Exception:
+            pass
+
+    if not translated_text:
+        translated_text = f"[TRANSLATION TO {target_lang.upper()}]: {text}"
+
+    spoken_text = convert_symbols_to_words(translated_text)
+    
+    has_audio = False
+    try:
+        asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", "-3Hz", "+2%"))
+        has_audio = True
+    except Exception:
+        has_audio = False
+
+    return jsonify({
+        'status': 'success',
+        'original_text': text,
+        'translated_text': translated_text,
+        'target_lang': target_lang,
+        'audio': has_audio
+    })
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
@@ -317,12 +363,22 @@ def ask():
     trigger_blackout = False
     disable_blackout = False
     cctv_stream_url = None
+    open_translate_hud = False
+    close_translate_hud = False
 
-    if "disable blackout" in cmd_lower or "exit blackout" in cmd_lower or "turn off blackout" in cmd_lower or "disable stealth" in cmd_lower:
+    if "open translate" in cmd_lower or "activate translate" in cmd_lower or "start translate" in cmd_lower:
+        open_translate_hud = True
+        reply = f"Job done, {honorific}. Activating Universal Neural Translation HUD overlay now."
+
+    elif "close translate" in cmd_lower or "disable translate" in cmd_lower or "exit translate" in cmd_lower:
+        close_translate_hud = True
+        reply = f"Job done, {honorific}. Universal Translation HUD overlay deactivated."
+
+    elif "disable blackout" in cmd_lower or "exit blackout" in cmd_lower or "turn off blackout" in cmd_lower:
         disable_blackout = True
         reply = f"Job done, {honorific}. Stealth blackout mode disabled."
 
-    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower or "connect cctv" in cmd_lower or "cctv" in cmd_lower:
+    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower or "connect cctv" in cmd_lower:
         cctv_data = scan_cctv().get_json()
         cams = cctv_data.get('cameras', [])
         if cams:
@@ -385,7 +441,7 @@ def ask():
             "You are J.A.R.V.I.S., a hyper-intelligent AI created by Stark Industries. "
             "Analyze questions, homework problems, pasted text, and dropped files accurately. "
             "IMPORTANT: Always append a short, highly actionable '💡 Proactive Tactical Tip:' at the end of your response to give the user advice or tips on what they asked. "
-            f"Always complete your response addressing the user strictly as {honorific}. "
+            f"Always complete your response addressing the user strictly using their chosen title: '{honorific}'. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
         )
 
@@ -416,7 +472,6 @@ def ask():
             reply += f"\n\n💡 Proactive Tactical Tip: For maximum output precision, specify exact constraints or frameworks when issuing complex prompts, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
-    clean_text = re.sub(rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$', '', clean_text, flags=re.IGNORECASE).strip()
     clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
 
     spoken_verbal_text = convert_symbols_to_words(clean_text)
@@ -437,7 +492,9 @@ def ask():
         'created_filename': created_filename,
         'blackout': trigger_blackout,
         'disable_blackout': disable_blackout,
-        'cctv_stream_url': cctv_stream_url
+        'cctv_stream_url': cctv_stream_url,
+        'open_translate_hud': open_translate_hud,
+        'close_translate_hud': close_translate_hud
     })
 
 async def generate_voice_file(text, voice, pitch, rate):
