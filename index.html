@@ -10,9 +10,9 @@
         :root {
             --hud-cyan: #00f3ff;
             --hud-blue: #0088ff;
-            --hud-glow: rgba(0, 243, 255, 0.5);
+            --hud-glow: rgba(0, 243, 255, 0.55);
             --hud-bg: #010810;
-            --hud-panel: rgba(1, 12, 24, 0.9);
+            --hud-panel: rgba(1, 12, 24, 0.92);
             --hud-border: rgba(0, 243, 255, 0.35);
         }
 
@@ -32,7 +32,7 @@
                 linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
         }
 
-        /* Top Bar */
+        /* Header Telemetry Bar */
         .hud-top-bar {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--hud-border);
@@ -46,10 +46,10 @@
             box-shadow: 0 0 8px var(--hud-cyan); margin-right: 4px;
         }
 
-        /* Main Workspace Grid */
+        /* Workspace Grid */
         .hud-workspace {
             display: grid;
-            grid-template-columns: 280px 1fr 280px;
+            grid-template-columns: 310px 1fr 280px;
             gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
             position: relative;
         }
@@ -69,14 +69,92 @@
             overflow: hidden; position: relative;
         }
 
-        /* Bracketed Header */
         .panel-header {
             font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
             display: flex; justify-content: space-between; opacity: 0.8;
             border-bottom: 1px dashed rgba(0,243,255,0.25); padding-bottom: 3px;
         }
 
-        /* Center Arc Radar Screen */
+        /* Left-Panel Concentric Core Orb Widget */
+        .orb-widget-box {
+            position: relative;
+            width: 100%; height: 210px;
+            background: rgba(0, 10, 22, 0.7);
+            border: 1px solid rgba(0, 243, 255, 0.3);
+            border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.12);
+        }
+
+        /* Callout Text Elements */
+        .callout-tag {
+            position: absolute; font-size: 0.62rem; font-weight: bold; letter-spacing: 1px;
+            color: var(--hud-cyan); text-shadow: 0 0 6px var(--hud-cyan);
+        }
+        .callout-top-left { top: 6px; left: 8px; }
+        .callout-top-right { top: 6px; right: 8px; }
+        .callout-bottom-left { bottom: 6px; left: 8px; }
+        .callout-bottom-right { bottom: 6px; right: 8px; }
+
+        /* SVG Honeycomb Pattern overlays */
+        .honeycomb-svg {
+            position: absolute; width: 48px; height: 48px; opacity: 0.45;
+            pointer-events: none; filter: drop-shadow(0 0 4px var(--hud-cyan));
+        }
+        .hc-top-left { top: 22px; left: 8px; }
+        .hc-bottom-right { bottom: 22px; right: 8px; }
+
+        /* Concentric Rotating Rings */
+        .orb-core-outer {
+            width: 155px; height: 155px; border-radius: 50%;
+            border: 2px solid var(--hud-cyan);
+            border-top: 4px solid transparent;
+            border-bottom: 4px solid transparent;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; animation: spinCW 14s linear infinite;
+        }
+
+        .orb-flank-left {
+            position: absolute; left: 18px; width: 22px; height: 110px;
+            border-left: 2px solid var(--hud-cyan); border-radius: 50% 0 0 50%;
+            border-top: 1px solid var(--hud-cyan); border-bottom: 1px solid var(--hud-cyan);
+            opacity: 0.7;
+        }
+
+        .orb-flank-right {
+            position: absolute; right: 18px; width: 22px; height: 110px;
+            border-right: 2px solid var(--hud-cyan); border-radius: 0 50% 50% 0;
+            border-top: 1px solid var(--hud-cyan); border-bottom: 1px solid var(--hud-cyan);
+            opacity: 0.7;
+        }
+
+        .orb-core-mid {
+            position: absolute; width: 115px; height: 115px; border-radius: 50%;
+            border: 1px dashed var(--hud-cyan);
+            animation: spinCCW 8s linear infinite;
+        }
+
+        .orb-core-center {
+            position: absolute; width: 75px; height: 75px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 243, 255, 0.35) 0%, rgba(1, 12, 24, 0.95) 80%);
+            border: 1px solid var(--hud-cyan);
+            box-shadow: 0 0 12px var(--hud-cyan);
+            display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Soundwave Canvas Overlay */
+        #orbWaveCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 5;
+        }
+
+        @keyframes spinCW { 100% { transform: rotate(360deg); } }
+        @keyframes spinCCW { 100% { transform: rotate(-360deg); } }
+
+        /* Center Arc Radar */
         .arc-radar-container {
             position: absolute; top: 48%; left: 50%;
             transform: translate(-50%, -50%);
@@ -89,13 +167,13 @@
         .radar-ring-out {
             width: 280px; height: 280px; border-radius: 50%;
             border: 1px solid rgba(0, 243, 255, 0.4);
-            animation: rotateCW 18s linear infinite;
+            animation: spinCW 18s linear infinite;
         }
 
         .radar-ring-mid {
             position: absolute; width: 180px; height: 180px; border-radius: 50%;
             border: 1px dashed var(--hud-cyan);
-            animation: rotateCCW 10s linear infinite;
+            animation: spinCCW 10s linear infinite;
         }
 
         .radar-core-tag {
@@ -104,10 +182,7 @@
             padding: 4px 8px; border-radius: 3px; box-shadow: 0 0 12px var(--hud-cyan);
         }
 
-        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
-        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
-
-        /* Progress Bars */
+        /* Gauges */
         .gauge-row { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
         .gauge-bg { background: rgba(0, 0, 0, 0.6); height: 5px; border: 1px solid var(--hud-border); border-radius: 2px; }
         .gauge-fill { height: 100%; background: var(--hud-cyan); box-shadow: 0 0 6px var(--hud-cyan); }
@@ -120,7 +195,7 @@
         }
         #leaflet-map { width: 100%; height: 100%; }
 
-        /* Terminal Output Box */
+        /* Terminal Display */
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
@@ -236,8 +311,46 @@
             <div class="radar-core-tag">CORE<br>ACTIVE</div>
         </div>
 
-        <!-- Left Column: VITAL SIGNS & RT-MONITOR -->
+        <!-- Left Column: HI-TECH ORB WIDGET & VITAL SIGNS -->
         <div class="hud-panel desktop-only" style="z-index: 1;">
+            <div class="panel-header"><span>INTERFACE //</span> <span>CORE DIAL</span></div>
+            
+            <!-- Concentric Core Orb Widget [Matches Reference] -->
+            <div class="orb-widget-box">
+                <canvas id="orbWaveCanvas"></canvas>
+                
+                <span class="callout-tag callout-top-left">HI-TECH INTERFACE</span>
+                <span class="callout-tag callout-top-right">43%</span>
+                <span class="callout-tag callout-bottom-left">71%</span>
+                <span class="callout-tag callout-bottom-right">FUTURISTIC</span>
+
+                <!-- Honeycomb Cluster SVG -->
+                <svg class="honeycomb-svg hc-top-left" viewBox="0 0 100 100" stroke="#00f3ff" fill="none" stroke-width="2">
+                    <polygon points="30,5 50,5 60,22 50,39 30,39 20,22" />
+                    <polygon points="55,22 75,22 85,39 75,56 55,56 45,39" />
+                    <polygon points="30,39 50,39 60,56 50,73 30,73 20,56" />
+                </svg>
+
+                <svg class="honeycomb-svg hc-bottom-right" viewBox="0 0 100 100" stroke="#00f3ff" fill="none" stroke-width="2">
+                    <polygon points="30,5 50,5 60,22 50,39 30,39 20,22" />
+                    <polygon points="55,22 75,22 85,39 75,56 55,56 45,39" />
+                </svg>
+
+                <!-- Flanking Curved Arcs -->
+                <div class="orb-flank-left"></div>
+                <div class="orb-flank-right"></div>
+
+                <!-- Concentric Rotating Core -->
+                <div class="orb-core-outer">
+                    <div class="orb-core-mid"></div>
+                    <div class="orb-core-center">
+                        <span style="font-size: 0.52rem; font-weight: bold; letter-spacing: 1px;">SPEECH<br>DSP</span>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
+
             <div class="panel-header"><span>SYSTEM //</span> <span>VITAL SIGNS</span></div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="font-size: 0.68rem;">Heart Rate</span>
@@ -268,19 +381,6 @@
                 <div>Memory: 12.4 GB</div>
                 <div class="gauge-bg"><div class="gauge-fill" style="width: 45%;"></div></div>
             </div>
-
-            <div class="gauge-row">
-                <div>Storage: 89%</div>
-                <div class="gauge-bg"><div class="gauge-fill" style="width: 89%;"></div></div>
-            </div>
-
-            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
-
-            <div class="panel-header"><span>SYSTEM //</span> <span>NETWORK</span></div>
-            <div style="font-size: 0.65rem; text-align: center; border: 1px solid var(--hud-border); padding: 6px; border-radius: 3px;">
-                📶 SIGNAL ENCRYPTED<br>
-                <span style="font-size: 0.58rem; opacity: 0.8;">STARK-SAT-3 UPLINK: 5GB/S</span>
-            </div>
         </div>
 
         <!-- Center Column: Terminal Display -->
@@ -290,7 +390,7 @@
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System integrity check complete. Academic engine, Python code generator, and wake-word listener ready, Sir.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System active. Speech DSP visualizer initialized. Say your wake phrase to speak, Sir.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -326,9 +426,9 @@
             <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
                 <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
                 <div>[12:45:12] BIO-SYNC STABLE AT 98.4%</div>
-                <div>[12:45:22] WAKE WORD DAEMON ACTIVE</div>
-                <div>[12:45:34] HOMEWORK/PYTHON ENGINE ONLINE</div>
-                <div>[12:45:45] AWAITING COMMAND...</div>
+                <div>[12:45:22] SPEECH WAVEFORM ANALYZER ON</div>
+                <div>[12:45:34] MIC IDLE UNTIL WAKE PHRASE</div>
+                <div>[12:45:45] AWAITING VOICE WAKE...</div>
             </div>
         </div>
 
@@ -338,7 +438,7 @@
     <div class="hud-center-pill">
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
-        <button id="micBtn" onclick="toggleVoiceChat()">🎙️</button>
+        <button id="micBtn" onclick="toggleVoiceChat()">🎙️ IDLE</button>
         <textarea id="userInput" placeholder="Awaiting command... (Enter to Send)"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
@@ -373,8 +473,8 @@
             </div>
 
             <div class="command-card">
-                <b>🎙️ Hands-Free Voice Wake Activation:</b><br>
-                Say <b>"Jarvis"</b> aloud to activate voice dictation automatically. You can customize your wake phrase below.
+                <b>🎙️ Dynamic Wake-Word Microphone Activation:</b><br>
+                The microphone remains OFF until you speak your wake phrase (default: <b>"jarvis"</b>). Once detected, the microphone activates to record your command.
             </div>
 
             <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
@@ -396,6 +496,11 @@
         let userLat = null, userLon = null;
         let customWakeWord = "jarvis";
 
+        // Web Audio API Analyzer for Orb Canvas Visualizer
+        let audioCtx = null;
+        let analyser = null;
+        let animFrameId = null;
+
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobile) { document.body.classList.add('mobile-mode'); }
 
@@ -404,7 +509,7 @@
             document.getElementById('liveClock').innerText = now.toTimeString().split(' ')[0];
         }, 1000);
 
-        // Geolocation Chip Receiver
+        // Geolocation Receiver
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; },
@@ -418,16 +523,17 @@
             } catch (e) {}
         }
 
-        /* First-Time User Onboarding Modal */
+        /* Setup Onboarding */
         window.addEventListener('load', () => {
             const savedWake = localStorage.getItem('jarvis_wakeword');
             if (savedWake) customWakeWord = savedWake;
 
             const isFirstTime = !localStorage.getItem('jarvis_onboarded');
-            if (isFirstTime) {
-                showOnboardingGuide();
-            }
+            if (isFirstTime) { showOnboardingGuide(); }
+            
             initWakeWordListener();
+            initSpeechRecognition();
+            initOrbCanvas();
         });
 
         function showOnboardingGuide() {
@@ -444,246 +550,4 @@
             const val = document.getElementById('wakePhraseInput').value;
             if (val) {
                 customWakeWord = val.toLowerCase().trim();
-                localStorage.setItem('jarvis_wakeword', customWakeWord);
-                alert(`Wake phrase updated to: "${customWakeWord}"`);
-            }
-        }
-
-        /* Hands-Free Background Wake-Word Daemon */
-        function initWakeWordListener() {
-            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            wakeWordRecognition = new SpeechRecognition();
-            wakeWordRecognition.continuous = true;
-            wakeWordRecognition.interimResults = true;
-            wakeWordRecognition.lang = 'en-US';
-
-            wakeWordRecognition.onresult = function(e) {
-                for (let i = e.resultIndex; i < e.results.length; ++i) {
-                    const transcript = e.results[i][0].transcript.toLowerCase().trim();
-                    if (transcript.includes(customWakeWord)) {
-                        wakeWordRecognition.stop();
-                        playChime();
-                        const query = transcript.split(customWakeWord)[1]?.trim();
-                        if (query && query.length > 2) {
-                            document.getElementById('userInput').value = query;
-                            sendCommand();
-                        } else {
-                            toggleVoiceChat();
-                        }
-                        break;
-                    }
-                }
-            };
-
-            wakeWordRecognition.onerror = function() { setTimeout(startWakeWordListener, 2000); };
-            wakeWordRecognition.onend = function() { startWakeWordListener(); };
-            startWakeWordListener();
-        }
-
-        function startWakeWordListener() {
-            try {
-                if (wakeWordRecognition && !isListening) { wakeWordRecognition.start(); }
-            } catch(e) {}
-        }
-
-        function playChime() {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.15);
-        }
-
-        /* Voice Speech Dictation Listener */
-        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognition = new SpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onstart = function() {
-                isListening = true;
-                const micBtn = document.getElementById('micBtn');
-                micBtn.innerText = '🔊'; micBtn.style.background = 'var(--hud-cyan)'; micBtn.style.color = '#000';
-            };
-
-            recognition.onresult = function(e) {
-                document.getElementById('userInput').value = e.results[0][0].transcript;
-                sendCommand();
-            };
-
-            recognition.onerror = function() { stopVoiceChat(); };
-            recognition.onend = function() { stopVoiceChat(); };
-        }
-
-        function toggleVoiceChat() {
-            if (!recognition) { alert("Voice Speech Recognition not supported."); return; }
-            if (isListening) { recognition.stop(); } else { recognition.start(); }
-        }
-
-        function stopVoiceChat() {
-            isListening = false;
-            const micBtn = document.getElementById('micBtn');
-            if (micBtn) { micBtn.innerText = '🎙️'; micBtn.style.background = 'rgba(0, 243, 255, 0.12)'; micBtn.style.color = 'var(--hud-cyan)'; }
-            startWakeWordListener();
-        }
-
-        /* File Attachment Handler */
-        const dropZone = document.getElementById('chat-terminal');
-        dropZone.addEventListener('dragover', (e) => e.preventDefault());
-        dropZone.addEventListener('drop', (e) => { e.preventDefault(); processFiles(e.dataTransfer.files); });
-
-        function handleFileSelect(e) { processFiles(e.target.files); }
-
-        function processFiles(files) {
-            Array.from(files).forEach(file => {
-                const reader = new FileReader();
-                if (file.type.startsWith('image/')) {
-                    reader.onload = (evt) => {
-                        pendingImages.push(evt.target.result.split(',')[1]);
-                        document.getElementById('filePreview').innerHTML += `<div>📎 Image: ${file.name}</div>`;
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    reader.onload = (evt) => {
-                        pendingFiles.push({ name: file.name, content: evt.target.result });
-                        document.getElementById('filePreview').innerHTML += `<div>📎 Doc: ${file.name}</div>`;
-                    };
-                    reader.readAsText(file);
-                }
-            });
-        }
-
-        /* Leaflet Tactical GPS Overlay */
-        function activateMapOverlay() {
-            const container = document.getElementById('gps-map-container');
-            container.style.display = 'block';
-
-            if (!mapInitialized) {
-                try {
-                    map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                    mapInitialized = true;
-                } catch(e) {}
-            } else {
-                setTimeout(() => map.invalidateSize(), 200);
-            }
-        }
-
-        document.getElementById('userInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCommand(); }
-        });
-
-        function sendCommandCustom(cmdText) {
-            document.getElementById('userInput').value = cmdText;
-            sendCommand();
-        }
-
-        async function request2FACode() {
-            const terminal = document.getElementById('chat-terminal');
-            try {
-                const res = await fetch('/api/request_2fa', { method: 'POST' });
-                const data = await res.json();
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (SECURITY):</b> Security OTP Code Generated: <b>${data.demo_code}</b>, Sir.</div>`;
-                terminal.scrollTop = terminal.scrollHeight;
-            } catch (e) {}
-        }
-
-        async function sendCommand() {
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if (!text && pendingImages.length === 0 && pendingFiles.length === 0) return;
-
-            const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
-
-            const payload = {
-                prompt: text,
-                images: pendingImages,
-                files: pendingFiles,
-                latitude: userLat,
-                longitude: userLon,
-                device_type: isMobile ? 'mobile' : 'desktop'
-            };
-
-            input.value = ''; pendingImages = []; pendingFiles = [];
-            document.getElementById('filePreview').innerHTML = '';
-
-            try {
-                const res = await fetch('/api/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-
-                if (data.activate_map) { activateMapOverlay(); }
-                if (data.blackout) { document.body.classList.add('blackout-active'); }
-
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
-                terminal.scrollTop = terminal.scrollHeight;
-
-                renderBlueprintFromResponse(data.response);
-
-                if (data.app_intent && isMobile) { window.location.href = data.app_intent; }
-                if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
-            } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
-            }
-        }
-
-        /* Blueprint SVG Modal Render */
-        function renderBlueprintFromResponse(responseText) {
-            const svgMatch = responseText.match(/<svg[\s\S]*?<\/svg>/i);
-            if (svgMatch) {
-                document.getElementById('blueprintViewport').innerHTML = svgMatch[0];
-                document.getElementById('blueprintModal').style.display = 'flex';
-            }
-        }
-
-        function closeBlueprintModal() {
-            document.getElementById('blueprintModal').style.display = 'none';
-        }
-
-        function playJarvisAudioWithDSP(audioUrl) {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const audio = new Audio(audioUrl);
-            const source = audioCtx.createMediaElementSource(audio);
-
-            const filter = audioCtx.createBiquadFilter();
-            filter.type = "peaking";
-            filter.frequency.value = 3200;
-            filter.Q.value = 1.2;
-            filter.gain.value = 3.5;
-
-            source.connect(filter);
-            filter.connect(audioCtx.destination);
-
-            audio.play();
-            animateWaveform();
-        }
-
-        function animateWaveform() {
-            const bars = document.querySelectorAll('.wave-bar');
-            let interval = setInterval(() => {
-                bars.forEach(b => { b.style.height = Math.floor(Math.random() * 85 + 15) + '%'; });
-            }, 100);
-            setTimeout(() => { clearInterval(interval); bars.forEach(b => b.style.height = '15%'); }, 3000);
-        }
-
-        async function fetchGlobalNews() {
-            const terminal = document.getElementById('chat-terminal');
-            const res = await fetch('/api/get_news');
-            const data = await res.json();
-            if (data.status === 'success') {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (NEWS ENGINE):</b><br>${data.news.join('<br><br>')}</div>`;
-                terminal.scrollTop = terminal.scrollHeight;
-            }
-        }
-    </script>
-</body>
-</html>
+                localStorage.setItem('jarvis_wak
