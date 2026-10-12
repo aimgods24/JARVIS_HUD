@@ -183,7 +183,12 @@
         }
         button:hover { background: var(--hud-cyan); color: #000; }
 
-        /* Modal Overlays */
+        .btn-active {
+            background: var(--hud-cyan) !important;
+            color: #000 !important;
+            box-shadow: 0 0 10px var(--hud-cyan);
+        }
+
         .hud-modal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -208,7 +213,7 @@
         .setting-label { font-size: 0.75rem; font-weight: bold; }
 
         .theme-swatch {
-            width: 22px; height: 22px; border-radius: 50%; border: 1px solid #fff; cursor: pointer; display: inline-block;
+            width: 22px; height: 22px; border-radius: 50%; border: 1px solid #fff; cursor: pointer; display: inline-block; vertical-align: middle;
         }
 
         .translate-subtitle-box {
@@ -229,7 +234,7 @@
         .command-card {
             background: rgba(0, 243, 255, 0.06);
             border-left: 3px solid var(--hud-cyan);
-            padding: 6px 10px; border-radius: 2px;
+            padding: 8px 10px; border-radius: 2px;
         }
 
         .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 18px; }
@@ -394,7 +399,6 @@
     </div>
     <div id="filePreview" style="position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #fff; z-index: 10;"></div>
 
-    <!-- Interactive Settings Modal -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
             <div>⚙️ STARK INDUSTRIES // SYSTEM CONFIGURATION</div>
@@ -427,7 +431,6 @@
         </div>
     </div>
 
-    <!-- Translate HUD Modal -->
     <div class="hud-modal" id="translateModal">
         <div class="modal-header">
             <div>🌐 STARK INDUSTRIES // NEURAL TRANSLATION HUD</div>
@@ -452,8 +455,7 @@
         </div>
     </div>
 
-    <!-- Initial Onboarding & Customization Welcome Modal -->
-    <div id="welcomeModal">
+    <div id="welcomeModal" class="hud-modal" style="display: flex;">
         <div class="modal-header">
             <div>STARK INDUSTRIES // MARK LXXXV SYSTEM INITIALIZATION</div>
         </div>
@@ -461,17 +463,17 @@
             <div>Welcome. J.A.R.V.I.S. is online. Please configure your identity and HUD presentation preferences:</div>
             
             <div class="command-card">
-                <b>👤 Address Me As:</b><br>
-                <div style="margin-top: 4px; display: flex; gap: 6px;">
-                    <button onclick="setWelcomeHonorific('Sir')">Sir</button>
-                    <button onclick="setWelcomeHonorific('Ma\'am')">Ma'am</button>
-                    <button onclick="setWelcomeHonorific('Commander')">Commander</button>
+                <b>👤 How should J.A.R.V.I.S. address you?</b><br>
+                <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="btnSir" class="btn-active" onclick="selectWelcomeHonorific('Sir')">Sir</button>
+                    <button id="btnMaam" onclick="selectWelcomeHonorific('Ma\'am')">Ma'am</button>
+                    <button id="btnCommander" onclick="selectWelcomeHonorific('Commander')">Commander</button>
                 </div>
             </div>
 
             <div class="command-card">
                 <b>🎨 Preferred HUD Color Theme:</b><br>
-                <div style="margin-top: 4px; display: flex; gap: 10px;">
+                <div style="margin-top: 6px; display: flex; gap: 12px; align-items: center;">
                     <span class="theme-swatch" style="background: #00f3ff;" onclick="applyHUDTheme('#00f3ff')"></span> Cyan
                     <span class="theme-swatch" style="background: #ff2200;" onclick="applyHUDTheme('#ff2200')"></span> Red
                     <span class="theme-swatch" style="background: #ffb700;" onclick="applyHUDTheme('#ffb700')"></span> Gold
@@ -480,17 +482,17 @@
             </div>
 
             <div class="command-card">
-                <b>⚡ Integrated System Capabilities:</b><br>
-                • Verbalized Symbol Math Synthesis & Clean Speech<br>
-                • Open-Meteo Global Weather Telemetry<br>
-                • Pre-Loaded Google Maps Search Navigation<br>
-                • Multi-Format File Reader & Dynamic Exporter<br>
-                • CCTV Network Scan & Core Orb Live Stream<br>
-                • Neural Universal Translation with Accurate Subtitles<br>
-                • WebBluetooth Permission Gateways & Watch HUD (`/watch`)
+                <b>⚡ Integrated Subroutines & Modules:</b><br>
+                • Verbalized Math & Code Symbol Synthesis<br>
+                • Global Weather Telemetry (Open-Meteo)<br>
+                • Pre-Loaded Google Maps Navigation Search Links<br>
+                • Dynamic File Analysis & Export Generator<br>
+                • CCTV Network Camera Scan & Core Orb Live Video<br>
+                • Neural Translate HUD Engine with Live Subtitles<br>
+                • WebBluetooth Device Linking & Watch Widget HUD (`/watch`)
             </div>
 
-            <button style="margin-top: 10px; padding: 8px; width: 100%;" onclick="closeWelcomeModal()">🚀 LAUNCH HUD INITIALIZATION</button>
+            <button style="margin-top: 10px; padding: 10px; width: 100%; font-size: 0.8rem;" onclick="launchHUDInitialization()">🚀 LAUNCH HUD INITIALIZATION</button>
         </div>
     </div>
 
@@ -542,14 +544,17 @@
             if (savedWake) customWakeWord = savedWake;
 
             const savedHonorific = localStorage.getItem('jarvis_honorific');
-            if (savedHonorific) userHonorific = savedHonorific;
+            if (savedHonorific) {
+                userHonorific = savedHonorific;
+                selectWelcomeHonorific(savedHonorific);
+            }
 
             const savedTheme = localStorage.getItem('jarvis_theme');
             if (savedTheme) applyHUDTheme(savedTheme);
 
             const isFirstTime = !localStorage.getItem('jarvis_onboarded');
-            if (isFirstTime) {
-                showOnboardingGuide();
+            if (!isFirstTime) {
+                document.getElementById('welcomeModal').style.display = 'none';
             }
             initWakeWordListener();
             initSpeechRecognition();
@@ -559,15 +564,33 @@
             document.getElementById('welcomeModal').style.display = 'flex';
         }
 
-        function closeWelcomeModal() {
-            localStorage.setItem('jarvis_onboarded', 'true');
-            document.getElementById('welcomeModal').style.display = 'none';
+        function selectWelcomeHonorific(title) {
+            userHonorific = title;
+            document.getElementById('btnSir').classList.remove('btn-active');
+            document.getElementById('btnMaam').classList.remove('btn-active');
+            document.getElementById('btnCommander').classList.remove('btn-active');
+
+            if (title === 'Sir') document.getElementById('btnSir').classList.add('btn-active');
+            if (title === "Ma'am") document.getElementById('btnMaam').classList.add('btn-active');
+            if (title === 'Commander') document.getElementById('btnCommander').classList.add('btn-active');
+
+            document.getElementById('settingHonorific').value = title;
         }
 
-        function setWelcomeHonorific(title) {
-            userHonorific = title;
-            localStorage.setItem('jarvis_honorific', title);
-            alert(`Title updated to: ${title}`);
+        function launchHUDInitialization() {
+            localStorage.setItem('jarvis_honorific', userHonorific);
+            localStorage.setItem('jarvis_wakeword', customWakeWord);
+            localStorage.setItem('jarvis_onboarded', 'true');
+
+            document.getElementById('welcomeModal').style.display = 'none';
+
+            const terminal = document.getElementById('chat-terminal');
+            const welcomeMsg = `Preferences confirmed. Initializing HUD display protocol for ${userHonorific}. How may I assist you today?`;
+            
+            terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${welcomeMsg}</div>`;
+            terminal.scrollTop = terminal.scrollHeight;
+
+            sendCommandCustom(`hello jarvis`);
         }
 
         function openSettingsHUD() {
