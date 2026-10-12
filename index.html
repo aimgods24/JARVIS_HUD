@@ -3,53 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>STARK EXPO // MARK-VII DASHBOARD HUD</title>
+    <title>JARVIS // MARK LXXXV TACTICAL HUD</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --stark-cyan: #00f3ff;
-            --stark-blue: #0088ff;
-            --stark-red: #ff2a2a;
-            --stark-glow: rgba(0, 243, 255, 0.65);
-            --stark-bg: #010812;
-            --stark-panel: rgba(1, 14, 32, 0.88);
-            --stark-border: rgba(0, 243, 255, 0.5);
+            --hud-cyan: #00f3ff;
+            --hud-blue: #0088ff;
+            --hud-glow: rgba(0, 243, 255, 0.5);
+            --hud-bg: #010810;
+            --hud-panel: rgba(1, 12, 24, 0.9);
+            --hud-border: rgba(0, 243, 255, 0.35);
         }
 
         * { box-sizing: border-box; }
 
         body {
-            background-color: var(--stark-bg);
-            color: var(--stark-cyan);
+            background-color: var(--hud-bg);
+            color: var(--hud-cyan);
             font-family: 'Consolas', 'Courier New', monospace;
-            margin: 0; padding: 4px;
+            margin: 0; padding: 6px;
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
             user-select: none;
             background-image: 
-                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.12) 0%, transparent 80%),
-                linear-gradient(0deg, rgba(1, 8, 18, 0.98) 0%, rgba(0, 3, 8, 0.99) 100%);
+                radial-gradient(circle at 50% 50%, rgba(0, 243, 255, 0.08) 0%, transparent 85%),
+                linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
         }
 
-        /* Top Numerical Ruler Header (01-30 Scale) */
-        .stark-top-ruler {
+        /* Top Header Bar */
+        .hud-top-bar {
             display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--stark-border);
-            padding: 3px 8px; font-size: 0.65rem; letter-spacing: 2px;
-            background: rgba(0, 243, 255, 0.04);
-            box-shadow: 0 0 10px var(--stark-glow);
+            border-bottom: 1px solid var(--hud-border);
+            padding: 4px 10px; font-size: 0.7rem; letter-spacing: 1px;
+            background: rgba(0, 243, 255, 0.03);
         }
 
-        .ruler-numbers { display: flex; gap: 5px; font-weight: bold; opacity: 0.85; }
-        .ruler-active { color: #fff; background: var(--stark-cyan); padding: 0 3px; border-radius: 2px; text-shadow: 0 0 6px var(--stark-cyan); }
+        .status-pill {
+            display: inline-block; width: 8px; height: 8px;
+            background: var(--hud-cyan); border-radius: 50%;
+            box-shadow: 0 0 8px var(--hud-cyan); margin-right: 4px;
+        }
 
-        /* HUD Main Workspace Grid */
+        /* Main Workspace Grid */
         .hud-workspace {
             display: grid;
             grid-template-columns: 280px 1fr 280px;
-            gap: 6px; flex: 1; overflow: hidden; margin-top: 4px;
+            gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
             position: relative;
         }
 
@@ -59,257 +60,268 @@
         }
         body.mobile-mode .desktop-only { display: none !important; }
 
-        .stark-panel {
-            background: var(--stark-panel);
-            border: 1px solid var(--stark-border);
-            border-radius: 4px; padding: 8px;
-            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.12);
+        .hud-panel {
+            background: var(--hud-panel);
+            border: 1px solid var(--hud-border);
+            border-radius: 3px; padding: 8px;
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.08);
             display: flex; flex-direction: column; gap: 6px;
             overflow: hidden; position: relative;
         }
 
-        /* Central Rotating Arc Sight Blueprint Elements */
-        .expo-central-overlay {
+        /* Bracketed Tactical Panel Header */
+        .panel-header {
+            font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
+            display: flex; justify-content: space-between; opacity: 0.8;
+            border-bottom: 1px dashed rgba(0,243,255,0.25); padding-bottom: 3px;
+        }
+
+        /* Center Arc Radar Screen */
+        .arc-radar-container {
             position: absolute; top: 48%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 440px; height: 440px; border-radius: 50%;
-            border: 2px dashed rgba(0, 243, 255, 0.3);
+            width: 360px; height: 360px; border-radius: 50%;
+            border: 1px dashed rgba(0, 243, 255, 0.25);
             pointer-events: none; z-index: 0;
             display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.15);
         }
 
-        .expo-ring-outer {
-            width: 340px; height: 340px; border-radius: 50%;
-            border: 2px solid rgba(0, 243, 255, 0.5);
-            border-top: 4px solid var(--stark-red);
-            animation: spinCW 20s linear infinite;
+        .radar-ring-out {
+            width: 280px; height: 280px; border-radius: 50%;
+            border: 1px solid rgba(0, 243, 255, 0.4);
+            animation: rotateCW 18s linear infinite;
         }
 
-        .expo-ring-mid {
-            position: absolute; width: 220px; height: 220px; border-radius: 50%;
-            border: 2px dashed rgba(0, 243, 255, 0.7);
-            animation: spinCCW 10s linear infinite;
+        .radar-ring-mid {
+            position: absolute; width: 180px; height: 180px; border-radius: 50%;
+            border: 1px dashed var(--hud-cyan);
+            animation: rotateCCW 10s linear infinite;
         }
 
-        .expo-core-symbol {
-            position: absolute; width: 90px; height: 90px; border-radius: 50%;
-            background: rgba(0, 243, 255, 0.2); border: 2px solid var(--stark-cyan);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 0.7rem; font-weight: bold; text-shadow: 0 0 10px var(--stark-cyan);
-            box-shadow: 0 0 20px var(--stark-cyan);
+        .radar-core-tag {
+            position: absolute; text-align: center; font-size: 0.6rem; font-weight: bold;
+            background: rgba(1, 12, 24, 0.9); border: 1px solid var(--hud-cyan);
+            padding: 4px 8px; border-radius: 3px; box-shadow: 0 0 12px var(--hud-cyan);
         }
 
-        .expo-radial-nodes {
-            position: absolute; left: 35%; top: 40%;
-            display: flex; flex-direction: column; gap: 6px;
-            font-size: 0.68rem; font-weight: bold; pointer-events: none;
-        }
-        .node-item {
-            background: rgba(0, 243, 255, 0.12); border: 1px solid var(--stark-cyan);
-            padding: 2px 6px; border-radius: 3px; width: fit-content;
-            box-shadow: 0 0 6px var(--stark-cyan);
-        }
+        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
+        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
 
-        @keyframes spinCW { 100% { transform: rotate(360deg); } }
-        @keyframes spinCCW { 100% { transform: rotate(-360deg); } }
+        /* Gauges & Progress Bars */
+        .gauge-row { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
+        .gauge-bg { background: rgba(0, 0, 0, 0.6); height: 5px; border: 1px solid var(--hud-border); border-radius: 2px; }
+        .gauge-fill { height: 100%; background: var(--hud-cyan); box-shadow: 0 0 6px var(--hud-cyan); }
 
-        /* Energy Gauge & Dial Widgets */
-        .power-arc-box {
-            width: 95px; height: 95px; border-radius: 50%;
-            border: 3px solid var(--stark-cyan);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            margin: 0 auto; box-shadow: 0 0 15px var(--stark-cyan);
-        }
-
-        .gauge-block { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
-        .gauge-outer { background: rgba(0, 0, 0, 0.7); height: 6px; border: 1px solid var(--stark-cyan); border-radius: 2px; }
-        .gauge-inner { height: 100%; background: var(--stark-cyan); box-shadow: 0 0 6px var(--stark-cyan); }
+        /* ECG Waveform Pulse */
+        .ecg-box { height: 32px; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 
         #gps-map-container {
-            height: 150px; border: 1px solid var(--stark-cyan);
-            border-radius: 4px; overflow: hidden; display: none; margin-bottom: 4px; z-index: 1;
+            height: 160px; border: 1px solid var(--hud-cyan);
+            border-radius: 3px; overflow: hidden; display: none; margin-bottom: 4px; z-index: 1;
         }
         #leaflet-map { width: 100%; height: 100%; }
 
-        .hud-orb-marker {
-            width: 16px; height: 16px; background: #00f3ff; border-radius: 50%;
-            box-shadow: 0 0 12px #00f3ff; border: 2px solid #fff; animation: orbPulse 1.5s infinite;
-        }
-        @keyframes orbPulse { 0% { transform: scale(0.9); } 50% { transform: scale(1.2); } 100% { transform: scale(0.9); } }
-
-        /* Chat Output Stream Terminal */
+        /* Terminal Chat Display */
         #chat-terminal {
-            flex: 1; background: rgba(0, 0, 0, 0.88);
-            border: 1px solid var(--stark-cyan);
-            border-radius: 4px; padding: 10px;
+            flex: 1; background: rgba(0, 0, 0, 0.85);
+            border: 1px solid var(--hud-border);
+            border-radius: 3px; padding: 10px;
             overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 12px rgba(0, 243, 255, 0.2); z-index: 1;
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.15); z-index: 1;
         }
 
-        .msg-line { line-height: 1.4; font-size: 0.83rem; word-break: break-word; white-space: pre-wrap; }
+        .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
-        .msg-jarvis { color: var(--stark-cyan); text-shadow: 0 0 4px var(--stark-glow); border-left: 2px solid var(--stark-cyan); padding-left: 6px; }
+        .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
-        .hud-input-bar { display: flex; gap: 4px; margin-top: 4px; z-index: 1; flex-wrap: wrap; }
+        /* Center Floating Action Pill Bar */
+        .hud-center-pill {
+            position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+            width: 80%; max-width: 580px;
+            background: rgba(1, 12, 24, 0.95);
+            border: 1px solid var(--hud-cyan); border-radius: 20px;
+            padding: 6px 14px; display: flex; align-items: center; gap: 8px;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.25); z-index: 10;
+        }
+
         textarea {
-            flex: 1; height: 42px; background: rgba(0, 0, 0, 0.88);
-            border: 1px solid var(--stark-cyan); border-radius: 4px;
-            color: var(--stark-cyan); padding: 8px; font-family: inherit; resize: none; font-size: 0.85rem; min-width: 180px;
+            flex: 1; height: 32px; background: transparent; border: none;
+            color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.82rem; outline: none;
         }
+
         button {
-            background: rgba(0, 243, 255, 0.15); border: 1px solid var(--stark-cyan);
-            color: var(--stark-cyan); border-radius: 4px; font-weight: bold; cursor: pointer; padding: 0 10px; font-size: 0.75rem;
+            background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
+            color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 10px; font-size: 0.72rem;
         }
-        button:hover { background: var(--stark-cyan); color: #000; }
+        button:hover { background: var(--hud-cyan); color: #000; }
 
-        /* Weather Stack Sidebar Widget */
-        .weather-card-stack { display: flex; flex-direction: column; gap: 4px; font-size: 0.68rem; }
-        .weather-day-item { display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(0,243,255,0.3); padding-bottom: 2px; }
-
-        /* Bottom Module Launcher Dock */
-        .stark-bottom-dock {
-            display: flex; justify-content: space-around; align-items: center;
-            padding: 4px 0; border-top: 1px solid var(--stark-border); margin-top: 4px;
-            background: rgba(0, 243, 255, 0.03);
+        /* Schematic Blueprint Viewer Modal */
+        #blueprintModal {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 85vw; max-width: 900px; height: 75vh; max-height: 600px;
+            background: rgba(1, 10, 20, 0.96);
+            border: 2px solid var(--hud-cyan); border-radius: 6px;
+            box-shadow: 0 0 35px var(--hud-cyan); z-index: 1000;
+            flex-direction: column; padding: 12px;
         }
 
-        .dock-circle {
-            width: 38px; height: 38px; border-radius: 50%;
-            border: 1px solid var(--stark-cyan); background: rgba(0, 12, 28, 0.9);
-            color: var(--stark-cyan); display: flex; align-items: center; justify-content: center;
-            font-size: 0.85rem; cursor: pointer; box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
-            transition: all 0.2s ease;
+        .blueprint-header {
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px; font-size: 0.8rem; font-weight: bold;
         }
-        .dock-circle:hover { background: var(--stark-cyan); color: #000; box-shadow: 0 0 15px var(--stark-cyan); }
 
-        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 3px; height: 24px; }
-        .wave-bar { width: 3px; height: 10%; background: var(--stark-cyan); transition: height 0.1s ease; }
+        .blueprint-viewport {
+            flex: 1; margin-top: 8px; border: 1px dashed var(--hud-cyan);
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            background: radial-gradient(circle, rgba(0,243,255,0.06) 0%, rgba(1,8,16,1) 90%);
+        }
 
-        .blackout-active { background: #000000 !important; background-image: none !important; }
-        .blackout-active .stark-top-ruler, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .stark-bottom-dock, .blackout-active .expo-central-overlay { display: none !important; }
+        .blueprint-viewport svg { width: 90%; height: 90%; filter: drop-shadow(0 0 8px var(--hud-cyan)); }
+
+        .waveform-box { display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 18px; }
+        .wave-bar { width: 2px; height: 15%; background: var(--hud-cyan); transition: height 0.1s ease; }
+
+        .blackout-active { background: #000 !important; background-image: none !important; }
+        .blackout-active .hud-top-bar, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .arc-radar-container { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Top Scale Header Bar -->
-    <div class="stark-top-ruler" id="starkRuler">
-        <div class="ruler-numbers">
-            01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 <span class="ruler-active">21</span> 22 23 24 25 26 27 28 29 30
-        </div>
-        <div>STARK EXPO // MARK-VII DASHBOARD</div>
+    <!-- Header Telemetry Bar -->
+    <div class="hud-top-bar" id="hudHeader">
+        <div><span class="status-pill"></span>JARVIS // JUST A RATHER VERY INTELLIGENT SYSTEM</div>
+        <div>SYSTEM STATUS: <span style="color: #00f3ff; font-weight: bold;">OPTIMAL</span></div>
         <div id="liveClock">00:00:00</div>
-        <div id="deviceBadge">DETECTING ENVIRONMENT...</div>
+        <div>MARK LXXXV</div>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
 
     <!-- Workspace Grid -->
     <div class="hud-workspace" id="hudWorkspace">
         
-        <!-- Central Arc Sight Blueprint -->
-        <div class="expo-central-overlay">
-            <div class="expo-ring-outer"></div>
-            <div class="expo-ring-mid"></div>
-            <div class="expo-core-symbol">STARK EXPO</div>
+        <!-- Center Arc Radar Overlay -->
+        <div class="arc-radar-container">
+            <div class="radar-ring-out"></div>
+            <div class="radar-ring-mid"></div>
+            <div class="radar-core-tag">CORE<br>ACTIVE</div>
         </div>
 
-        <div class="expo-radial-nodes desktop-only">
-            <div class="node-item">• Dead Space</div>
-            <div class="node-item">• Limbo</div>
-            <div class="node-item">• Bastion</div>
-            <div class="node-item">• Arduino Link</div>
-        </div>
-
-        <!-- Left Diagnostics Column -->
-        <div class="stark-panel desktop-only" style="z-index: 1;">
-            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">ENERGY CORE & DISK</div>
+        <!-- Left Column: VITAL SIGNS & RT-MONITOR -->
+        <div class="hud-panel desktop-only" style="z-index: 1;">
+            <div class="panel-header"><span>SYSTEM //</span> <span>VITAL SIGNS</span></div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 0.68rem;">Heart Rate</span>
+                <span style="font-size: 1.1rem; font-weight: bold;">72 <span style="font-size: 0.6rem;">BPM</span></span>
+            </div>
             
-            <div class="power-arc-box">
-                <div style="font-size: 1.1rem; font-weight: bold;">100%</div>
-                <div style="font-size: 0.55rem; opacity: 0.8;">HIGH OUTPUT</div>
+            <div class="ecg-box">
+                <svg width="100%" height="24" viewBox="0 0 200 24" fill="none" stroke="#00f3ff" stroke-width="1.5">
+                    <path d="M0 12 H40 L45 2 L50 22 L55 8 L60 16 L65 12 H200" />
+                </svg>
             </div>
 
-            <div class="gauge-block" style="margin-top: 6px;">
-                <div>PRIMARY SSD: 100 GB (2 GB FREE)</div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 98%;"></div></div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
+                <div>Body Temp: <b>98.6 °F</b></div>
+                <div>Neural Link: <b style="color:#00f3ff;">ACTIVE</b></div>
             </div>
 
-            <div style="font-size: 0.68rem; border-left: 2px solid var(--stark-cyan); padding-left: 6px;">
-                <div>🚘 PROTON e.MAS 7: 88% CHARGE</div>
-                <div>LOCATION: BAYAN LEPAS, MY</div>
-                <div>UPTIME: 1d 4h 0m</div>
+            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
+
+            <div class="panel-header"><span>SYSTEM //</span> <span>RT-MONITOR</span></div>
+            
+            <div class="gauge-row">
+                <div>CPU Load: 24%</div>
+                <div class="gauge-bg"><div class="gauge-fill" style="width: 24%;"></div></div>
             </div>
 
-            <div class="waveform-box" id="waveformBox" style="margin-top: 6px;">
-                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="gauge-row">
+                <div>Memory: 12.4 GB</div>
+                <div class="gauge-bg"><div class="gauge-fill" style="width: 45%;"></div></div>
             </div>
 
-            <button style="margin-top:auto;" onclick="fetchGlobalNews()">🌍 GLOBAL NEWS</button>
+            <div class="gauge-row">
+                <div>Storage: 89%</div>
+                <div class="gauge-bg"><div class="gauge-fill" style="width: 89%;"></div></div>
+            </div>
+
+            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
+
+            <div class="panel-header"><span>SYSTEM //</span> <span>NETWORK</span></div>
+            <div style="font-size: 0.65rem; text-align: center; border: 1px solid var(--hud-border); padding: 6px; border-radius: 3px;">
+                📶 SIGNAL ENCRYPTED<br>
+                <span style="font-size: 0.58rem; opacity: 0.8;">STARK-SAT-3 UPLINK: 5GB/S</span>
+            </div>
         </div>
 
-        <!-- Center Active Command Terminal -->
-        <div class="stark-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
+        <!-- Center Column: Terminal Display -->
+        <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Authentication confirmed. Dashboard interface active. How may I assist you today, Sir?</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System integrity check complete. Bio-sync stable at 98.4%. How may I assist you today, Sir?</div>
             </div>
 
-            <div class="hud-input-bar">
-                <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
-                <button onclick="document.getElementById('fileInput').click()">📁 ATTACH</button>
-                <button id="micBtn" onclick="toggleVoiceChat()">🎙️ VOICE: OFF</button>
-                <textarea id="userInput" placeholder="Type prompt or drag files/images here... (Enter to Send)"></textarea>
-                <button onclick="sendCommand()">SEND</button>
+            <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
+                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+                <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
             </div>
-            <div id="filePreview" style="font-size: 0.68rem; color: #fff; margin-top: 2px;"></div>
         </div>
 
-        <!-- Right Weather & System Column -->
-        <div class="stark-panel desktop-only" style="z-index: 1;">
-            <div style="font-size: 0.75rem; font-weight: bold; letter-spacing: 1px;">WEATHER & MONITOR</div>
+        <!-- Right Column: ARMOR STATUS & RT-LOG -->
+        <div class="hud-panel desktop-only" style="z-index: 1;">
+            <div class="panel-header"><span>SYSTEM //</span> <span>ARMOR STATUS</span></div>
             
-            <div class="gauge-block">
-                <div>CPU LOAD: 74%</div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 74%;"></div></div>
+            <div class="gauge-row">
+                <div>POWER CORE: 98%</div>
+                <div class="gauge-bg"><div class="gauge-fill" style="width: 98%;"></div></div>
             </div>
 
-            <div class="gauge-block">
-                <div>RAM ALLOCATION: 15%</div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 15%;"></div></div>
+            <div class="gauge-row">
+                <div>STRUCTURAL: 100%</div>
+                <div class="gauge-bg"><div class="gauge-fill" style="width: 100%;"></div></div>
             </div>
 
-            <div class="gauge-block">
-                <div>SWAP BUFFER: 49%</div>
-                <div class="gauge-outer"><div class="gauge-inner" style="width: 49%;"></div></div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">
+                <button onclick="sendCommandCustom('show map')">🗺️ MAP</button>
+                <button onclick="fetchGlobalNews()">📰 NEWS</button>
+                <button onclick="request2FACode()">🔑 2FA</button>
+                <button onclick="sendCommandCustom('blackout')">🕶️ STEALTH</button>
             </div>
 
-            <hr style="border-color: var(--stark-border); opacity: 0.4; width: 100%;">
+            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
 
-            <div class="weather-card-stack">
-                <div style="font-weight: bold;">FORECAST TELEMETRY:</div>
-                <div class="weather-day-item"><span>TODAY</span> <span>13°C // CLEAR</span></div>
-                <div class="weather-day-item"><span>FRIDAY</span> <span>23° / 11° SUNNY</span></div>
-                <div class="weather-day-item"><span>SATURDAY</span> <span>19° / 12° CLOUDY</span></div>
-                <div class="weather-day-item"><span>SUNDAY</span> <span>17° / 11° RAIN</span></div>
+            <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
+            <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
+                <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
+                <div>[12:45:12] BIO-SYNC STABLE AT 98.4%</div>
+                <div>[12:45:22] ARC REACTOR OUTPUT OPTIMAL</div>
+                <div>[12:45:34] SAT-LINK ESTABLISHED</div>
+                <div>[12:45:45] AWAITING COMMAND...</div>
             </div>
-
-            <button style="margin-top: auto;" onclick="request2FACode()">🔑 REQUEST 2FA CODE</button>
         </div>
 
     </div>
 
-    <!-- Bottom Module Launcher Dock -->
-    <div class="stark-bottom-dock" id="starkDock">
-        <div class="dock-circle" title="Map Overlay" onclick="sendCommandCustom('show map')">🗺️</div>
-        <div class="dock-circle" title="Global News" onclick="fetchGlobalNews()">📰</div>
-        <div class="dock-circle" title="Spotify Link" onclick="sendCommandCustom('open spotify')">🎵</div>
-        <div class="dock-circle" title="YouTube Link" onclick="sendCommandCustom('open youtube')">▶️</div>
-        <div class="dock-circle" title="Request 2FA" onclick="request2FACode()">🔑</div>
-        <div class="dock-circle" title="Blackout Mode" onclick="sendCommandCustom('blackout')">🕶️</div>
+    <!-- Center Floating Action Command Pill Bar -->
+    <div class="hud-center-pill">
+        <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
+        <button onclick="document.getElementById('fileInput').click()">📁</button>
+        <button id="micBtn" onclick="toggleVoiceChat()">🎙️</button>
+        <textarea id="userInput" placeholder="Awaiting command... (Enter to Send)"></textarea>
+        <button onclick="sendCommand()">SEND</button>
+    </div>
+    <div id="filePreview" style="position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #fff; z-index: 10;"></div>
+
+    <!-- High-Tech Vector Blueprint Modal -->
+    <div id="blueprintModal">
+        <div class="blueprint-header">
+            <div>📐 STARK INDUSTRIES // SCHEMATIC BLUEPRINT DRAWING</div>
+            <button onclick="closeBlueprintModal()">✕ CLOSE</button>
+        </div>
+        <div class="blueprint-viewport" id="blueprintViewport"></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -319,28 +331,28 @@
         let pendingFiles = [];
         let recognition = null;
         let isListening = false;
+        let userLat = null, userLon = null;
 
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-        if (isMobile) {
-            document.body.classList.add('mobile-mode');
-            document.getElementById('deviceBadge').innerText = "ENV: MOBILE";
-        } else {
-            document.getElementById('deviceBadge').innerText = "ENV: DESKTOP TACTICAL";
-        }
+        if (isMobile) { document.body.classList.add('mobile-mode'); }
 
         setInterval(() => {
             const now = new Date();
             document.getElementById('liveClock').innerText = now.toTimeString().split(' ')[0];
         }, 1000);
 
+        // Geolocation Chip Receiver
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; },
+                (err) => {}, { enableHighAccuracy: true }
+            );
+        }
+
         async function toggleWakeLock() {
             try {
-                if ('wakeLock' in navigator) {
-                    await navigator.wakeLock.request('screen');
-                    alert("Screen Wake Lock Active.");
-                }
-            } catch (err) {}
+                if ('wakeLock' in navigator) { await navigator.wakeLock.request('screen'); alert("Wake Lock Active."); }
+            } catch (e) {}
         }
 
         /* Voice Chat Integration */
@@ -354,13 +366,11 @@
             recognition.onstart = function() {
                 isListening = true;
                 const micBtn = document.getElementById('micBtn');
-                micBtn.innerText = '🎙️ LISTENING...';
-                micBtn.style.background = 'rgba(0, 243, 255, 0.5)';
+                micBtn.innerText = '🔊'; micBtn.style.background = 'var(--hud-cyan)'; micBtn.style.color = '#000';
             };
 
-            recognition.onresult = function(event) {
-                const transcript = event.results[0][0].transcript;
-                document.getElementById('userInput').value = transcript;
+            recognition.onresult = function(e) {
+                document.getElementById('userInput').value = e.results[0][0].transcript;
                 sendCommand();
             };
 
@@ -369,29 +379,20 @@
         }
 
         function toggleVoiceChat() {
-            if (!recognition) {
-                alert("Voice recognition is not supported on this browser.");
-                return;
-            }
+            if (!recognition) { alert("Voice Speech Recognition not supported."); return; }
             if (isListening) { recognition.stop(); } else { recognition.start(); }
         }
 
         function stopVoiceChat() {
             isListening = false;
             const micBtn = document.getElementById('micBtn');
-            if (micBtn) {
-                micBtn.innerText = '🎙️ VOICE: OFF';
-                micBtn.style.background = 'rgba(0, 243, 255, 0.15)';
-            }
+            if (micBtn) { micBtn.innerText = '🎙️'; micBtn.style.background = 'rgba(0, 243, 255, 0.12)'; micBtn.style.color = 'var(--hud-cyan)'; }
         }
 
-        /* File Upload & Drag-and-Drop Handler */
+        /* Drag-and-Drop & File Attachment Handler */
         const dropZone = document.getElementById('chat-terminal');
         dropZone.addEventListener('dragover', (e) => e.preventDefault());
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            processFiles(e.dataTransfer.files);
-        });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); processFiles(e.dataTransfer.files); });
 
         function handleFileSelect(e) { processFiles(e.target.files); }
 
@@ -399,28 +400,22 @@
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 if (file.type.startsWith('image/')) {
-                    reader.onload = (event) => {
-                        const base64Data = event.target.result.split(',')[1];
-                        pendingImages.push(base64Data);
-                        updateFilePreview(file.name);
+                    reader.onload = (evt) => {
+                        pendingImages.push(evt.target.result.split(',')[1]);
+                        document.getElementById('filePreview').innerHTML += `<div>📎 Image: ${file.name}</div>`;
                     };
                     reader.readAsDataURL(file);
                 } else {
-                    reader.onload = (event) => {
-                        pendingFiles.push({ name: file.name, content: event.target.result });
-                        updateFilePreview(file.name);
+                    reader.onload = (evt) => {
+                        pendingFiles.push({ name: file.name, content: evt.target.result });
+                        document.getElementById('filePreview').innerHTML += `<div>📎 Doc: ${file.name}</div>`;
                     };
                     reader.readAsText(file);
                 }
             });
         }
 
-        function updateFilePreview(fileName) {
-            const preview = document.getElementById('filePreview');
-            preview.innerHTML += `<div>📎 Loaded: ${fileName}</div>`;
-        }
-
-        /* Tactical GPS Overlay */
+        /* Leaflet Tactical GPS Overlay */
         function activateMapOverlay() {
             const container = document.getElementById('gps-map-container');
             container.style.display = 'block';
@@ -429,20 +424,6 @@
                 try {
                     map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                    const orbIcon = L.divIcon({ className: 'hud-orb-marker', iconSize: [16, 16] });
-
-                    if ("geolocation" in navigator) {
-                        navigator.geolocation.watchPosition((pos) => {
-                            const lat = pos.coords.latitude;
-                            const lon = pos.coords.longitude;
-                            if (!userMarker) {
-                                userMarker = L.marker([lat, lon], { icon: orbIcon }).addTo(map);
-                            } else {
-                                userMarker.setLatLng([lat, lon]);
-                            }
-                            map.setView([lat, lon], 16);
-                        }, null, { enableHighAccuracy: true });
-                    }
                     mapInitialized = true;
                 } catch(e) {}
             } else {
@@ -451,14 +432,11 @@
         }
 
         document.getElementById('userInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendCommand();
-            }
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCommand(); }
         });
 
-        function sendCommandCustom(textCmd) {
-            document.getElementById('userInput').value = textCmd;
+        function sendCommandCustom(cmdText) {
+            document.getElementById('userInput').value = cmdText;
             sendCommand();
         }
 
@@ -478,18 +456,18 @@
             if (!text && pendingImages.length === 0 && pendingFiles.length === 0) return;
 
             const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text} ${pendingFiles.length + pendingImages.length > 0 ? '[' + (pendingFiles.length + pendingImages.length) + ' attachments]' : ''}</div>`;
-            
+            terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
+
             const payload = {
                 prompt: text,
                 images: pendingImages,
                 files: pendingFiles,
+                latitude: userLat,
+                longitude: userLon,
                 device_type: isMobile ? 'mobile' : 'desktop'
             };
 
-            input.value = '';
-            pendingImages = [];
-            pendingFiles = [];
+            input.value = ''; pendingImages = []; pendingFiles = [];
             document.getElementById('filePreview').innerHTML = '';
 
             try {
@@ -506,11 +484,26 @@
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
 
+                renderBlueprintFromResponse(data.response);
+
                 if (data.app_intent && isMobile) { window.location.href = data.app_intent; }
                 if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Telemetry connection error.</div>`;
             }
+        }
+
+        /* Blueprint SVG Renderer */
+        function renderBlueprintFromResponse(responseText) {
+            const svgMatch = responseText.match(/<svg[\s\S]*?<\/svg>/i);
+            if (svgMatch) {
+                document.getElementById('blueprintViewport').innerHTML = svgMatch[0];
+                document.getElementById('blueprintModal').style.display = 'flex';
+            }
+        }
+
+        function closeBlueprintModal() {
+            document.getElementById('blueprintModal').style.display = 'none';
         }
 
         function playJarvisAudioWithDSP(audioUrl) {
@@ -536,7 +529,7 @@
             let interval = setInterval(() => {
                 bars.forEach(b => { b.style.height = Math.floor(Math.random() * 85 + 15) + '%'; });
             }, 100);
-            setTimeout(() => { clearInterval(interval); bars.forEach(b => b.style.height = '10%'); }, 3000);
+            setTimeout(() => { clearInterval(interval); bars.forEach(b => b.style.height = '15%'); }, 3000);
         }
 
         async function fetchGlobalNews() {
