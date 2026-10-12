@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JARVIS // MARK LXXXV TACTICAL HUD</title>
     <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.css](https://unpkg.com/leaflet@1.9.4/dist/leaflet.css)" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --hud-cyan: #00f3ff;
@@ -73,7 +73,6 @@
             border-bottom: 1px dashed rgba(0,243,255,0.25); padding-bottom: 3px;
         }
 
-        /* Left-Panel Concentric Arc Core Widget */
         .core-orb-widget {
             position: relative; width: 100%; height: 210px;
             display: flex; align-items: center; justify-content: center;
@@ -239,6 +238,7 @@
         <div>SYSTEM STATUS: <span style="color: #00f3ff; font-weight: bold;">OPTIMAL</span></div>
         <div id="liveClock">00:00:00</div>
         <div>MARK LXXXV</div>
+        <button onclick="runDiagnosticsSystem()">🔍 DIAGNOSTICS</button>
         <button onclick="showOnboardingGuide()">❓ HELP</button>
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
@@ -251,7 +251,6 @@
             <div class="radar-core-tag">CORE<br>ACTIVE</div>
         </div>
 
-        <!-- Left Column: Core Dial Orb Widget -->
         <div class="hud-panel desktop-only" style="z-index: 1;">
             <div class="panel-header"><span>HI-TECH INTERFACE //</span> <span>CORE DIAL</span></div>
             
@@ -271,45 +270,33 @@
                         </filter>
                     </defs>
 
-                    <!-- Honeycomb Hex Grid Clusters -->
                     <g stroke="#00f3ff" stroke-width="0.8" fill="none" opacity="0.4">
                         <polygon points="30,25 38,20 46,25 46,35 38,40 30,35" />
                         <polygon points="46,25 54,20 62,25 62,35 54,40 46,35" />
                         <polygon points="38,40 46,35 54,40 54,50 46,55 38,50" />
-                        
                         <polygon points="230,150 238,145 246,150 246,160 238,165 230,160" />
                         <polygon points="246,150 254,145 262,150 262,160 254,165 246,160" />
                     </g>
 
-                    <!-- Outer Dial Flanking Arc Fins -->
                     <path d="M 65 60 A 80 80 0 0 0 65 140" stroke="#00f3ff" stroke-width="2.5" fill="none" filter="url(#cyanGlow)" />
                     <path d="M 235 60 A 80 80 0 0 1 235 140" stroke="#00f3ff" stroke-width="2.5" fill="none" filter="url(#cyanGlow)" />
 
-                    <!-- Radial Tick Marks on Outer Arc Fins -->
                     <g stroke="#00f3ff" stroke-width="1" opacity="0.7">
                         <line x1="58" y1="75" x2="48" y2="72" /><line x1="55" y1="88" x2="45" y2="87" /><line x1="54" y1="100" x2="44" y2="100" />
                         <line x1="55" y1="112" x2="45" y2="113" /><line x1="58" y1="125" x2="48" y2="128" />
-                        
                         <line x1="242" y1="75" x2="252" y2="72" /><line x1="245" y1="88" x2="255" y2="87" /><line x1="246" y1="100" x2="256" y2="100" />
                         <line x1="245" y1="112" x2="255" y2="113" /><line x1="242" y1="125" x2="252" y2="128" />
                     </g>
 
-                    <!-- Outer Glowing Dial Ring -->
                     <circle cx="150" cy="100" r="70" stroke="#00f3ff" stroke-width="3" fill="none" filter="url(#cyanGlow)" />
-
-                    <!-- Segmented Arc Ring (Progress Blocks) -->
                     <circle cx="150" cy="100" r="62" stroke="#00f3ff" stroke-width="6" fill="none" stroke-dasharray="8 4 12 4 4 4 16 6 8 8" opacity="0.9" />
-
-                    <!-- Inner Concentric Rings -->
                     <circle cx="150" cy="100" r="48" stroke="#00f3ff" stroke-width="1.5" fill="none" stroke-dasharray="3 3" />
                     <circle cx="150" cy="100" r="32" stroke="#00f3ff" stroke-width="2" fill="none" filter="url(#cyanGlow)" />
                     <circle cx="150" cy="100" r="18" stroke="#00f3ff" stroke-width="1" fill="none" opacity="0.6" />
 
-                    <!-- Technical Leader Lines -->
                     <path d="M 180 35 L 220 35 L 245 50" stroke="#00f3ff" stroke-width="1.2" fill="none" />
                     <path d="M 120 165 L 85 165 L 55 185" stroke="#00f3ff" stroke-width="1.2" fill="none" />
                     
-                    <!-- Chevron Arrow Stat Accent -->
                     <g stroke="#00f3ff" stroke-width="2" fill="none">
                         <path d="M 85 168 L 92 160 L 99 168" />
                         <path d="M 85 174 L 92 166 L 99 174" />
@@ -348,7 +335,7 @@
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System active. Core orb visualizer ready. Say your wake phrase to activate the microphone, Sir.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System active. Core orb visualizer ready. Diagnostic scanner active. Say your wake phrase to activate the microphone, Sir.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -381,11 +368,11 @@
 
             <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
             <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
-                <div> SYSTEM CHECK COMPLETE</div>
-                <div> BIO-SYNC STABLE AT 98.4%</div>
-                <div> WAKE WORD MONITORING ACTIVE</div>
-                <div> CORE ORB SOUNDWAVES ONLINE</div>
-                <div> AWAITING VOICE WAKE...</div>
+                <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
+                <div>[12:45:12] BIO-SYNC STABLE AT 98.4%</div>
+                <div>[12:45:22] DIAGNOSTIC ENGINE ONLINE</div>
+                <div>[12:45:34] AUDIO INTERRUPT ENFORCED</div>
+                <div>[12:45:45] AWAITING COMMAND...</div>
             </div>
         </div>
 
@@ -439,7 +426,7 @@
         </div>
     </div>
 
-    <script src="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.js](https://unpkg.com/leaflet@1.9.4/dist/leaflet.js)"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         let map, userMarker, mapInitialized = false;
         let pendingImages = [];
@@ -450,6 +437,7 @@
         let userLat = null, userLon = null;
         let customWakeWord = "jarvis";
 
+        let currentAudio = null;
         let audioCtx = null;
         let analyser = null;
         let animFrameId = null;
@@ -640,6 +628,11 @@
             }
         }
 
+        function deactivateMapOverlay() {
+            const container = document.getElementById('gps-map-container');
+            container.style.display = 'none';
+        }
+
         document.getElementById('userInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCommand(); }
         });
@@ -647,6 +640,19 @@
         function sendCommandCustom(cmdText) {
             document.getElementById('userInput').value = cmdText;
             sendCommand();
+        }
+
+        async function runDiagnosticsSystem() {
+            const terminal = document.getElementById('chat-terminal');
+            terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> Run system diagnostics.</div>`;
+            try {
+                const res = await fetch('/api/diagnostics');
+                const data = await res.json();
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (DIAGNOSTICS):</b><br>${data.report.replace(/\n/g, '<br>')}</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+            } catch(e) {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Diagnostics subroutine offline.</div>`;
+            }
         }
 
         async function request2FACode() {
@@ -659,7 +665,22 @@
             } catch (e) {}
         }
 
+        function stopCurrentSpeechAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+            clearCoreWaveCanvas();
+        }
+
         async function sendCommand() {
+            stopCurrentSpeechAudio();
+
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if (!text && pendingImages.length === 0 && pendingFiles.length === 0) return;
@@ -688,7 +709,10 @@
                 const data = await res.json();
 
                 if (data.activate_map) { activateMapOverlay(); }
+                if (data.disable_navigation) { deactivateMapOverlay(); }
+
                 if (data.blackout) { document.body.classList.add('blackout-active'); }
+                if (data.disable_blackout) { document.body.classList.remove('blackout-active'); }
 
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
@@ -716,8 +740,9 @@
             document.getElementById('blueprintModal').style.display = 'none';
         }
 
-        /* Real-Time Speech Audio Soundwave Visualizer over Left Core Dial */
         function playJarvisAudioWithDSP(audioUrl) {
+            stopCurrentSpeechAudio();
+
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             }
@@ -725,8 +750,8 @@
                 audioCtx.resume();
             }
 
-            const audio = new Audio(audioUrl);
-            const source = audioCtx.createMediaElementSource(audio);
+            currentAudio = new Audio(audioUrl);
+            const source = audioCtx.createMediaElementSource(currentAudio);
 
             const filter = audioCtx.createBiquadFilter();
             filter.type = "peaking";
@@ -741,13 +766,12 @@
             filter.connect(analyser);
             analyser.connect(audioCtx.destination);
 
-            audio.play();
+            currentAudio.play();
             animateCoreOrbWaves();
             animateWaveform();
 
-            audio.onended = function() {
-                if (animFrameId) cancelAnimationFrame(animFrameId);
-                clearCoreWaveCanvas();
+            currentAudio.onended = function() {
+                stopCurrentSpeechAudio();
             };
         }
 

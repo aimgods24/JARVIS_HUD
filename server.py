@@ -10,6 +10,7 @@ import time
 import requests
 import sys
 import io
+import shutil
 from duckduckgo_search import DDGS
 
 try:
@@ -52,7 +53,7 @@ def get_user_memory():
 
 def fetch_accurate_weather(lat, lon, location_name="Current Location"):
     try:
-        url = f"[https://api.open-meteo.com/v1/forecast?latitude=](https://api.open-meteo.com/v1/forecast?latitude=){lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto"
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto"
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json().get('current', {})
@@ -86,6 +87,15 @@ def search_general_knowledge(query):
         return None
     except Exception:
         return None
+
+def sanitize_text_for_speech(text):
+    """Strips markdown, code block ticks, hash headers, and symbols so JARVIS speaks plain words."""
+    clean = re.sub(r'```[\s\S]*?```', ' Code block omitted for brevity. ', text)
+    clean = re.sub(r'[*_~`#\-•|>]+', ' ', clean)
+    clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', clean)
+    clean = re.sub(r'[^\w\s.,?!]', '', clean)
+    clean = re.sub(r'\s+', ' ', clean).strip()
+    return clean
 
 @app.route('/')
 def home():
@@ -129,6 +139,85 @@ def get_news():
             return jsonify({'status': 'success', 'news': news})
         except Exception:
             return jsonify({'status': 'error', 'news': ["Global news service temporarily offline."]})
+
+@app.route('/api/diagnostics', methods=['GET'])
+def run_diagnostics():
+    """System diagnostic worker: Scans for anomalies and executes self-healing protocols."""
+    anomalies = []
+    status_summary = {}
+
+    # 1. Ollama LLM Engine Check
+    if HAS_OLLAMA:
+        try:
+            ollama.list()
+            status_summary['ollama'] = 'ONLINE'
+        except Exception as e:
+            status_summary['ollama'] = 'OFFLINE / ANOMALY'
+            anomalies.append(f"Ollama local service unresponsive: {str(e)}")
+    else:
+        status_summary['ollama'] = 'NOT INSTALLED (FALLBACK ACTIVE)'
+
+    # 2. Weather Telemetry Check
+    try:
+        w_check = requests.get("https://api.open-meteo.com/v1/forecast?latitude=5.2971&longitude=100.2588&current=temperature_2m", timeout=3)
+        if w_check.status_code == 200:
+            status_summary['weather_api'] = 'ONLINE'
+        else:
+            status_summary['weather_api'] = f'DEGRADED (HTTP {w_check.status_code})'
+            anomalies.append(f"Weather API returned status code {w_check.status_code}")
+    except Exception as e:
+        status_summary['weather_api'] = 'OFFLINE'
+        anomalies.append(f"Weather API request failed: {str(e)}")
+
+    # 3. DuckDuckGo Search Engine Check
+    try:
+        search_test = list(DDGS().text("ping test", max_results=1))
+        status_summary['search_engine'] = 'ONLINE' if search_test else 'NO RESULTS'
+    except Exception as e:
+        status_summary['search_engine'] = 'DEGRADED'
+        anomalies.append(f"DuckDuckGo search error: {str(e)}")
+
+    # 4. Storage & Memory Diagnostics (Self-Healing)
+    try:
+        if not os.path.exists(MEMORY_FILE):
+            with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+                f.write("System memory archive initialized.\n")
+            anomalies.append("Memory file missing. Self-healed by initializing new memory archive.")
+        status_summary['memory_archive'] = 'VERIFIED'
+    except Exception as e:
+        status_summary['memory_archive'] = 'READ/WRITE ERROR'
+        anomalies.append(f"Memory storage failure: {str(e)}")
+
+    # 5. Disk Space Diagnostics
+    try:
+        total, used, free = shutil.disk_usage("/")
+        free_gb = free / (1024 ** 3)
+        status_summary['free_disk'] = f"{free_gb:.2f} GB"
+        if free_gb < 1.0:
+            anomalies.append(f"Low disk space detected: {free_gb:.2f} GB remaining.")
+    except Exception:
+        status_summary['free_disk'] = 'UNKNOWN'
+
+    diagnostic_report = (
+        f"Diagnostic Scan Complete, Sir.\n\n"
+        f"• Local LLM Engine: {status_summary.get('ollama')}\n"
+        f"• Weather Telemetry: {status_summary.get('weather_api')}\n"
+        f"• Search Engine Link: {status_summary.get('search_engine')}\n"
+        f"• Memory Archive: {status_summary.get('memory_archive')}\n"
+        f"• Disk Space Remaining: {status_summary.get('free_disk')}\n\n"
+    )
+
+    if anomalies:
+        diagnostic_report += "⚠️ Detected Anomalies:\n" + "\n".join([f"  - {a}" for a in anomalies])
+    else:
+        diagnostic_report += "✅ All subroutines and neural links operating at optimal capacity. Zero anomalies detected."
+
+    return jsonify({
+        'status': 'success',
+        'report': diagnostic_report,
+        'has_anomalies': len(anomalies) > 0,
+        'anomalies_list': anomalies
+    })
 
 @app.route('/api/run_python', methods=['POST'])
 def run_python():
@@ -175,10 +264,26 @@ def ask():
     c3po_nav_text = None
     is_shutdown = False
     trigger_blackout = False
+    disable_blackout = False
+    disable_navigation = False
     app_launch_intent = None
     activate_map = False
 
-    if "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
+    # Mode Exit Command Handlers
+    if "disable blackout" in cmd_lower or "exit blackout" in cmd_lower or "turn off blackout" in cmd_lower or "disable stealth" in cmd_lower:
+        disable_blackout = True
+        reply = f"Job done, {honorific}. Disabling stealth blackout and restoring full HUD visual arrays."
+
+    elif "disable navigation" in cmd_lower or "exit navigation" in cmd_lower or "turn off navigation" in cmd_lower or "close map" in cmd_lower or "hide map" in cmd_lower:
+        disable_navigation = True
+        activate_map = False
+        reply = f"Job done, {honorific}. Deactivating GPS navigation overlay and returning to standard diagnostic view."
+
+    elif "diagnostics" in cmd_lower or "check anomalies" in cmd_lower or "scan system" in cmd_lower or "run diagnostic" in cmd_lower:
+        diag_res = run_diagnostics().get_json()
+        reply = diag_res.get('report', f'Diagnostic scan finished, {honorific}.')
+
+    elif "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
         if lat and lon:
             reply = fetch_accurate_weather(lat, lon, "Your Current Position")
         else:
@@ -187,9 +292,7 @@ def ask():
     elif "show map" in cmd_lower or "activate map" in cmd_lower or "open map" in cmd_lower:
         activate_map = True
         reply = f"Activating tactical GPS HUD map overlay now, {honorific}."
-    elif "hide map" in cmd_lower or "close map" in cmd_lower:
-        activate_map = False
-        reply = f"Deactivating map overlay and returning to diagnostic view, {honorific}."
+
     elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower:
         activate_map = True
         dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -204,7 +307,7 @@ def ask():
             reply = "Here are the latest world headlines:\n\n" + "\n\n".join(GLOBAL_NEWS_CACHE[:4])
         else:
             reply = f"Fetching real-time global news feed now, {honorific}."
-    elif "blackout" in cmd_lower or "black out" in cmd_lower:
+    elif "blackout" in cmd_lower or "black out" in cmd_lower or "stealth mode" in cmd_lower:
         trigger_blackout = True
         reply = f"Engaging HUD blackout mode. Terminal core remaining active, {honorific}."
     elif "shut down" in cmd_lower or "shutdown" in cmd_lower:
@@ -223,7 +326,7 @@ def ask():
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
         app_schemes = {
-            "spotify": "spotify://", "youtube": "vnd.youtube://", "maps": "[https://maps.google.com](https://maps.google.com)",
+            "spotify": "spotify://", "youtube": "vnd.youtube://", "maps": "https://maps.google.com",
             "google maps": "comgooglemaps://", "chrome": "googlechrome://", "whatsapp": "whatsapp://"
         }
         if device_type == "mobile" and target_app in app_schemes:
@@ -296,10 +399,12 @@ def ask():
     if not c3po_nav_text:
         clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
 
+    speech_ready_text = sanitize_text_for_speech(clean_text)
+
     has_audio = False
     if not is_dnd:
         try:
-            target_text = c3po_nav_text if c3po_nav_text else clean_text
+            target_text = c3po_nav_text if c3po_nav_text else speech_ready_text
             voice = "en-GB-ThomasNeural" if c3po_nav_text else "en-GB-RyanNeural"
             pitch = "+4Hz" if c3po_nav_text else "-3Hz"
             rate = "+10%" if c3po_nav_text else "+2%"
@@ -319,6 +424,8 @@ def ask():
         'ev_chargers': ev_chargers,
         'is_shutdown': is_shutdown,
         'blackout': trigger_blackout,
+        'disable_blackout': disable_blackout,
+        'disable_navigation': disable_navigation,
         'app_intent': app_launch_intent,
         'device_type': device_type,
         'activate_map': activate_map
