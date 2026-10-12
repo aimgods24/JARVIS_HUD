@@ -103,7 +103,7 @@ def search_general_knowledge(query):
         results = list(DDGS().text(query, max_results=6))
         if results:
             snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
-            return f"Comprehensive analysis on '{query}':\n\n" + "\n\n".join(snippets[:4])
+            return f"Comprehensive Search & Knowledge Synthesis for '{query}':\n\n" + "\n\n".join(snippets[:4])
         return None
     except Exception:
         return None
@@ -278,6 +278,8 @@ def translate_audio_or_text():
     data = request.json or {}
     text = data.get('text', '').strip()
     target_lang = data.get('target_lang', 'English').strip()
+    voice_pitch = data.get('voice_pitch', '-3Hz')
+    voice_rate = data.get('voice_rate', '+2%')
 
     if not text:
         return jsonify({'status': 'error', 'response': 'No speech or text provided to translate.'})
@@ -317,7 +319,7 @@ def translate_audio_or_text():
     
     has_audio = False
     try:
-        asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", "-3Hz", "+2%"))
+        asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
         has_audio = True
     except Exception:
         has_audio = False
@@ -340,15 +342,18 @@ def ask():
     lon = data.get('longitude', None)
     honorific = data.get('honorific', 'Sir')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
-    battery_info = data.get('battery', 'Battery Normal')
     is_dnd = data.get('dnd_mode', False)
-    device_type = data.get('device_type', 'desktop')
+    ai_engine_mode = data.get('ai_engine_mode', 'auto') # 'auto', 'deepseek', 'gemini', 'chatgpt'
+    temperature = float(data.get('temperature', 0.2))
+    voice_pitch = data.get('voice_pitch', '-3Hz')
+    voice_rate = data.get('voice_rate', '+2%')
 
     if not user_prompt and not images and not files:
         return jsonify({'response': f'No command or payload received, {honorific}.', 'audio': False})
 
     cmd_lower = user_prompt.lower()
     reply = None
+    reasoning_steps = None
     google_maps_url = None
     created_file_url = None
     created_filename = None
@@ -358,7 +363,19 @@ def ask():
     open_translate_hud = False
     close_translate_hud = False
 
-    if "system check" in cmd_lower or "run system check" in cmd_lower or "full system check" in cmd_lower:
+    if "switch mode deepseek" in cmd_lower or "use deepseek" in cmd_lower:
+        ai_engine_mode = "deepseek"
+        reply = f"Reasoning profile updated to DeepSeek-R1 Chain-of-Thought Engine, {honorific}."
+
+    elif "switch mode gemini" in cmd_lower or "use gemini" in cmd_lower:
+        ai_engine_mode = "gemini"
+        reply = f"Reasoning profile updated to Google Gemini Multimodal Vision & Search, {honorific}."
+
+    elif "switch mode chatgpt" in cmd_lower or "use chatgpt" in cmd_lower:
+        ai_engine_mode = "chatgpt"
+        reply = f"Reasoning profile updated to ChatGPT Advanced Code & Analysis, {honorific}."
+
+    elif "system check" in cmd_lower or "run system check" in cmd_lower or "full system check" in cmd_lower:
         diag_res = run_diagnostics().get_json()
         rep = diag_res.get('report', '')
         if "Systems up and ready" in rep:
@@ -433,7 +450,29 @@ def ask():
 
     if not reply:
         user_memory = get_user_memory()
+        
+        # Determine Engine Instructions & Specific Capabilities
+        if ai_engine_mode == 'deepseek':
+            engine_prompt_prefix = (
+                "[ENGINE: DEEPSEEK-R1 REASONING PROTOCOL]\n"
+                "First perform step-by-step internal reasoning inside <think>...</think> tags. "
+                "Break down mathematical logic, algorithmic complexity, or technical steps clearly before presenting the final response. "
+            )
+        elif ai_engine_mode == 'gemini':
+            engine_prompt_prefix = (
+                "[ENGINE: GOOGLE GEMINI MULTIMODAL & WEB RETRIEVAL PROTOCOL]\n"
+                "Emphasize precise visual/file contextual analysis, real-time web retrieval accuracy, and structured markdown synthesis. "
+            )
+        elif ai_engine_mode == 'chatgpt':
+            engine_prompt_prefix = (
+                "[ENGINE: CHATGPT ADVANCED CODE & CREATIVE ANALYSIS PROTOCOL]\n"
+                "Emphasize highly accurate code architecture, clear docstrings, tabular markdown comparisons, and polished execution plans. "
+            )
+        else:
+            engine_prompt_prefix = "[ENGINE: AUTO-HYBRID J.A.R.V.I.S. CORE]\n"
+
         system_instructions = (
+            f"{engine_prompt_prefix}"
             "You are J.A.R.V.I.S., a hyper-intelligent AI created by Stark Industries. "
             "Analyze questions, homework problems, pasted text, and dropped files accurately. "
             "IMPORTANT: Always append a short, highly actionable '💡 Proactive Tactical Tip:' at the end of your response to give the user advice or tips on what they asked. "
@@ -445,9 +484,17 @@ def ask():
         if file_context_str:
             full_prompt = f"{file_context_str}\n\nUser Question/Instruction:\n{user_prompt if user_prompt else 'Analyze the attached file content.'}"
 
+        # If Gemini search/retrieval is selected or fallback required
+        search_data = ""
+        if ai_engine_mode == 'gemini' or 'search' in cmd_lower or 'who is' in cmd_lower or 'what is' in cmd_lower:
+            search_data = search_general_knowledge(full_prompt)
+
+        if search_data:
+            full_prompt = f"{full_prompt}\n\n[REAL-TIME RETRIEVAL DATA]:\n{search_data}"
+
         if HAS_OLLAMA:
             try:
-                model_to_use = 'llava' if images else 'qwen2.5:0.5b'
+                model_to_use = 'llava' if images else ('qwen2.5:0.5b' if ai_engine_mode != 'deepseek' else 'deepseek-r1:1.5b')
                 message_obj = {"role": "user", "content": full_prompt}
                 if images:
                     message_obj["images"] = images
@@ -455,17 +502,27 @@ def ask():
                 response = ollama.chat(
                     model=model_to_use,
                     messages=[{"role": "system", "content": system_instructions}, message_obj],
-                    options={"num_predict": 700, "temperature": 0.2},
+                    options={"num_predict": 800, "temperature": temperature},
                     keep_alive=-1
                 )
-                reply = response['message']['content'].strip()
+                raw_reply = response['message']['content'].strip()
+
+                # Extract DeepSeek <think> reasoning tags if present
+                if "<think>" in raw_reply and "</think>" in raw_reply:
+                    think_match = re.search(r'<think>([\s\S]*?)</think>', raw_reply)
+                    if think_match:
+                        reasoning_steps = think_match.group(1).strip()
+                        reply = re.sub(r'<think>[\s\S]*?</think>', '', raw_reply).strip()
+                if not reply:
+                    reply = raw_reply
+
             except Exception:
                 reply = None
 
         if not reply:
-            ai_answer = search_general_knowledge(full_prompt)
-            reply = ai_answer if ai_answer else f"I have processed your request regarding '{user_prompt if user_prompt else 'the payload'}', {honorific}."
-            reply += f"\n\n💡 Proactive Tactical Tip: For maximum output precision, specify exact constraints or frameworks when issuing complex prompts, {honorific}."
+            ai_answer = search_data if search_data else search_general_knowledge(full_prompt)
+            reply = ai_answer if ai_answer else f"I have processed your query using the {ai_engine_mode.upper()} engine configuration, {honorific}."
+            reply += f"\n\n💡 Proactive Tactical Tip: Switch AI modes in the Settings HUD (DeepSeek, Gemini, ChatGPT) depending on whether you need step-by-step logic, live web retrieval, or code architecture, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific + "."):
@@ -476,13 +533,15 @@ def ask():
     has_audio = False
     if not is_dnd:
         try:
-            asyncio.run(generate_voice_file(spoken_verbal_text, "en-GB-RyanNeural", "-3Hz", "+2%"))
+            asyncio.run(generate_voice_file(spoken_verbal_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
             has_audio = True
         except Exception as e:
             print(f"[AUDIO GENERATION ERROR]: {e}")
 
     return jsonify({
         'response': clean_text, 
+        'reasoning_steps': reasoning_steps,
+        'ai_engine_mode': ai_engine_mode,
         'audio': has_audio,
         'google_maps_url': google_maps_url,
         'created_file_url': created_file_url,

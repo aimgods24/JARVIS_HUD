@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JARVIS // MARK LXXXV TACTICAL HUD</title>
+    <title>JARVIS // MARK LXXXV MULTI-ENGINE HUD</title>
     <link rel="manifest" href="/manifest.json">
     <style>
         :root {
@@ -156,6 +156,14 @@
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
+        .deepseek-think-card {
+            background: rgba(168, 85, 247, 0.08);
+            border: 1px solid #a855f7;
+            border-radius: 4px; padding: 8px; margin: 4px 0;
+            font-size: 0.72rem; color: #d8b4fe;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+        }
+
         .hud-action-badge {
             display: inline-block; margin-top: 6px; padding: 4px 10px;
             background: var(--hud-glow); border: 1px solid var(--hud-cyan);
@@ -165,7 +173,7 @@
 
         .hud-center-pill {
             position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
-            width: 95%; max-width: 580px;
+            width: 95%; max-width: 600px;
             background: rgba(1, 12, 24, 0.95);
             border: 1px solid var(--hud-cyan); border-radius: 20px;
             padding: 6px 10px; display: flex; align-items: center; gap: 6px;
@@ -177,7 +185,7 @@
             color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.82rem; outline: none;
         }
 
-        button, select, input[type="text"] {
+        button, select, input[type="text"], input[type="range"] {
             background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
             color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 8px; font-size: 0.7rem; outline: none;
         }
@@ -248,7 +256,7 @@
 
     <div class="hud-top-bar" id="hudHeader">
         <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
-        <div>STATUS: <span style="color: var(--hud-cyan); font-weight: bold;">OPTIMAL</span></div>
+        <div>ENGINE: <span id="currentEngineTag" style="color: var(--hud-cyan); font-weight: bold;">AUTO-HYBRID</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
@@ -343,7 +351,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System online. Awaiting system diagnostic scan or direct operational query.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Multi-Engine Neural Core Online. Gemini, ChatGPT, and DeepSeek modes integrated, Sir.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -378,12 +386,22 @@
 
                 <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
 
+                <div class="panel-header"><span>ENGINE QUICK-SWITCH //</span></div>
+                <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                    <button onclick="setAiEngineMode('auto')">⚡ AUTO-HYBRID</button>
+                    <button onclick="setAiEngineMode('deepseek')" style="border-color: #a855f7;">🧠 DEEPSEEK-R1</button>
+                    <button onclick="setAiEngineMode('gemini')" style="border-color: #3b82f6;">🌐 GEMINI SEARCH</button>
+                    <button onclick="setAiEngineMode('chatgpt')" style="border-color: #10b981;">💻 CHATGPT CODE</button>
+                </div>
+
+                <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
+
                 <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
                 <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px; margin-top:4px;">
-                    <div>[12:45:01] DIAGNOSTIC SUBROUTINES READY</div>
-                    <div>[12:45:12] CUSTOM SETTINGS LOADED</div>
-                    <div>[12:45:22] HONORIFIC CONFIRMED</div>
-                    <div>[12:45:34] ALL SUBROUTINES ACTIVE</div>
+                    <div>[12:45:01] REASONING ENGINES LOADED</div>
+                    <div>[12:45:12] DEEPSEEK REASONING ACTIVE</div>
+                    <div>[12:45:22] GEMINI RETRIEVAL SYNCED</div>
+                    <div>[12:45:34] ALL SUBROUTINES OPTIMAL</div>
                 </div>
             </div>
         </div>
@@ -401,8 +419,18 @@
 
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
-            <div>⚙️ STARK INDUSTRIES // SYSTEM CONFIGURATION</div>
+            <div>⚙️ STARK INDUSTRIES // MASTER HUD & AI CONFIGURATION</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
+        </div>
+
+        <div class="setting-row">
+            <span class="setting-label">AI Intelligence Mode:</span>
+            <select id="settingAiEngine" onchange="saveCustomSettings()">
+                <option value="auto">Auto-Hybrid Core (Default)</option>
+                <option value="deepseek">DeepSeek-R1 (Chain-of-Thought Reasoning)</option>
+                <option value="gemini">Google Gemini (Multimodal & Web Search)</option>
+                <option value="chatgpt">ChatGPT (Advanced Code & Analysis)</option>
+            </select>
         </div>
 
         <div class="setting-row">
@@ -412,6 +440,21 @@
                 <option value="Ma'am">Ma'am</option>
                 <option value="Commander">Commander</option>
                 <option value="Boss">Boss</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <span class="setting-label">AI Creativity (Temperature):</span>
+            <input type="range" id="settingTemp" min="0.0" max="1.0" step="0.1" value="0.2" onchange="saveCustomSettings()">
+        </div>
+
+        <div class="setting-row">
+            <span class="setting-label">Voice Speech Rate:</span>
+            <select id="settingRate" onchange="saveCustomSettings()">
+                <option value="-10%">Slower (-10%)</option>
+                <option value="+2%">Normal (+2%)</option>
+                <option value="+15%">Faster (+15%)</option>
+                <option value="+30%">Rapid (+30%)</option>
             </select>
         </div>
 
@@ -427,6 +470,8 @@
                 <span class="theme-swatch" style="background: #ff2200;" onclick="applyHUDTheme('#ff2200')"></span>
                 <span class="theme-swatch" style="background: #ffb700;" onclick="applyHUDTheme('#ffb700')"></span>
                 <span class="theme-swatch" style="background: #00ff66;" onclick="applyHUDTheme('#00ff66')"></span>
+                <span class="theme-swatch" style="background: #a855f7;" onclick="applyHUDTheme('#a855f7')"></span>
+                <span class="theme-swatch" style="background: #3b82f6;" onclick="applyHUDTheme('#3b82f6')"></span>
             </div>
         </div>
     </div>
@@ -460,8 +505,18 @@
             <div>STARK INDUSTRIES // MARK LXXXV SYSTEM INITIALIZATION</div>
         </div>
         <div class="welcome-body">
-            <div>Welcome. J.A.R.V.I.S. is online. Please configure your identity and HUD presentation preferences:</div>
+            <div>Welcome. J.A.R.V.I.S. is online. Configure your AI intelligence mode, identity, and HUD theme:</div>
             
+            <div class="command-card">
+                <b>🧠 Intelligence Reasoning Engine:</b><br>
+                <div style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">
+                    <button id="btnEngineAuto" class="btn-active" onclick="selectWelcomeEngine('auto')">Auto-Hybrid</button>
+                    <button id="btnEngineDeepSeek" onclick="selectWelcomeEngine('deepseek')">DeepSeek-R1</button>
+                    <button id="btnEngineGemini" onclick="selectWelcomeEngine('gemini')">Google Gemini</button>
+                    <button id="btnEngineChatGPT" onclick="selectWelcomeEngine('chatgpt')">ChatGPT</button>
+                </div>
+            </div>
+
             <div class="command-card">
                 <b>👤 How should J.A.R.V.I.S. address you?</b><br>
                 <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
@@ -478,19 +533,19 @@
                     <span class="theme-swatch" style="background: #ff2200;" onclick="applyHUDTheme('#ff2200')"></span> Red
                     <span class="theme-swatch" style="background: #ffb700;" onclick="applyHUDTheme('#ffb700')"></span> Gold
                     <span class="theme-swatch" style="background: #00ff66;" onclick="applyHUDTheme('#00ff66')"></span> Emerald
+                    <span class="theme-swatch" style="background: #a855f7;" onclick="applyHUDTheme('#a855f7')"></span> Purple
                 </div>
             </div>
 
             <div class="command-card">
-                <b>⚡ Integrated Subroutines & Modules:</b><br>
-                • Automated Diagnostic Routine (`System Check`) returning "Systems up and ready"<br>
-                • Verbalized Math & Code Symbol Synthesis<br>
-                • Global Weather Telemetry (Open-Meteo)<br>
-                • Pre-Loaded Google Maps Navigation Search Links<br>
-                • Dynamic File Analysis & Export Generator<br>
-                • CCTV Network Camera Scan & Core Orb Live Video<br>
+                <b>⚡ Complete Integrated Capabilities:</b><br>
+                • DeepSeek-R1 Chain-of-Thought Reasoning Log Overlay<br>
+                • Google Gemini Search Retrieval & Multimodal Processing<br>
+                • ChatGPT Code Architecture & Structuring Engine<br>
+                • System Diagnostic Scan (`System Check`) returning "Systems up and ready"<br>
+                • CCTV Network Scan & Core Orb Live Video Overlay<br>
                 • Neural Translate HUD Engine with Live Subtitles<br>
-                • WebBluetooth Device Linking & Watch Widget HUD (`/watch`)
+                • WebBluetooth Device Linking & Smartwatch Widget (`/watch`)
             </div>
 
             <button style="margin-top: 10px; padding: 10px; width: 100%; font-size: 0.8rem;" onclick="launchHUDInitialization()">🚀 LAUNCH HUD INITIALIZATION</button>
@@ -506,6 +561,9 @@
         let userLat = null, userLon = null;
         let customWakeWord = "jarvis";
         let userHonorific = "Sir";
+        let userEngineMode = "auto";
+        let userTemp = "0.2";
+        let userRate = "+2%";
 
         let currentAudio = null;
         let audioCtx = null;
@@ -550,6 +608,12 @@
                 selectWelcomeHonorific(savedHonorific);
             }
 
+            const savedEngine = localStorage.getItem('jarvis_engine');
+            if (savedEngine) {
+                userEngineMode = savedEngine;
+                setAiEngineMode(savedEngine);
+            }
+
             const savedTheme = localStorage.getItem('jarvis_theme');
             if (savedTheme) applyHUDTheme(savedTheme);
 
@@ -563,6 +627,28 @@
 
         function showOnboardingGuide() {
             document.getElementById('welcomeModal').style.display = 'flex';
+        }
+
+        function selectWelcomeEngine(mode) {
+            userEngineMode = mode;
+            document.getElementById('btnEngineAuto').classList.remove('btn-active');
+            document.getElementById('btnEngineDeepSeek').classList.remove('btn-active');
+            document.getElementById('btnEngineGemini').classList.remove('btn-active');
+            document.getElementById('btnEngineChatGPT').classList.remove('btn-active');
+
+            if (mode === 'auto') document.getElementById('btnEngineAuto').classList.add('btn-active');
+            if (mode === 'deepseek') document.getElementById('btnEngineDeepSeek').classList.add('btn-active');
+            if (mode === 'gemini') document.getElementById('btnEngineGemini').classList.add('btn-active');
+            if (mode === 'chatgpt') document.getElementById('btnEngineChatGPT').classList.add('btn-active');
+
+            document.getElementById('settingAiEngine').value = mode;
+        }
+
+        function setAiEngineMode(mode) {
+            userEngineMode = mode;
+            localStorage.setItem('jarvis_engine', mode);
+            document.getElementById('settingAiEngine').value = mode;
+            document.getElementById('currentEngineTag').innerText = mode.toUpperCase();
         }
 
         function selectWelcomeHonorific(title) {
@@ -581,12 +667,13 @@
         function launchHUDInitialization() {
             localStorage.setItem('jarvis_honorific', userHonorific);
             localStorage.setItem('jarvis_wakeword', customWakeWord);
+            localStorage.setItem('jarvis_engine', userEngineMode);
             localStorage.setItem('jarvis_onboarded', 'true');
 
             document.getElementById('welcomeModal').style.display = 'none';
 
             const terminal = document.getElementById('chat-terminal');
-            const welcomeMsg = `Preferences confirmed. Initializing HUD display protocol for ${userHonorific}. How may I assist you today?`;
+            const welcomeMsg = `Preferences confirmed. Initializing HUD display protocol using ${userEngineMode.toUpperCase()} engine for ${userHonorific}. How may I assist you today?`;
             
             terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${welcomeMsg}</div>`;
             terminal.scrollTop = terminal.scrollHeight;
@@ -597,6 +684,7 @@
         function openSettingsHUD() {
             document.getElementById('settingWakeWord').value = customWakeWord;
             document.getElementById('settingHonorific').value = userHonorific;
+            document.getElementById('settingAiEngine').value = userEngineMode;
             document.getElementById('settingsModal').style.display = 'flex';
         }
 
@@ -607,8 +695,14 @@
         function saveCustomSettings() {
             customWakeWord = document.getElementById('settingWakeWord').value.toLowerCase().trim() || "jarvis";
             userHonorific = document.getElementById('settingHonorific').value || "Sir";
+            userEngineMode = document.getElementById('settingAiEngine').value || "auto";
+            userTemp = document.getElementById('settingTemp').value || "0.2";
+            userRate = document.getElementById('settingRate').value || "+2%";
+
             localStorage.setItem('jarvis_wakeword', customWakeWord);
             localStorage.setItem('jarvis_honorific', userHonorific);
+            localStorage.setItem('jarvis_engine', userEngineMode);
+            document.getElementById('currentEngineTag').innerText = userEngineMode.toUpperCase();
         }
 
         function applyHUDTheme(hexColor) {
@@ -647,7 +741,7 @@
                     const res = await fetch('/api/translate', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({text: textSpoken, target_lang: targetLang, honorific: userHonorific})
+                        body: JSON.stringify({text: textSpoken, target_lang: targetLang, honorific: userHonorific, voice_rate: userRate})
                     });
                     const data = await res.json();
                     
@@ -845,6 +939,9 @@
                 latitude: userLat,
                 longitude: userLon,
                 honorific: userHonorific,
+                ai_engine_mode: userEngineMode,
+                temperature: userTemp,
+                voice_rate: userRate,
                 device_type: isMobile ? 'mobile' : 'desktop'
             };
 
@@ -871,7 +968,13 @@
                     cctvImg.style.display = 'block';
                 }
 
-                let appendHtml = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}`;
+                let appendHtml = "";
+
+                if (data.reasoning_steps) {
+                    appendHtml += `<div class="deepseek-think-card"><b>🧠 [DEEPSEEK REASONING LOG]:</b><br>${data.reasoning_steps.replace(/\n/g, '<br>')}</div>`;
+                }
+
+                appendHtml += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. [${(data.ai_engine_mode || 'AUTO').toUpperCase()}]:</b> ${data.response}`;
                 
                 if (data.google_maps_url) {
                     appendHtml += `<br><a class="hud-action-badge" href="${data.google_maps_url}" target="_blank">MAPS LINK</a>`;
