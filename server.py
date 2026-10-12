@@ -9,14 +9,12 @@ import threading
 import time
 from duckduckgo_search import DDGS
 
-# Handle PyAutoGUI on headless servers
 try:
     import pyautogui
     HAS_PYAUTOGUI = True
 except Exception:
     HAS_PYAUTOGUI = False
 
-# Handle Ollama local models
 try:
     import ollama
     HAS_OLLAMA = True
@@ -48,12 +46,6 @@ def get_user_memory():
         with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
             return f.read()
     return ""
-
-WELCOME_MESSAGES = [
-    "Welcome back, {honorific}. All neural pathways and subroutines are online.",
-    "Authentication confirmed. Good to see you again, {honorific}.",
-    "Systems restored to maximum efficiency. How may I assist you today, {honorific}?"
-]
 
 def search_general_knowledge(query):
     """ChatGPT-grade search & synthesis engine"""
@@ -134,17 +126,17 @@ def get_news():
 def ask():
     data = request.json or {}
     user_prompt = data.get('prompt', '').strip()
-    images = data.get('images', [])
+    images = data.get('images', [])  # Base64 image payloads
+    files = data.get('files', [])    # Document and text payloads
     honorific = data.get('honorific', 'Sir')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     battery_info = data.get('battery', 'Battery Normal')
-    permissions = data.get('permissions', {})
     mode_transport = data.get('transport_mode', 'car')
     is_dnd = data.get('dnd_mode', False)
     device_type = data.get('device_type', 'desktop')
 
-    if not user_prompt and not images:
-        return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
+    if not user_prompt and not images and not files:
+        return jsonify({'response': f'No command or file payload received, {honorific}.', 'audio': False})
 
     cmd_lower = user_prompt.lower()
     reply = None
@@ -158,7 +150,7 @@ def ask():
     app_launch_intent = None
     activate_map = False
 
-    # 1. Map Activation
+    # 1. Map Navigation Controls
     if "show map" in cmd_lower or "activate map" in cmd_lower or "open map" in cmd_lower:
         activate_map = True
         reply = f"Activating tactical GPS HUD map overlay now, {honorific}."
@@ -176,7 +168,7 @@ def ask():
                         f"Proceeding with turn-by-turn guidance now, Master!"
         reply = f"Full Google Maps GPS tracking active for {nav_destination}. C-3PO guidance initiated, {honorific}."
 
-    # 2. News
+    # 2. System Utilities & News
     elif "news" in cmd_lower or "headlines" in cmd_lower or "world update" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
             news_summary = "\n\n".join(GLOBAL_NEWS_CACHE[:4])
@@ -184,7 +176,6 @@ def ask():
         else:
             reply = f"Fetching real-time global news feed now, {honorific}."
 
-    # 3. Controls
     elif "blackout" in cmd_lower or "black out" in cmd_lower:
         trigger_blackout = True
         reply = f"Engaging HUD blackout mode. Communication terminal active, {honorific}."
@@ -192,7 +183,7 @@ def ask():
         is_shutdown = True
         reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
 
-    # 4. Media
+    # 3. Media Commands
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -202,7 +193,7 @@ def ask():
         media_action = {"type": "youtube", "query": yt_query}
         reply = f"Loading YouTube video for '{yt_query}', {honorific}."
 
-    # 5. Shazam / Lyrics / Radar
+    # 4. Search Utilities
     elif "lyrics" in cmd_lower or "shazam" in cmd_lower or "what song" in cmd_lower:
         reply = search_lyrics_or_music(user_prompt)
     elif "proton" in cmd_lower or "emas" in cmd_lower or "car hud" in cmd_lower:
@@ -216,7 +207,7 @@ def ask():
         flight_match = re.search(r'([a-zA-Z]{2,3}\s?\d{2,4})', user_prompt)
         reply = search_flight_details(flight_match.group(1)) if flight_match else f"Specify a flight number to track delays, {honorific}."
 
-    # 6. Mobile Deep Links & Desktop Programs
+    # 5. Mobile Deep Links & Desktop Desktop OS Integration
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
         app_schemes = {
@@ -259,34 +250,38 @@ def ask():
                     pass
             reply = f"Launching {target_app} on host desktop, {honorific}."
 
-    elif "take screenshot" in cmd_lower:
-        if HAS_PYAUTOGUI:
-            pyautogui.screenshot('jarvis_screenshot.png')
-            reply = f"Screenshot stored to host filesystem, {honorific}."
-        else:
-            reply = f"Screenshot module is reserved for local desktop mode, {honorific}."
-    elif "click" in cmd_lower:
-        if HAS_PYAUTOGUI:
-            pyautogui.click()
-            reply = f"Screen action performed, {honorific}."
-        else:
-            reply = f"Screen mouse control is reserved for local desktop mode, {honorific}."
+    # 6. File Attachments Integration
+    file_context_str = ""
+    if files:
+        file_snippets = []
+        for f in files:
+            file_name = f.get('name', 'Attachment')
+            file_content = f.get('content', '')
+            file_snippets.append(f"--- [ATTACHED FILE: {file_name}] ---\n{file_content}\n")
+        file_context_str = "\n".join(file_snippets)
 
-    # 7. ChatGPT-Level Intelligence Reasoning Core
+    # 7. ChatGPT-Grade Reasoning & Dynamic Blueprint Engine
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
-            "You are J.A.R.V.I.S., a hyper-intelligent AI assistant created by Stark Industries. "
-            "Provide detailed, comprehensive, high-value ChatGPT-level explanations with full context, bullet points, or step-by-step breakdowns when asked complex questions. "
+            "You are J.A.R.V.I.S., an advanced AI created by Stark Industries. "
+            "Provide comprehensive, structured, ChatGPT-level explanations with full technical accuracy. "
+            "When the user asks you to design, draft, generate, or render a blueprint, schematic, design, or diagram, "
+            "you MUST generate valid SVG vector graphics wrapped inside <svg>...</svg> tags directly in your text response. "
+            "Style all SVG visual graphics with futuristic cyan line-art (#00f3ff, stroke-width 1.5, dark background elements). "
             f"Always finish your reply addressing the user strictly as {honorific}. "
             f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
         )
 
+        full_prompt = user_prompt
+        if file_context_str:
+            full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt if user_prompt else 'Analyze the attached document and provide a complete breakdown.'}"
+
         if HAS_OLLAMA:
             try:
                 model_to_use = 'moondream' if images else 'qwen2.5:0.5b'
-                message_obj = {"role": "user", "content": user_prompt}
+                message_obj = {"role": "user", "content": full_prompt}
                 if images:
                     message_obj["images"] = images
 
@@ -296,7 +291,7 @@ def ask():
                         {"role": "system", "content": system_instructions},
                         message_obj
                     ],
-                    options={"num_predict": 400, "temperature": 0.3},
+                    options={"num_predict": 600, "temperature": 0.2},
                     keep_alive=-1
                 )
                 reply = response['message']['content'].strip()
@@ -304,12 +299,13 @@ def ask():
                 reply = None
 
         if not reply:
-            ai_answer = search_general_knowledge(user_prompt)
+            ai_answer = search_general_knowledge(full_prompt)
             if ai_answer:
                 reply = ai_answer
             else:
-                reply = f"I have thoroughly analyzed your request regarding '{user_prompt}'. All neural pathways report nominal execution status, {honorific}."
+                reply = f"I have thoroughly analyzed your prompt regarding '{user_prompt if user_prompt else 'the attached payload'}'. All neural pathways report nominal execution status, {honorific}."
 
+    # Prevent double honorific occurrences
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     pattern = rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$'
     clean_text = re.sub(pattern, '', clean_text, flags=re.IGNORECASE).strip()
@@ -331,8 +327,6 @@ def ask():
         except Exception:
             has_audio = False
 
-    random_welcome = random.choice(WELCOME_MESSAGES).format(honorific=honorific)
-
     return jsonify({
         'response': clean_text, 
         'audio': has_audio, 
@@ -341,7 +335,6 @@ def ask():
         'nav_destination': nav_destination,
         'ev_chargers': ev_chargers,
         'seats_map': seats_map,
-        'welcome_msg': random_welcome,
         'is_shutdown': is_shutdown,
         'blackout': trigger_blackout,
         'app_intent': app_launch_intent,
