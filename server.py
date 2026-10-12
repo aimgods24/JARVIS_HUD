@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify, send_file, make_response
+from flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory
 import edge_tts
 import asyncio
 import os
@@ -11,6 +11,7 @@ import requests
 import sys
 import io
 import shutil
+import urllib.parse
 from duckduckgo_search import DDGS
 
 try:
@@ -29,6 +30,9 @@ app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 MEMORY_FILE = "jarvis_memory.txt"
+GENERATED_FILES_DIR = "generated_files"
+os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
+
 GLOBAL_NEWS_CACHE = []
 
 def fetch_latest_global_news():
@@ -51,9 +55,24 @@ def get_user_memory():
             return f.read()
     return ""
 
-def fetch_accurate_weather(lat, lon, location_name="Current Location"):
+def fetch_global_weather(location_query, lat=None, lon=None):
+    """Fetches full meteorological telemetry for any location on Earth using Open-Meteo Geocoding API."""
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto"
+        target_name = location_query
+        if lat is None or lon is None:
+            geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={urllib.parse.quote(location_query)}&count=1&language=en&format=json"
+            geo_res = requests.get(geo_url, timeout=5)
+            if geo_res.status_code == 200 and geo_res.json().get('results'):
+                top_geo = geo_res.json()['results'][0]
+                lat = top_geo['latitude']
+                lon = top_geo['longitude']
+                country = top_geo.get('country', '')
+                target_name = f"{top_geo['name']}, {country}".strip(", ")
+            else:
+                lat, lon = 5.2971, 100.2588
+                target_name = "Bayan Lepas, Penang, Malaysia"
+
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,surface_pressure&timezone=auto"
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json().get('current', {})
@@ -61,6 +80,7 @@ def fetch_accurate_weather(lat, lon, location_name="Current Location"):
             feels = data.get('apparent_temperature', 'N/A')
             humidity = data.get('relative_humidity_2m', 'N/A')
             wind = data.get('wind_speed_10m', 'N/A')
+            pressure = data.get('surface_pressure', 'N/A')
             
             wmo_codes = {
                 0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
@@ -69,14 +89,15 @@ def fetch_accurate_weather(lat, lon, location_name="Current Location"):
             }
             condition = wmo_codes.get(data.get('weather_code', 0), "Clear")
 
-            return (f"Live Meteorological Telemetry [{location_name} @ {lat:.4f}, {lon:.4f}]:\n"
+            return (f"Live World Meteorological Telemetry [{target_name} @ {lat:.4f}, {lon:.4f}]:\n"
                     f"• Condition: {condition}\n"
                     f"• Temperature: {temp}°C (Feels like {feels}°C)\n"
                     f"• Humidity: {humidity}%\n"
-                    f"• Wind Speed: {wind} km/h")
+                    f"• Wind Speed: {wind} km/h\n"
+                    f"• Atmospheric Pressure: {pressure} hPa")
     except Exception as e:
         print(f"[WEATHER API ERROR]: {e}")
-    return None
+    return f"Unable to fetch weather telemetry for {location_query}."
 
 def search_general_knowledge(query):
     try:
@@ -88,11 +109,22 @@ def search_general_knowledge(query):
     except Exception:
         return None
 
-def sanitize_text_for_speech(text):
-    """Strips markdown, code block ticks, hash headers, and symbols so JARVIS speaks plain words."""
-    clean = re.sub(r'```[\s\S]*?```', ' Code block omitted for brevity. ', text)
-    clean = re.sub(r'[*_~`#\-•|>]+', ' ', clean)
-    clean = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', clean)
+def convert_symbols_to_words(text):
+    """Converts mathematical, code, and punctuation symbols into verbalized words so J.A.R.V.I.S. pronounces them."""
+    clean = re.sub(r'```[\s\S]*?```', ' Code block provided in terminal interface. ', text)
+    clean = re.sub(r'<svg[\s\S]*?<\/svg>', ' Schematic graphic generated on dashboard. ', clean)
+
+    symbol_map = {
+        '@': ' at ', '#': ' hashtag ', '$': ' dollars ', '%': ' percent ',
+        '&': ' and ', '*': ' times ', '+': ' plus ', '=': ' equals ',
+        '<': ' less than ', '>': ' greater than ', '/': ' slash ', '\\': ' backslash ',
+        '^': ' power of ', '~': ' approximately ', '|': ' pipe ', '_': ' underscore ',
+        '-': ' minus ', '°': ' degrees '
+    }
+
+    for sym, word in symbol_map.items():
+        clean = clean.replace(sym, word)
+
     clean = re.sub(r'[^\w\s.,?!]', '', clean)
     clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
@@ -142,11 +174,9 @@ def get_news():
 
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
-    """System diagnostic worker: Scans for anomalies and executes self-healing protocols."""
     anomalies = []
     status_summary = {}
 
-    # 1. Ollama LLM Engine Check
     if HAS_OLLAMA:
         try:
             ollama.list()
@@ -157,27 +187,13 @@ def run_diagnostics():
     else:
         status_summary['ollama'] = 'NOT INSTALLED (FALLBACK ACTIVE)'
 
-    # 2. Weather Telemetry Check
     try:
         w_check = requests.get("https://api.open-meteo.com/v1/forecast?latitude=5.2971&longitude=100.2588&current=temperature_2m", timeout=3)
-        if w_check.status_code == 200:
-            status_summary['weather_api'] = 'ONLINE'
-        else:
-            status_summary['weather_api'] = f'DEGRADED (HTTP {w_check.status_code})'
-            anomalies.append(f"Weather API returned status code {w_check.status_code}")
+        status_summary['weather_api'] = 'ONLINE' if w_check.status_code == 200 else 'DEGRADED'
     except Exception as e:
         status_summary['weather_api'] = 'OFFLINE'
         anomalies.append(f"Weather API request failed: {str(e)}")
 
-    # 3. DuckDuckGo Search Engine Check
-    try:
-        search_test = list(DDGS().text("ping test", max_results=1))
-        status_summary['search_engine'] = 'ONLINE' if search_test else 'NO RESULTS'
-    except Exception as e:
-        status_summary['search_engine'] = 'DEGRADED'
-        anomalies.append(f"DuckDuckGo search error: {str(e)}")
-
-    # 4. Storage & Memory Diagnostics (Self-Healing)
     try:
         if not os.path.exists(MEMORY_FILE):
             with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
@@ -188,13 +204,10 @@ def run_diagnostics():
         status_summary['memory_archive'] = 'READ/WRITE ERROR'
         anomalies.append(f"Memory storage failure: {str(e)}")
 
-    # 5. Disk Space Diagnostics
     try:
         total, used, free = shutil.disk_usage("/")
         free_gb = free / (1024 ** 3)
         status_summary['free_disk'] = f"{free_gb:.2f} GB"
-        if free_gb < 1.0:
-            anomalies.append(f"Low disk space detected: {free_gb:.2f} GB remaining.")
     except Exception:
         status_summary['free_disk'] = 'UNKNOWN'
 
@@ -202,7 +215,6 @@ def run_diagnostics():
         f"Diagnostic Scan Complete, Sir.\n\n"
         f"• Local LLM Engine: {status_summary.get('ollama')}\n"
         f"• Weather Telemetry: {status_summary.get('weather_api')}\n"
-        f"• Search Engine Link: {status_summary.get('search_engine')}\n"
         f"• Memory Archive: {status_summary.get('memory_archive')}\n"
         f"• Disk Space Remaining: {status_summary.get('free_disk')}\n\n"
     )
@@ -212,31 +224,11 @@ def run_diagnostics():
     else:
         diagnostic_report += "✅ All subroutines and neural links operating at optimal capacity. Zero anomalies detected."
 
-    return jsonify({
-        'status': 'success',
-        'report': diagnostic_report,
-        'has_anomalies': len(anomalies) > 0,
-        'anomalies_list': anomalies
-    })
+    return jsonify({'status': 'success', 'report': diagnostic_report})
 
-@app.route('/api/run_python', methods=['POST'])
-def run_python():
-    data = request.json or {}
-    code_str = data.get('code', '')
-    if not code_str:
-        return jsonify({'output': 'No code provided.'})
-        
-    old_stdout = sys.stdout
-    redirected_output = sys.stdout = io.StringIO()
-    try:
-        exec(code_str, {'__builtins__': __builtins__})
-        output = redirected_output.getvalue()
-    except Exception as e:
-        output = f"Execution Error: {str(e)}"
-    finally:
-        sys.stdout = old_stdout
-        
-    return jsonify({'output': output if output else 'Code executed successfully with no print output.'})
+@app.route('/api/download_generated/<filename>')
+def download_generated(filename):
+    return send_from_directory(GENERATED_FILES_DIR, filename, as_attachment=True)
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
@@ -249,7 +241,6 @@ def ask():
     honorific = data.get('honorific', 'Sir')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     battery_info = data.get('battery', 'Battery Normal')
-    mode_transport = data.get('transport_mode', 'car')
     is_dnd = data.get('dnd_mode', False)
     device_type = data.get('device_type', 'desktop')
 
@@ -258,49 +249,48 @@ def ask():
 
     cmd_lower = user_prompt.lower()
     reply = None
-    media_action = None
-    nav_destination = None
-    ev_chargers = False
-    c3po_nav_text = None
-    is_shutdown = False
+    google_maps_url = None
+    created_file_url = None
+    created_filename = None
     trigger_blackout = False
     disable_blackout = False
-    disable_navigation = False
-    app_launch_intent = None
-    activate_map = False
 
-    # Mode Exit Command Handlers
     if "disable blackout" in cmd_lower or "exit blackout" in cmd_lower or "turn off blackout" in cmd_lower or "disable stealth" in cmd_lower:
         disable_blackout = True
-        reply = f"Job done, {honorific}. Disabling stealth blackout and restoring full HUD visual arrays."
+        reply = f"Job done, {honorific}. Stealth blackout mode disabled."
 
-    elif "disable navigation" in cmd_lower or "exit navigation" in cmd_lower or "turn off navigation" in cmd_lower or "close map" in cmd_lower or "hide map" in cmd_lower:
-        disable_navigation = True
-        activate_map = False
-        reply = f"Job done, {honorific}. Deactivating GPS navigation overlay and returning to standard diagnostic view."
-
-    elif "diagnostics" in cmd_lower or "check anomalies" in cmd_lower or "scan system" in cmd_lower or "run diagnostic" in cmd_lower:
+    elif "diagnostics" in cmd_lower or "check anomalies" in cmd_lower or "scan system" in cmd_lower:
         diag_res = run_diagnostics().get_json()
         reply = diag_res.get('report', f'Diagnostic scan finished, {honorific}.')
 
+    # Weather for any city/location in the world
     elif "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
-        if lat and lon:
-            reply = fetch_accurate_weather(lat, lon, "Your Current Position")
+        extracted_location = re.sub(r'weather|temperature|forecast|in|at|for|the|current|live', '', user_prompt, flags=re.IGNORECASE).strip()
+        if extracted_location and len(extracted_location) > 2:
+            reply = fetch_global_weather(extracted_location)
+        elif lat and lon:
+            reply = fetch_global_weather("Current Location", lat, lon)
         else:
-            reply = fetch_accurate_weather(5.2971, 100.2588, location)
+            reply = fetch_global_weather(location)
 
-    elif "show map" in cmd_lower or "activate map" in cmd_lower or "open map" in cmd_lower:
-        activate_map = True
-        reply = f"Activating tactical GPS HUD map overlay now, {honorific}."
+    # Google Maps Destination Link Integration
+    elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower or "google maps" in cmd_lower:
+        dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to|open google maps to', '', user_prompt, flags=re.IGNORECASE).strip()
+        destination = dest_match if dest_match else "Destination"
+        encoded_dest = urllib.parse.quote(destination)
+        google_maps_url = f"https://www.google.com/maps/search/?api=1&query={encoded_dest}"
+        reply = f"Google Maps navigation link generated for {destination}. Click the link button in the HUD to launch maps, {honorific}."
 
-    elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower:
-        activate_map = True
-        dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to', '', user_prompt, flags=re.IGNORECASE).strip()
-        nav_destination = dest_match if dest_match else "Target Destination"
-        ev_chargers = (mode_transport == 'ev')
-        
-        c3po_nav_text = f"Oh my! Computing optimal GPS route for {mode_transport.upper()} mode to {nav_destination}. Proceeding now, Master!"
-        reply = f"Full GPS navigation locked on {nav_destination}. C-3PO routing initiated, {honorific}."
+    # File Generation Trigger
+    elif "create file" in cmd_lower or "generate file" in cmd_lower or "make file" in cmd_lower or "downloadable file" in cmd_lower:
+        fname = f"jarvis_export_{int(time.time())}.txt"
+        file_path = os.path.join(GENERATED_FILES_DIR, fname)
+        file_content = f"J.A.R.V.I.S. EXPORT FILE\nTimestamp: {time.ctime()}\nInstruction: {user_prompt}\n\nGenerated output successfully compiled for {honorific}."
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(file_content)
+        created_filename = fname
+        created_file_url = f"/api/download_generated/{fname}"
+        reply = f"Downloadable file '{fname}' compiled successfully, {honorific}."
 
     elif "news" in cmd_lower or "headlines" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
@@ -309,36 +299,7 @@ def ask():
             reply = f"Fetching real-time global news feed now, {honorific}."
     elif "blackout" in cmd_lower or "black out" in cmd_lower or "stealth mode" in cmd_lower:
         trigger_blackout = True
-        reply = f"Engaging HUD blackout mode. Terminal core remaining active, {honorific}."
-    elif "shut down" in cmd_lower or "shutdown" in cmd_lower:
-        is_shutdown = True
-        reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
-
-    elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
-        song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
-        media_action = {"type": "spotify", "query": song}
-        reply = f"Streaming '{song}' on Spotify, {honorific}."
-    elif "play" in cmd_lower or "youtube" in cmd_lower:
-        yt_query = re.sub(r'play|on youtube|youtube|video', '', user_prompt, flags=re.IGNORECASE).strip()
-        media_action = {"type": "youtube", "query": yt_query}
-        reply = f"Loading YouTube video for '{yt_query}', {honorific}."
-
-    elif "open" in cmd_lower or "launch" in cmd_lower:
-        target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
-        app_schemes = {
-            "spotify": "spotify://", "youtube": "vnd.youtube://", "maps": "https://maps.google.com",
-            "google maps": "comgooglemaps://", "chrome": "googlechrome://", "whatsapp": "whatsapp://"
-        }
-        if device_type == "mobile" and target_app in app_schemes:
-            app_launch_intent = app_schemes[target_app]
-            reply = f"Launching {target_app} on mobile device, {honorific}."
-        else:
-            if HAS_PYAUTOGUI:
-                try:
-                    subprocess.Popen(f"start {target_app}", shell=True)
-                except Exception:
-                    pass
-            reply = f"Launching {target_app} on host system, {honorific}."
+        reply = f"Engaging HUD blackout mode, {honorific}."
 
     file_context_str = ""
     if files:
@@ -352,19 +313,16 @@ def ask():
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
-            "You are J.A.R.V.I.S., a hyper-intelligent AI assistant created by Stark Industries. "
-            "Examine all user requests, homework problems, math equations, attached documents, and photo image uploads with complete accuracy. "
-            "ACADEMIC & HOMEWORK GUIDELINES: Provide step-by-step educational breakdowns, formula definitions, and clear final solutions. "
-            "PYTHON SCRIPTING: When generating Python scripts, provide complete runnable code blocks inside ```python ``` tags with clear line-by-line explanations. "
-            "BLUEPRINT GRAPHICS: If asked to draft or design a schematic or blueprint, generate valid SVG vector graphics wrapped in <svg>...</svg> tags. "
-            f"Always finish your response addressing the user strictly as {honorific}. "
-            f"Device Telemetry: [{battery_info}]. Location: [{location}]. "
+            "You are J.A.R.V.I.S., a hyper-intelligent AI created by Stark Industries. "
+            "Analyze questions, homework problems, pasted text, and dropped files accurately. "
+            "If requested to create code or export data, explain it clearly. "
+            f"Always complete your response addressing the user strictly as {honorific}. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
         )
 
         full_prompt = user_prompt
         if file_context_str:
-            full_prompt = f"{file_context_str}\n\nUser Question/Instruction:\n{user_prompt if user_prompt else 'Analyze the attached file and solve any homework questions present.'}"
+            full_prompt = f"{file_context_str}\n\nUser Question/Instruction:\n{user_prompt if user_prompt else 'Analyze the attached file content.'}"
 
         if HAS_OLLAMA:
             try:
@@ -375,10 +333,7 @@ def ask():
 
                 response = ollama.chat(
                     model=model_to_use,
-                    messages=[
-                        {"role": "system", "content": system_instructions},
-                        message_obj
-                    ],
+                    messages=[{"role": "system", "content": system_instructions}, message_obj],
                     options={"num_predict": 700, "temperature": 0.2},
                     keep_alive=-1
                 )
@@ -388,47 +343,30 @@ def ask():
 
         if not reply:
             ai_answer = search_general_knowledge(full_prompt)
-            if ai_answer:
-                reply = ai_answer
-            else:
-                reply = f"I have thoroughly processed your request regarding '{user_prompt if user_prompt else 'the attached payload'}'. All neural pathways nominal, {honorific}."
+            reply = ai_answer if ai_answer else f"I have processed your request regarding '{user_prompt if user_prompt else 'the payload'}', {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     clean_text = re.sub(rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$', '', clean_text, flags=re.IGNORECASE).strip()
-    
-    if not c3po_nav_text:
-        clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
+    clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
 
-    speech_ready_text = sanitize_text_for_speech(clean_text)
+    spoken_verbal_text = convert_symbols_to_words(clean_text)
 
     has_audio = False
     if not is_dnd:
         try:
-            target_text = c3po_nav_text if c3po_nav_text else speech_ready_text
-            voice = "en-GB-ThomasNeural" if c3po_nav_text else "en-GB-RyanNeural"
-            pitch = "+4Hz" if c3po_nav_text else "-3Hz"
-            rate = "+10%" if c3po_nav_text else "+2%"
-            
-            asyncio.run(generate_voice_file(target_text, voice, pitch, rate))
+            asyncio.run(generate_voice_file(spoken_verbal_text, "en-GB-RyanNeural", "-3Hz", "+2%"))
             has_audio = True
         except Exception as e:
             print(f"[AUDIO GENERATION ERROR]: {e}")
-            has_audio = False
 
     return jsonify({
         'response': clean_text, 
-        'audio': has_audio, 
-        'c3po_text': c3po_nav_text,
-        'media_action': media_action,
-        'nav_destination': nav_destination,
-        'ev_chargers': ev_chargers,
-        'is_shutdown': is_shutdown,
+        'audio': has_audio,
+        'google_maps_url': google_maps_url,
+        'created_file_url': created_file_url,
+        'created_filename': created_filename,
         'blackout': trigger_blackout,
-        'disable_blackout': disable_blackout,
-        'disable_navigation': disable_navigation,
-        'app_intent': app_launch_intent,
-        'device_type': device_type,
-        'activate_map': activate_map
+        'disable_blackout': disable_blackout
     })
 
 async def generate_voice_file(text, voice, pitch, rate):

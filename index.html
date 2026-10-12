@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JARVIS // MARK LXXXV TACTICAL HUD</title>
     <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --hud-cyan: #00f3ff;
@@ -135,12 +134,6 @@
 
         .ecg-box { height: 28px; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 
-        #gps-map-container {
-            height: 160px; border: 1px solid var(--hud-cyan);
-            border-radius: 3px; overflow: hidden; display: none; margin-bottom: 4px; z-index: 1;
-        }
-        #leaflet-map { width: 100%; height: 100%; }
-
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
@@ -152,6 +145,13 @@
         .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
+
+        .hud-action-badge {
+            display: inline-block; margin-top: 6px; padding: 4px 10px;
+            background: rgba(0, 243, 255, 0.2); border: 1px solid var(--hud-cyan);
+            border-radius: 4px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.72rem;
+        }
+        .hud-action-badge:hover { background: var(--hud-cyan); color: #000; }
 
         .hud-center-pill {
             position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
@@ -172,29 +172,6 @@
             color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 10px; font-size: 0.72rem;
         }
         button:hover { background: var(--hud-cyan); color: #000; }
-
-        #blueprintModal {
-            display: none; position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 85vw; max-width: 900px; height: 75vh; max-height: 600px;
-            background: rgba(1, 10, 20, 0.96);
-            border: 2px solid var(--hud-cyan); border-radius: 6px;
-            box-shadow: 0 0 35px var(--hud-cyan); z-index: 1000;
-            flex-direction: column; padding: 12px;
-        }
-
-        .blueprint-header {
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px; font-size: 0.8rem; font-weight: bold;
-        }
-
-        .blueprint-viewport {
-            flex: 1; margin-top: 8px; border: 1px dashed var(--hud-cyan);
-            display: flex; align-items: center; justify-content: center; overflow: hidden;
-            background: radial-gradient(circle, rgba(0,243,255,0.06) 0%, rgba(1,8,16,1) 90%);
-        }
-
-        .blueprint-viewport svg { width: 90%; height: 90%; filter: drop-shadow(0 0 8px var(--hud-cyan)); }
 
         #welcomeModal {
             display: none; position: fixed; top: 50%; left: 50%;
@@ -228,7 +205,7 @@
         .wave-bar { width: 2px; height: 15%; background: var(--hud-cyan); transition: height 0.1s ease; }
 
         .blackout-active { background: #000 !important; background-image: none !important; }
-        .blackout-active .hud-top-bar, .blackout-active .desktop-only, .blackout-active #gps-map-container, .blackout-active .arc-radar-container { display: none !important; }
+        .blackout-active .hud-top-bar, .blackout-active .desktop-only, .blackout-active .arc-radar-container { display: none !important; }
     </style>
 </head>
 <body>
@@ -330,12 +307,8 @@
         </div>
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
-            <div id="gps-map-container">
-                <div id="leaflet-map"></div>
-            </div>
-
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System active. Core orb visualizer ready. Diagnostic scanner active. Say your wake phrase to activate the microphone, Sir.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System online. Verbalized symbol synthesis, global weather telemetry, file analysis, and dynamic export file generator active, Sir.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -358,7 +331,7 @@
             </div>
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 4px;">
-                <button onclick="sendCommandCustom('show map')">🗺️ MAP</button>
+                <button onclick="sendCommandCustom('weather in Tokyo')">🌐 WEATHER</button>
                 <button onclick="fetchGlobalNews()">📰 NEWS</button>
                 <button onclick="request2FACode()">🔑 2FA</button>
                 <button onclick="sendCommandCustom('blackout')">🕶️ STEALTH</button>
@@ -369,10 +342,10 @@
             <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
             <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
                 <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
-                <div>[12:45:12] BIO-SYNC STABLE AT 98.4%</div>
-                <div>[12:45:22] DIAGNOSTIC ENGINE ONLINE</div>
-                <div>[12:45:34] AUDIO INTERRUPT ENFORCED</div>
-                <div>[12:45:45] AWAITING COMMAND...</div>
+                <div>[12:45:12] VERBAL SYMBOL ENGINE ACTIVE</div>
+                <div>[12:45:22] GLOBAL WEATHER LINKED</div>
+                <div>[12:45:34] GOOGLE MAPS ROUTER READY</div>
+                <div>[12:45:45] FILE EXPORT GENERATOR ONLINE</div>
             </div>
         </div>
 
@@ -382,18 +355,10 @@
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
         <button id="micBtn" onclick="toggleVoiceChat()">🎙️ IDLE</button>
-        <textarea id="userInput" placeholder="Awaiting command... (Enter to Send)"></textarea>
+        <textarea id="userInput" placeholder="Awaiting command or dropped/pasted files... (Enter to Send)"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
     <div id="filePreview" style="position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #fff; z-index: 10;"></div>
-
-    <div id="blueprintModal">
-        <div class="blueprint-header">
-            <div>📐 STARK INDUSTRIES // SCHEMATIC BLUEPRINT DRAWING</div>
-            <button onclick="closeBlueprintModal()">✕ CLOSE</button>
-        </div>
-        <div class="blueprint-viewport" id="blueprintViewport"></div>
-    </div>
 
     <div id="welcomeModal">
         <div class="welcome-header">
@@ -401,21 +366,21 @@
             <button onclick="closeWelcomeModal()">✕ START</button>
         </div>
         <div class="welcome-body">
-            <div>Welcome. J.A.R.V.I.S. is online and fully configured for tactical assistance, homework problem solving, and Python script generation.</div>
+            <div>Welcome. J.A.R.V.I.S. is online and fully configured for tactical assistance, global weather tracking, file parsing, and file generation.</div>
             
             <div class="command-card">
-                <b>📚 Homework & Math Tutor Engine:</b><br>
-                Ask complex calculus, physics, or history questions. Drag and drop photos of worksheets directly onto the screen for step-by-step answers.
+                <b>🌐 Global Weather Engine:</b><br>
+                Ask <i>"Weather in Tokyo"</i> or <i>"Weather in London"</i> for live meteorological reports anywhere on Earth.
             </div>
 
             <div class="command-card">
-                <b>🐍 Python Script Generator:</b><br>
-                Request custom scripts (e.g., <i>"Write a Python script for automated file sorting"</i>). J.A.R.V.I.S. provides runnable code and tutorials.
+                <b>🗺️ Google Maps Navigation:</b><br>
+                Ask J.A.R.V.I.S. to navigate or route to any destination to instantly receive a pre-loaded Google Maps link.
             </div>
 
             <div class="command-card">
-                <b>🎙️ Dynamic Wake-Word Microphone Activation:</b><br>
-                The microphone remains OFF until you speak your wake phrase (default: <b>"jarvis"</b>). Once detected, the microphone activates to record your command.
+                <b>💾 File Parsing & Downloader:</b><br>
+                Drag and drop files onto the screen to analyze them, or ask J.A.R.V.I.S. to create a downloadable export file.
             </div>
 
             <div style="margin-top: 6px; display: flex; gap: 8px; align-items: center;">
@@ -426,9 +391,7 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, userMarker, mapInitialized = false;
         let pendingImages = [];
         let pendingFiles = [];
         let recognition = null;
@@ -504,7 +467,6 @@
 
             wakeWordRecognition.onresult = function(e) {
                 if (isListening) return;
-                
                 for (let i = e.resultIndex; i < e.results.length; ++i) {
                     const transcript = e.results[i][0].transcript.toLowerCase().trim();
                     if (transcript.includes(customWakeWord)) {
@@ -588,6 +550,14 @@
             startWakeWordListener();
         }
 
+        // Paste File Event Listener
+        document.addEventListener('paste', (e) => {
+            if (e.clipboardData && e.clipboardData.files.length > 0) {
+                processFiles(e.clipboardData.files);
+            }
+        });
+
+        // Drag & Drop File Event Listener
         const dropZone = document.getElementById('chat-terminal');
         dropZone.addEventListener('dragover', (e) => e.preventDefault());
         dropZone.addEventListener('drop', (e) => { e.preventDefault(); processFiles(e.dataTransfer.files); });
@@ -611,26 +581,6 @@
                     reader.readAsText(file);
                 }
             });
-        }
-
-        function activateMapOverlay() {
-            const container = document.getElementById('gps-map-container');
-            container.style.display = 'block';
-
-            if (!mapInitialized) {
-                try {
-                    map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
-                    mapInitialized = true;
-                } catch(e) {}
-            } else {
-                setTimeout(() => map.invalidateSize(), 200);
-            }
-        }
-
-        function deactivateMapOverlay() {
-            const container = document.getElementById('gps-map-container');
-            container.style.display = 'none';
         }
 
         document.getElementById('userInput').addEventListener('keydown', function(e) {
@@ -708,36 +658,30 @@
                 });
                 const data = await res.json();
 
-                if (data.activate_map) { activateMapOverlay(); }
-                if (data.disable_navigation) { deactivateMapOverlay(); }
-
                 if (data.blackout) { document.body.classList.add('blackout-active'); }
                 if (data.disable_blackout) { document.body.classList.remove('blackout-active'); }
 
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
+                let appendHtml = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}`;
+                
+                if (data.google_maps_url) {
+                    appendHtml += `<br><a class="hud-action-badge" href="${data.google_maps_url}" target="_blank">🗺️ Open Google Maps Destination</a>`;
+                }
+
+                if (data.created_file_url) {
+                    appendHtml += `<br><a class="hud-action-badge" href="${data.created_file_url}" download>💾 Download ${data.created_filename}</a>`;
+                }
+
+                appendHtml += `</div>`;
+
+                terminal.innerHTML += appendHtml;
                 terminal.scrollTop = terminal.scrollHeight;
 
-                renderBlueprintFromResponse(data.response);
-
-                if (data.app_intent && isMobile) { window.location.href = data.app_intent; }
                 if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
             } finally {
                 stopVoiceChat();
             }
-        }
-
-        function renderBlueprintFromResponse(responseText) {
-            const svgMatch = responseText.match(/<svg[\s\S]*?<\/svg>/i);
-            if (svgMatch) {
-                document.getElementById('blueprintViewport').innerHTML = svgMatch[0];
-                document.getElementById('blueprintModal').style.display = 'flex';
-            }
-        }
-
-        function closeBlueprintModal() {
-            document.getElementById('blueprintModal').style.display = 'none';
         }
 
         function playJarvisAudioWithDSP(audioUrl) {
