@@ -12,14 +12,12 @@ import sys
 import io
 from duckduckgo_search import DDGS
 
-# Safely check PyAutoGUI for headless cloud servers (Render)
 try:
     import pyautogui
     HAS_PYAUTOGUI = True
 except Exception:
     HAS_PYAUTOGUI = False
 
-# Safely check local Ollama availability
 try:
     import ollama
     HAS_OLLAMA = True
@@ -53,9 +51,8 @@ def get_user_memory():
     return ""
 
 def fetch_accurate_weather(lat, lon, location_name="Current Location"):
-    """High-precision weather via Open-Meteo based on exact GPS coordinates"""
     try:
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto"
+        url = f"[https://api.open-meteo.com/v1/forecast?latitude=](https://api.open-meteo.com/v1/forecast?latitude=){lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&timezone=auto"
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             data = res.json().get('current', {})
@@ -90,27 +87,13 @@ def search_general_knowledge(query):
     except Exception:
         return None
 
-def search_lyrics_or_music(query):
-    try:
-        results = list(DDGS().text(f"{query} song lyrics music", max_results=3))
-        return "\n".join([f"🎵 {res['title']}\n{res['body']}" for res in results]) if results else "No music info found."
-    except Exception as e:
-        return f"Search error: {str(e)}"
-
-def search_flight_details(flight_num):
-    try:
-        results = list(DDGS().text(f"flight status schedule departure arrival delay {flight_num}", max_results=3))
-        return "\n".join([f"✈️ {res['title']}\n{res['body']}" for res in results]) if results else f"No radar info for flight {flight_num}."
-    except Exception as e:
-        return f"Flight error: {str(e)}"
-
 @app.route('/')
 def home():
     if os.path.exists('index.html'):
         with open('index.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
     else:
-        html_content = "<h1>J.A.R.V.I.S. HUD Core Active. Add index.html to workspace.</h1>"
+        html_content = "<h1>J.A.R.V.I.S. Core Active. Ensure index.html is present.</h1>"
     
     response = make_response(render_template_string(html_content))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
@@ -195,14 +178,12 @@ def ask():
     app_launch_intent = None
     activate_map = False
 
-    # 1. Weather with Precise GPS
     if "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
         if lat and lon:
             reply = fetch_accurate_weather(lat, lon, "Your Current Position")
         else:
             reply = fetch_accurate_weather(5.2971, 100.2588, location)
 
-    # 2. Map & GPS Navigation
     elif "show map" in cmd_lower or "activate map" in cmd_lower or "open map" in cmd_lower:
         activate_map = True
         reply = f"Activating tactical GPS HUD map overlay now, {honorific}."
@@ -218,7 +199,6 @@ def ask():
         c3po_nav_text = f"Oh my! Computing optimal GPS route for {mode_transport.upper()} mode to {nav_destination}. Proceeding now, Master!"
         reply = f"Full GPS navigation locked on {nav_destination}. C-3PO routing initiated, {honorific}."
 
-    # 3. System Utilities
     elif "news" in cmd_lower or "headlines" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
             reply = "Here are the latest world headlines:\n\n" + "\n\n".join(GLOBAL_NEWS_CACHE[:4])
@@ -231,7 +211,6 @@ def ask():
         is_shutdown = True
         reply = f"Initiating system shutdown. Entering standby mode, {honorific}."
 
-    # 4. Media & Deep Links
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "song" in cmd_lower or "music" in cmd_lower):
         song = re.sub(r'play|on spotify|spotify|song|music', '', user_prompt, flags=re.IGNORECASE).strip()
         media_action = {"type": "spotify", "query": song}
@@ -244,7 +223,7 @@ def ask():
     elif "open" in cmd_lower or "launch" in cmd_lower:
         target_app = cmd_lower.replace("open", "").replace("launch", "").strip()
         app_schemes = {
-            "spotify": "spotify://", "youtube": "vnd.youtube://", "maps": "https://maps.google.com",
+            "spotify": "spotify://", "youtube": "vnd.youtube://", "maps": "[https://maps.google.com](https://maps.google.com)",
             "google maps": "comgooglemaps://", "chrome": "googlechrome://", "whatsapp": "whatsapp://"
         }
         if device_type == "mobile" and target_app in app_schemes:
@@ -258,7 +237,6 @@ def ask():
                     pass
             reply = f"Launching {target_app} on host system, {honorific}."
 
-    # 5. Attached Files Ingestion
     file_context_str = ""
     if files:
         file_snippets = []
@@ -268,7 +246,6 @@ def ask():
             file_snippets.append(f"--- [ATTACHED FILE: {file_name}] ---\n{file_content}\n")
         file_context_str = "\n".join(file_snippets)
 
-    # 6. Reasoning, Vision, Homework & Blueprint Core
     if not reply:
         user_memory = get_user_memory()
         system_instructions = (
@@ -313,14 +290,12 @@ def ask():
             else:
                 reply = f"I have thoroughly processed your request regarding '{user_prompt if user_prompt else 'the attached payload'}'. All neural pathways nominal, {honorific}."
 
-    # Prevent double honorific occurrences
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     clean_text = re.sub(rf'(?:,\s*)?\b(?:Sir|Ma\'am|Master)\b(?:\.|\s*)*$', '', clean_text, flags=re.IGNORECASE).strip()
     
     if not c3po_nav_text:
         clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
 
-    # Render-Safe Async Audio Processing
     has_audio = False
     if not is_dnd:
         try:

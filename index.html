@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JARVIS // MARK LXXXV TACTICAL HUD</title>
     <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.css](https://unpkg.com/leaflet@1.9.4/dist/leaflet.css)" />
     <style>
         :root {
             --hud-cyan: #00f3ff;
             --hud-blue: #0088ff;
-            --hud-glow: rgba(0, 243, 255, 0.55);
+            --hud-glow: rgba(0, 243, 255, 0.5);
             --hud-bg: #010810;
-            --hud-panel: rgba(1, 12, 24, 0.92);
+            --hud-panel: rgba(1, 12, 24, 0.9);
             --hud-border: rgba(0, 243, 255, 0.35);
         }
 
@@ -32,7 +32,6 @@
                 linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
         }
 
-        /* Header Telemetry Bar */
         .hud-top-bar {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--hud-border);
@@ -46,7 +45,6 @@
             box-shadow: 0 0 8px var(--hud-cyan); margin-right: 4px;
         }
 
-        /* Workspace Grid */
         .hud-workspace {
             display: grid;
             grid-template-columns: 310px 1fr 280px;
@@ -75,86 +73,33 @@
             border-bottom: 1px dashed rgba(0,243,255,0.25); padding-bottom: 3px;
         }
 
-        /* Left-Panel Concentric Core Orb Widget */
-        .orb-widget-box {
-            position: relative;
-            width: 100%; height: 210px;
-            background: rgba(0, 10, 22, 0.7);
-            border: 1px solid rgba(0, 243, 255, 0.3);
-            border-radius: 4px;
+        /* Left-Panel Concentric Arc Core Widget */
+        .core-orb-widget {
+            position: relative; width: 100%; height: 210px;
             display: flex; align-items: center; justify-content: center;
-            overflow: hidden;
-            box-shadow: inset 0 0 15px rgba(0, 243, 255, 0.12);
-        }
-
-        /* Callout Text Elements */
-        .callout-tag {
-            position: absolute; font-size: 0.62rem; font-weight: bold; letter-spacing: 1px;
-            color: var(--hud-cyan); text-shadow: 0 0 6px var(--hud-cyan);
-        }
-        .callout-top-left { top: 6px; left: 8px; }
-        .callout-top-right { top: 6px; right: 8px; }
-        .callout-bottom-left { bottom: 6px; left: 8px; }
-        .callout-bottom-right { bottom: 6px; right: 8px; }
-
-        /* SVG Honeycomb Pattern overlays */
-        .honeycomb-svg {
-            position: absolute; width: 48px; height: 48px; opacity: 0.45;
-            pointer-events: none; filter: drop-shadow(0 0 4px var(--hud-cyan));
-        }
-        .hc-top-left { top: 22px; left: 8px; }
-        .hc-bottom-right { bottom: 22px; right: 8px; }
-
-        /* Concentric Rotating Rings */
-        .orb-core-outer {
-            width: 155px; height: 155px; border-radius: 50%;
-            border: 2px solid var(--hud-cyan);
-            border-top: 4px solid transparent;
-            border-bottom: 4px solid transparent;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
-            display: flex; align-items: center; justify-content: center;
-            position: relative; animation: spinCW 14s linear infinite;
-        }
-
-        .orb-flank-left {
-            position: absolute; left: 18px; width: 22px; height: 110px;
-            border-left: 2px solid var(--hud-cyan); border-radius: 50% 0 0 50%;
-            border-top: 1px solid var(--hud-cyan); border-bottom: 1px solid var(--hud-cyan);
-            opacity: 0.7;
-        }
-
-        .orb-flank-right {
-            position: absolute; right: 18px; width: 22px; height: 110px;
-            border-right: 2px solid var(--hud-cyan); border-radius: 0 50% 50% 0;
-            border-top: 1px solid var(--hud-cyan); border-bottom: 1px solid var(--hud-cyan);
-            opacity: 0.7;
-        }
-
-        .orb-core-mid {
-            position: absolute; width: 115px; height: 115px; border-radius: 50%;
-            border: 1px dashed var(--hud-cyan);
-            animation: spinCCW 8s linear infinite;
-        }
-
-        .orb-core-center {
-            position: absolute; width: 75px; height: 75px; border-radius: 50%;
-            background: radial-gradient(circle, rgba(0, 243, 255, 0.35) 0%, rgba(1, 12, 24, 0.95) 80%);
-            border: 1px solid var(--hud-cyan);
-            box-shadow: 0 0 12px var(--hud-cyan);
-            display: flex; align-items: center; justify-content: center;
+            margin: 4px 0; border: 1px solid rgba(0,243,255,0.2);
+            border-radius: 4px; background: rgba(0, 5, 12, 0.85);
             overflow: hidden;
         }
 
-        /* Soundwave Canvas Overlay */
-        #orbWaveCanvas {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 5;
+        .core-orb-svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+
+        #audioWaveCanvas {
+            position: absolute; width: 160px; height: 160px;
+            border-radius: 50%; z-index: 2; pointer-events: none;
         }
 
-        @keyframes spinCW { 100% { transform: rotate(360deg); } }
-        @keyframes spinCCW { 100% { transform: rotate(-360deg); } }
+        .core-label-top {
+            position: absolute; top: 8px; left: 10px;
+            font-size: 0.65rem; font-weight: bold; letter-spacing: 1px; color: var(--hud-cyan);
+        }
 
-        /* Center Arc Radar */
+        .core-stat-callout {
+            position: absolute; font-size: 0.75rem; font-weight: bold; color: var(--hud-cyan); z-index: 3;
+        }
+        .stat-43 { top: 12px; right: 28px; }
+        .stat-71 { bottom: 12px; left: 20px; }
+
         .arc-radar-container {
             position: absolute; top: 48%; left: 50%;
             transform: translate(-50%, -50%);
@@ -167,13 +112,13 @@
         .radar-ring-out {
             width: 280px; height: 280px; border-radius: 50%;
             border: 1px solid rgba(0, 243, 255, 0.4);
-            animation: spinCW 18s linear infinite;
+            animation: rotateCW 18s linear infinite;
         }
 
         .radar-ring-mid {
             position: absolute; width: 180px; height: 180px; border-radius: 50%;
             border: 1px dashed var(--hud-cyan);
-            animation: spinCCW 10s linear infinite;
+            animation: rotateCCW 10s linear infinite;
         }
 
         .radar-core-tag {
@@ -182,12 +127,14 @@
             padding: 4px 8px; border-radius: 3px; box-shadow: 0 0 12px var(--hud-cyan);
         }
 
-        /* Gauges */
+        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
+        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
+
         .gauge-row { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
         .gauge-bg { background: rgba(0, 0, 0, 0.6); height: 5px; border: 1px solid var(--hud-border); border-radius: 2px; }
         .gauge-fill { height: 100%; background: var(--hud-cyan); box-shadow: 0 0 6px var(--hud-cyan); }
 
-        .ecg-box { height: 32px; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
+        .ecg-box { height: 28px; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
 
         #gps-map-container {
             height: 160px; border: 1px solid var(--hud-cyan);
@@ -195,7 +142,6 @@
         }
         #leaflet-map { width: 100%; height: 100%; }
 
-        /* Terminal Display */
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
@@ -208,7 +154,6 @@
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
-        /* Center Command Pill */
         .hud-center-pill {
             position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
             width: 80%; max-width: 580px;
@@ -229,7 +174,6 @@
         }
         button:hover { background: var(--hud-cyan); color: #000; }
 
-        /* Vector Blueprint Modal */
         #blueprintModal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -253,7 +197,6 @@
 
         .blueprint-viewport svg { width: 90%; height: 90%; filter: drop-shadow(0 0 8px var(--hud-cyan)); }
 
-        /* First-Time Onboarding Modal */
         #welcomeModal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -291,7 +234,6 @@
 </head>
 <body>
 
-    <!-- Header Telemetry Bar -->
     <div class="hud-top-bar" id="hudHeader">
         <div><span class="status-pill"></span>JARVIS // JUST A RATHER VERY INTELLIGENT SYSTEM</div>
         <div>SYSTEM STATUS: <span style="color: #00f3ff; font-weight: bold;">OPTIMAL</span></div>
@@ -301,55 +243,81 @@
         <button onclick="toggleWakeLock()">🔒 AWAKE</button>
     </div>
 
-    <!-- Workspace Grid -->
     <div class="hud-workspace" id="hudWorkspace">
         
-        <!-- Center Arc Radar Overlay -->
         <div class="arc-radar-container">
             <div class="radar-ring-out"></div>
             <div class="radar-ring-mid"></div>
             <div class="radar-core-tag">CORE<br>ACTIVE</div>
         </div>
 
-        <!-- Left Column: HI-TECH ORB WIDGET & VITAL SIGNS -->
+        <!-- Left Column: Core Dial Orb Widget -->
         <div class="hud-panel desktop-only" style="z-index: 1;">
-            <div class="panel-header"><span>INTERFACE //</span> <span>CORE DIAL</span></div>
+            <div class="panel-header"><span>HI-TECH INTERFACE //</span> <span>CORE DIAL</span></div>
             
-            <!-- Concentric Core Orb Widget [Matches Reference] -->
-            <div class="orb-widget-box">
-                <canvas id="orbWaveCanvas"></canvas>
-                
-                <span class="callout-tag callout-top-left">HI-TECH INTERFACE</span>
-                <span class="callout-tag callout-top-right">43%</span>
-                <span class="callout-tag callout-bottom-left">71%</span>
-                <span class="callout-tag callout-bottom-right">FUTURISTIC</span>
+            <div class="core-orb-widget">
+                <div class="core-label-top">HI-TECH INTERFACE</div>
+                <div class="core-stat-callout stat-43">43%</div>
+                <div class="core-stat-callout stat-71">71%</div>
 
-                <!-- Honeycomb Cluster SVG -->
-                <svg class="honeycomb-svg hc-top-left" viewBox="0 0 100 100" stroke="#00f3ff" fill="none" stroke-width="2">
-                    <polygon points="30,5 50,5 60,22 50,39 30,39 20,22" />
-                    <polygon points="55,22 75,22 85,39 75,56 55,56 45,39" />
-                    <polygon points="30,39 50,39 60,56 50,73 30,73 20,56" />
+                <svg class="core-orb-svg" viewBox="0 0 300 200">
+                    <defs>
+                        <filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur stdDeviation="3" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+
+                    <!-- Honeycomb Hex Grid Clusters -->
+                    <g stroke="#00f3ff" stroke-width="0.8" fill="none" opacity="0.4">
+                        <polygon points="30,25 38,20 46,25 46,35 38,40 30,35" />
+                        <polygon points="46,25 54,20 62,25 62,35 54,40 46,35" />
+                        <polygon points="38,40 46,35 54,40 54,50 46,55 38,50" />
+                        
+                        <polygon points="230,150 238,145 246,150 246,160 238,165 230,160" />
+                        <polygon points="246,150 254,145 262,150 262,160 254,165 246,160" />
+                    </g>
+
+                    <!-- Outer Dial Flanking Arc Fins -->
+                    <path d="M 65 60 A 80 80 0 0 0 65 140" stroke="#00f3ff" stroke-width="2.5" fill="none" filter="url(#cyanGlow)" />
+                    <path d="M 235 60 A 80 80 0 0 1 235 140" stroke="#00f3ff" stroke-width="2.5" fill="none" filter="url(#cyanGlow)" />
+
+                    <!-- Radial Tick Marks on Outer Arc Fins -->
+                    <g stroke="#00f3ff" stroke-width="1" opacity="0.7">
+                        <line x1="58" y1="75" x2="48" y2="72" /><line x1="55" y1="88" x2="45" y2="87" /><line x1="54" y1="100" x2="44" y2="100" />
+                        <line x1="55" y1="112" x2="45" y2="113" /><line x1="58" y1="125" x2="48" y2="128" />
+                        
+                        <line x1="242" y1="75" x2="252" y2="72" /><line x1="245" y1="88" x2="255" y2="87" /><line x1="246" y1="100" x2="256" y2="100" />
+                        <line x1="245" y1="112" x2="255" y2="113" /><line x1="242" y1="125" x2="252" y2="128" />
+                    </g>
+
+                    <!-- Outer Glowing Dial Ring -->
+                    <circle cx="150" cy="100" r="70" stroke="#00f3ff" stroke-width="3" fill="none" filter="url(#cyanGlow)" />
+
+                    <!-- Segmented Arc Ring (Progress Blocks) -->
+                    <circle cx="150" cy="100" r="62" stroke="#00f3ff" stroke-width="6" fill="none" stroke-dasharray="8 4 12 4 4 4 16 6 8 8" opacity="0.9" />
+
+                    <!-- Inner Concentric Rings -->
+                    <circle cx="150" cy="100" r="48" stroke="#00f3ff" stroke-width="1.5" fill="none" stroke-dasharray="3 3" />
+                    <circle cx="150" cy="100" r="32" stroke="#00f3ff" stroke-width="2" fill="none" filter="url(#cyanGlow)" />
+                    <circle cx="150" cy="100" r="18" stroke="#00f3ff" stroke-width="1" fill="none" opacity="0.6" />
+
+                    <!-- Technical Leader Lines -->
+                    <path d="M 180 35 L 220 35 L 245 50" stroke="#00f3ff" stroke-width="1.2" fill="none" />
+                    <path d="M 120 165 L 85 165 L 55 185" stroke="#00f3ff" stroke-width="1.2" fill="none" />
+                    
+                    <!-- Chevron Arrow Stat Accent -->
+                    <g stroke="#00f3ff" stroke-width="2" fill="none">
+                        <path d="M 85 168 L 92 160 L 99 168" />
+                        <path d="M 85 174 L 92 166 L 99 174" />
+                    </g>
                 </svg>
 
-                <svg class="honeycomb-svg hc-bottom-right" viewBox="0 0 100 100" stroke="#00f3ff" fill="none" stroke-width="2">
-                    <polygon points="30,5 50,5 60,22 50,39 30,39 20,22" />
-                    <polygon points="55,22 75,22 85,39 75,56 55,56 45,39" />
-                </svg>
-
-                <!-- Flanking Curved Arcs -->
-                <div class="orb-flank-left"></div>
-                <div class="orb-flank-right"></div>
-
-                <!-- Concentric Rotating Core -->
-                <div class="orb-core-outer">
-                    <div class="orb-core-mid"></div>
-                    <div class="orb-core-center">
-                        <span style="font-size: 0.52rem; font-weight: bold; letter-spacing: 1px;">SPEECH<br>DSP</span>
-                    </div>
-                </div>
+                <canvas id="audioWaveCanvas" width="160" height="160"></canvas>
             </div>
-
-            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
 
             <div class="panel-header"><span>SYSTEM //</span> <span>VITAL SIGNS</span></div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -363,34 +331,24 @@
                 </svg>
             </div>
 
-            <div style="display: flex; justify-content: space-between; font-size: 0.65rem;">
-                <div>Body Temp: <b>98.6 °F</b></div>
-                <div>Neural Link: <b style="color:#00f3ff;">ACTIVE</b></div>
-            </div>
-
-            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 4px 0;">
-
             <div class="panel-header"><span>SYSTEM //</span> <span>RT-MONITOR</span></div>
-            
             <div class="gauge-row">
                 <div>CPU Load: 24%</div>
                 <div class="gauge-bg"><div class="gauge-fill" style="width: 24%;"></div></div>
             </div>
-
             <div class="gauge-row">
                 <div>Memory: 12.4 GB</div>
                 <div class="gauge-bg"><div class="gauge-fill" style="width: 45%;"></div></div>
             </div>
         </div>
 
-        <!-- Center Column: Terminal Display -->
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="gps-map-container">
                 <div id="leaflet-map"></div>
             </div>
 
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System active. Speech DSP visualizer initialized. Say your wake phrase to speak, Sir.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> System active. Core orb visualizer ready. Say your wake phrase to activate the microphone, Sir.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -399,7 +357,6 @@
             </div>
         </div>
 
-        <!-- Right Column: ARMOR STATUS & RT-LOG -->
         <div class="hud-panel desktop-only" style="z-index: 1;">
             <div class="panel-header"><span>SYSTEM //</span> <span>ARMOR STATUS</span></div>
             
@@ -424,17 +381,16 @@
 
             <div class="panel-header"><span>SYSTEM //</span> <span>RT-LOG</span></div>
             <div style="font-size: 0.6rem; opacity: 0.8; display: flex; flex-direction: column; gap: 3px;">
-                <div>[12:45:01] SYSTEM CHECK COMPLETE</div>
-                <div>[12:45:12] BIO-SYNC STABLE AT 98.4%</div>
-                <div>[12:45:22] SPEECH WAVEFORM ANALYZER ON</div>
-                <div>[12:45:34] MIC IDLE UNTIL WAKE PHRASE</div>
-                <div>[12:45:45] AWAITING VOICE WAKE...</div>
+                <div> SYSTEM CHECK COMPLETE</div>
+                <div> BIO-SYNC STABLE AT 98.4%</div>
+                <div> WAKE WORD MONITORING ACTIVE</div>
+                <div> CORE ORB SOUNDWAVES ONLINE</div>
+                <div> AWAITING VOICE WAKE...</div>
             </div>
         </div>
 
     </div>
 
-    <!-- Center Floating Command Pill -->
     <div class="hud-center-pill">
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
@@ -444,7 +400,6 @@
     </div>
     <div id="filePreview" style="position: fixed; bottom: 48px; left: 50%; transform: translateX(-50%); font-size: 0.65rem; color: #fff; z-index: 10;"></div>
 
-    <!-- Blueprint SVG Modal -->
     <div id="blueprintModal">
         <div class="blueprint-header">
             <div>📐 STARK INDUSTRIES // SCHEMATIC BLUEPRINT DRAWING</div>
@@ -453,7 +408,6 @@
         <div class="blueprint-viewport" id="blueprintViewport"></div>
     </div>
 
-    <!-- First-Time Onboarding Modal -->
     <div id="welcomeModal">
         <div class="welcome-header">
             <div>STARK INDUSTRIES // MARK LXXXV INITIALIZATION GUIDE</div>
@@ -485,7 +439,7 @@
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="[https://unpkg.com/leaflet@1.9.4/dist/leaflet.js](https://unpkg.com/leaflet@1.9.4/dist/leaflet.js)"></script>
     <script>
         let map, userMarker, mapInitialized = false;
         let pendingImages = [];
@@ -496,7 +450,6 @@
         let userLat = null, userLon = null;
         let customWakeWord = "jarvis";
 
-        // Web Audio API Analyzer for Orb Canvas Visualizer
         let audioCtx = null;
         let analyser = null;
         let animFrameId = null;
@@ -509,7 +462,6 @@
             document.getElementById('liveClock').innerText = now.toTimeString().split(' ')[0];
         }, 1000);
 
-        // Geolocation Receiver
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; },
@@ -523,17 +475,16 @@
             } catch (e) {}
         }
 
-        /* Setup Onboarding */
         window.addEventListener('load', () => {
             const savedWake = localStorage.getItem('jarvis_wakeword');
             if (savedWake) customWakeWord = savedWake;
 
             const isFirstTime = !localStorage.getItem('jarvis_onboarded');
-            if (isFirstTime) { showOnboardingGuide(); }
-            
+            if (isFirstTime) {
+                showOnboardingGuide();
+            }
             initWakeWordListener();
             initSpeechRecognition();
-            initOrbCanvas();
         });
 
         function showOnboardingGuide() {
@@ -550,4 +501,319 @@
             const val = document.getElementById('wakePhraseInput').value;
             if (val) {
                 customWakeWord = val.toLowerCase().trim();
-                localStorage.setItem('jarvis_wak
+                localStorage.setItem('jarvis_wakeword', customWakeWord);
+                alert(`Wake phrase updated to: "${customWakeWord}"`);
+            }
+        }
+
+        function initWakeWordListener() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            wakeWordRecognition = new SpeechRecognition();
+            wakeWordRecognition.continuous = true;
+            wakeWordRecognition.interimResults = true;
+            wakeWordRecognition.lang = 'en-US';
+
+            wakeWordRecognition.onresult = function(e) {
+                if (isListening) return;
+                
+                for (let i = e.resultIndex; i < e.results.length; ++i) {
+                    const transcript = e.results[i][0].transcript.toLowerCase().trim();
+                    if (transcript.includes(customWakeWord)) {
+                        playChime();
+                        wakeWordRecognition.stop();
+                        startVoiceChat();
+
+                        const queryAfterWake = transcript.split(customWakeWord)[1]?.trim();
+                        if (queryAfterWake && queryAfterWake.length > 2) {
+                            document.getElementById('userInput').value = queryAfterWake;
+                        }
+                        break;
+                    }
+                }
+            };
+
+            wakeWordRecognition.onerror = function() { setTimeout(startWakeWordListener, 2000); };
+            wakeWordRecognition.onend = function() { startWakeWordListener(); };
+            startWakeWordListener();
+        }
+
+        function startWakeWordListener() {
+            try {
+                if (wakeWordRecognition && !isListening) { wakeWordRecognition.start(); }
+            } catch(e) {}
+        }
+
+        function playChime() {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(); osc.stop(ctx.currentTime + 0.15);
+        }
+
+        function initSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) return;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = function() {
+                isListening = true;
+                const micBtn = document.getElementById('micBtn');
+                micBtn.innerText = '🔊 RECORDING';
+                micBtn.style.background = 'var(--hud-cyan)';
+                micBtn.style.color = '#000';
+            };
+
+            recognition.onresult = function(e) {
+                document.getElementById('userInput').value = e.results[0][0].transcript;
+                sendCommand();
+            };
+
+            recognition.onerror = function() { stopVoiceChat(); };
+            recognition.onend = function() { stopVoiceChat(); };
+        }
+
+        function startVoiceChat() {
+            if (!recognition) return;
+            try { recognition.start(); } catch(e) {}
+        }
+
+        function toggleVoiceChat() {
+            if (!recognition) { alert("Voice Speech Recognition not supported."); return; }
+            if (isListening) { recognition.stop(); } else { startVoiceChat(); }
+        }
+
+        function stopVoiceChat() {
+            isListening = false;
+            const micBtn = document.getElementById('micBtn');
+            if (micBtn) {
+                micBtn.innerText = '🎙️ IDLE';
+                micBtn.style.background = 'rgba(0, 243, 255, 0.12)';
+                micBtn.style.color = 'var(--hud-cyan)';
+            }
+            startWakeWordListener();
+        }
+
+        const dropZone = document.getElementById('chat-terminal');
+        dropZone.addEventListener('dragover', (e) => e.preventDefault());
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); processFiles(e.dataTransfer.files); });
+
+        function handleFileSelect(e) { processFiles(e.target.files); }
+
+        function processFiles(files) {
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                if (file.type.startsWith('image/')) {
+                    reader.onload = (evt) => {
+                        pendingImages.push(evt.target.result.split(',')[1]);
+                        document.getElementById('filePreview').innerHTML += `<div>📎 Image: ${file.name}</div>`;
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.onload = (evt) => {
+                        pendingFiles.push({ name: file.name, content: evt.target.result });
+                        document.getElementById('filePreview').innerHTML += `<div>📎 Doc: ${file.name}</div>`;
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        function activateMapOverlay() {
+            const container = document.getElementById('gps-map-container');
+            container.style.display = 'block';
+
+            if (!mapInitialized) {
+                try {
+                    map = L.map('leaflet-map').setView([5.2971, 100.2588], 14);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+                    mapInitialized = true;
+                } catch(e) {}
+            } else {
+                setTimeout(() => map.invalidateSize(), 200);
+            }
+        }
+
+        document.getElementById('userInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCommand(); }
+        });
+
+        function sendCommandCustom(cmdText) {
+            document.getElementById('userInput').value = cmdText;
+            sendCommand();
+        }
+
+        async function request2FACode() {
+            const terminal = document.getElementById('chat-terminal');
+            try {
+                const res = await fetch('/api/request_2fa', { method: 'POST' });
+                const data = await res.json();
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (SECURITY):</b> Security OTP Code Generated: <b>${data.demo_code}</b>, Sir.</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+            } catch (e) {}
+        }
+
+        async function sendCommand() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text && pendingImages.length === 0 && pendingFiles.length === 0) return;
+
+            const terminal = document.getElementById('chat-terminal');
+            terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
+
+            const payload = {
+                prompt: text,
+                images: pendingImages,
+                files: pendingFiles,
+                latitude: userLat,
+                longitude: userLon,
+                device_type: isMobile ? 'mobile' : 'desktop'
+            };
+
+            input.value = ''; pendingImages = []; pendingFiles = [];
+            document.getElementById('filePreview').innerHTML = '';
+
+            try {
+                const res = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.activate_map) { activateMapOverlay(); }
+                if (data.blackout) { document.body.classList.add('blackout-active'); }
+
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+
+                renderBlueprintFromResponse(data.response);
+
+                if (data.app_intent && isMobile) { window.location.href = data.app_intent; }
+                if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
+            } catch (e) {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
+            } finally {
+                stopVoiceChat();
+            }
+        }
+
+        function renderBlueprintFromResponse(responseText) {
+            const svgMatch = responseText.match(/<svg[\s\S]*?<\/svg>/i);
+            if (svgMatch) {
+                document.getElementById('blueprintViewport').innerHTML = svgMatch[0];
+                document.getElementById('blueprintModal').style.display = 'flex';
+            }
+        }
+
+        function closeBlueprintModal() {
+            document.getElementById('blueprintModal').style.display = 'none';
+        }
+
+        /* Real-Time Speech Audio Soundwave Visualizer over Left Core Dial */
+        function playJarvisAudioWithDSP(audioUrl) {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            const audio = new Audio(audioUrl);
+            const source = audioCtx.createMediaElementSource(audio);
+
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "peaking";
+            filter.frequency.value = 3200;
+            filter.Q.value = 1.2;
+            filter.gain.value = 3.5;
+
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+
+            source.connect(filter);
+            filter.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            audio.play();
+            animateCoreOrbWaves();
+            animateWaveform();
+
+            audio.onended = function() {
+                if (animFrameId) cancelAnimationFrame(animFrameId);
+                clearCoreWaveCanvas();
+            };
+        }
+
+        function animateCoreOrbWaves() {
+            const canvas = document.getElementById('audioWaveCanvas');
+            if (!canvas || !analyser) return;
+            const ctx = canvas.getContext('2d');
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            function render() {
+                animFrameId = requestAnimationFrame(render);
+                analyser.getByteFrequencyData(dataArray);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                const radius = 32;
+
+                ctx.beginPath();
+                ctx.strokeStyle = '#00f3ff';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#00f3ff';
+                ctx.shadowBlur = 8;
+
+                const bars = dataArray.length;
+                for (let i = 0; i < bars; i++) {
+                    const rad = (i / bars) * Math.PI * 2;
+                    const amp = dataArray[i] / 255.0;
+                    const r = radius + amp * 22;
+
+                    const x = cx + Math.cos(rad) * r;
+                    const y = cy + Math.sin(rad) * r;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            render();
+        }
+
+        function clearCoreWaveCanvas() {
+            const canvas = document.getElementById('audioWaveCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function animateWaveform() {
+            const bars = document.querySelectorAll('.wave-bar');
+            let interval = setInterval(() => {
+                bars.forEach(b => { b.style.height = Math.floor(Math.random() * 85 + 15) + '%'; });
+            }, 100);
+            setTimeout(() => { clearInterval(interval); bars.forEach(b => b.style.height = '15%'); }, 3000);
+        }
+
+        async function fetchGlobalNews() {
+            const terminal = document.getElementById('chat-terminal');
+            const res = await fetch('/api/get_news');
+            const data = await res.json();
+            if (data.status === 'success') {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. (NEWS ENGINE):</b><br>${data.news.join('<br><br>')}</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>
