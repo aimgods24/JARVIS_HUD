@@ -225,6 +225,7 @@ def scan_cctv():
 
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
+    honorific = request.args.get('honorific', 'Sir')
     anomalies = []
     status_summary = {}
 
@@ -262,20 +263,19 @@ def run_diagnostics():
     except Exception:
         status_summary['free_disk'] = 'UNKNOWN'
 
-    diagnostic_report = (
-        f"Diagnostic Scan Complete.\n\n"
-        f"• Local LLM Engine: {status_summary.get('ollama')}\n"
-        f"• Weather Telemetry: {status_summary.get('weather_api')}\n"
-        f"• Memory Archive: {status_summary.get('memory_archive')}\n"
-        f"• Disk Space Remaining: {status_summary.get('free_disk')}\n\n"
-    )
-
     if anomalies:
-        diagnostic_report += "⚠️ Detected Anomalies:\n" + "\n".join([f"  - {a}" for a in anomalies])
+        diagnostic_report = (
+            f"Diagnostic Scan Complete, {honorific}.\n\n"
+            f"• Local LLM Engine: {status_summary.get('ollama')}\n"
+            f"• Weather Telemetry: {status_summary.get('weather_api')}\n"
+            f"• Memory Archive: {status_summary.get('memory_archive')}\n"
+            f"• Disk Space Remaining: {status_summary.get('free_disk')}\n\n"
+            f"⚠️ Detected Anomalies:\n" + "\n".join([f"  - {a}" for a in anomalies])
+        )
     else:
-        diagnostic_report += "✅ All subroutines and neural links operating at optimal capacity. Zero anomalies detected."
+        diagnostic_report = f"Systems up and ready, {honorific}."
 
-    return jsonify({'status': 'success', 'report': diagnostic_report})
+    return jsonify({'status': 'success', 'report': diagnostic_report, 'has_anomalies': len(anomalies) > 0})
 
 @app.route('/api/download_generated/<filename>')
 def download_generated(filename):
@@ -366,7 +366,11 @@ def ask():
     open_translate_hud = False
     close_translate_hud = False
 
-    if "open translate" in cmd_lower or "activate translate" in cmd_lower or "start translate" in cmd_lower:
+    if "system check" in cmd_lower or "diagnostics" in cmd_lower or "check anomalies" in cmd_lower or "scan system" in cmd_lower:
+        diag_res = run_diagnostics().get_json()
+        reply = diag_res.get('report', f'Systems up and ready, {honorific}.')
+
+    elif "open translate" in cmd_lower or "activate translate" in cmd_lower or "start translate" in cmd_lower:
         open_translate_hud = True
         reply = f"Job done, {honorific}. Activating Universal Neural Translation HUD overlay now."
 
@@ -386,10 +390,6 @@ def ask():
             reply = f"Local network scanned. Linked to CCTV feed '{cams[0]['name']}'. Stream displaying in Core Orb visualizer, {honorific}."
         else:
             reply = f"Local network scanned. No active unencrypted CCTV IP cameras detected, {honorific}."
-
-    elif "diagnostics" in cmd_lower or "check anomalies" in cmd_lower or "scan system" in cmd_lower:
-        diag_res = run_diagnostics().get_json()
-        reply = diag_res.get('report', f'Diagnostic scan finished, {honorific}.')
 
     elif "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
         extracted_location = re.sub(r'weather|temperature|forecast|in|at|for|the|current|live', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -472,7 +472,8 @@ def ask():
             reply += f"\n\n💡 Proactive Tactical Tip: For maximum output precision, specify exact constraints or frameworks when issuing complex prompts, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
-    clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
+    if not clean_text.endswith(honorific + "."):
+        clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
 
     spoken_verbal_text = convert_symbols_to_words(clean_text)
 
