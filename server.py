@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory
+vfrom flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory
 import edge_tts
 import asyncio
 import os
@@ -130,12 +130,14 @@ def convert_symbols_to_words(text):
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
+    if any(w in p for w in ["cancel cctv", "disconnect camera", "close camera", "stop feed", "turn off camera", "close cctv", "hide cctv", "stop cctv"]):
+        return "CANCEL_CCTV"
+    if any(w in p for w in ["connect to cctv", "scan cctv", "check camera", "show camera", "cctv feed", "front door camera", "security feed", "perimeter camera", "view feed"]):
+        return "CCTV_SCAN"
     if any(w in p for w in ["open translate", "activate translate", "launch translate", "translate mode", "translator"]):
         return "OPEN_TRANSLATE"
     if any(w in p for w in ["dark", "cant see", "turn on lights", "brighten", "lights on", "lights off", "too cold", "too hot", "turn on ac"]):
         return "SMART_HOME"
-    if any(w in p for w in ["who is outside", "door", "front porch", "camera", "cctv", "security feed", "perimeter", "check footage"]):
-        return "CCTV_SCAN"
     if any(w in p for w in ["good morning", "brief me", "schedule today", "whats happening", "daily update", "status report"]):
         return "DAILY_BRIEFING"
     if any(w in p for w in ["play music", "put on some tracks", "spotify", "youtube", "play video", "listen to"]):
@@ -242,7 +244,7 @@ def scan_cctv():
     ]
     
     demo_cctv_streams = [
-        {"id": "cam_01", "name": "FRONT-PORCH-CAM", "stream_url": custom_url if custom_url else "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
+        {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": custom_url if custom_url else "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
         {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"}
     ]
     return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': universal_cctv_protocols})
@@ -329,6 +331,7 @@ def ask():
     created_file_url = None
     created_filename = None
     cctv_stream_url = None
+    cancel_cctv = False
     cctv_apps_list = None
     open_translate_hud = False
     new_reminder = None
@@ -337,7 +340,18 @@ def ask():
     voice_pitch = '-3Hz'
     voice_rate = '+2%'
 
-    if inferred_intent == "OPEN_TRANSLATE":
+    if inferred_intent == "CANCEL_CCTV":
+        cancel_cctv = True
+        reply = f"CCTV feed disconnected. Reverting orb HUD interface to Arc Core mode, {honorific}."
+
+    elif inferred_intent == "CCTV_SCAN":
+        cctv_data = scan_cctv().get_json()
+        cams = cctv_data.get('cameras', [])
+        cctv_apps_list = cctv_data.get('supported_apps', [])
+        cctv_stream_url = cams[0]['stream_url'] if cams else None
+        reply = f"CCTV signal acquired. Live video feed projected directly into the core HUD orb, {honorific}."
+
+    elif inferred_intent == "OPEN_TRANSLATE":
         open_translate_hud = True
         reply = f"Activating floating Universal Translation HUD window, {honorific}."
 
@@ -349,13 +363,6 @@ def ask():
         act = "OFF" if "off" in cmd_lower else "ON"
         device = "Living Room AC" if "ac" in cmd_lower or "cold" in cmd_lower or "hot" in cmd_lower else "Primary Lights"
         reply = f"Inferred intent detected: Configured {device} state to {act}, {honorific}."
-
-    elif inferred_intent == "CCTV_SCAN":
-        cctv_data = scan_cctv().get_json()
-        cams = cctv_data.get('cameras', [])
-        cctv_apps_list = cctv_data.get('supported_apps', [])
-        cctv_stream_url = cams[0]['stream_url'] if cams else None
-        reply = f"Inferred intent: Connecting to security camera '{cams[0]['name']}'. Stream feeds linked, {honorific}."
 
     elif inferred_intent == "DAILY_BRIEFING":
         weather_summary = fetch_global_weather(location, lat, lon)
@@ -434,6 +441,7 @@ def ask():
         'created_file_url': created_file_url,
         'created_filename': created_filename,
         'cctv_stream_url': cctv_stream_url,
+        'cancel_cctv': cancel_cctv,
         'cctv_apps': cctv_apps_list,
         'open_translate_hud': open_translate_hud,
         'new_reminder': new_reminder,

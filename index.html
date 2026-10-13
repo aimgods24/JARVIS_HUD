@@ -53,7 +53,7 @@
 
         .hud-workspace {
             display: grid;
-            grid-template-columns: 310px 1fr 280px;
+            grid-template-columns: 320px 1fr 280px;
             gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
             position: relative;
         }
@@ -80,6 +80,43 @@
             .hud-panel { overflow: visible; width: 100%; }
             .hud-top-bar { font-size: 0.6rem; justify-content: center; text-align: center; }
         }
+
+        /* CORE ORB HUD CONTAINER & CANVAS WAVE ENGINE */
+        .core-orb-widget {
+            position: relative; width: 100%; height: 230px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 4px 0; border: 1px solid var(--hud-border);
+            border-radius: 6px; background: rgba(0, 4, 10, 0.95);
+            overflow: hidden; user-select: none !important;
+            box-shadow: inset 0 0 15px var(--hud-glow);
+        }
+
+        #cctvVideoFeed {
+            position: absolute; width: 160px; height: 160px;
+            border-radius: 50%; object-fit: cover; z-index: 1;
+            opacity: 0; transition: opacity 0.6s ease;
+            filter: contrast(1.2) brightness(1.1);
+            border: 2px solid var(--hud-cyan);
+            box-shadow: 0 0 20px var(--hud-cyan);
+        }
+
+        .orb-svg-main {
+            width: 210px; height: 210px; z-index: 2; pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+
+        #audioWaveCanvas {
+            position: absolute; width: 220px; height: 220px;
+            z-index: 3; pointer-events: none; border-radius: 50%;
+        }
+
+        .ring-cw { transform-origin: center; animation: rotateCW 16s linear infinite; }
+        .ring-ccw { transform-origin: center; animation: rotateCCW 10s linear infinite; }
+        .wireframe-sphere { transform-origin: center; animation: floatSphere 6s ease-in-out infinite alternate; }
+
+        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
+        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
+        @keyframes floatSphere { 0% { transform: scale(0.96); } 100% { transform: scale(1.04); } }
 
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
@@ -145,25 +182,6 @@
             display: flex; justify-content: space-between; align-items: center;
         }
 
-        /* TRANSLATE ORB & HUD STYLES */
-        .orb-hud-wrapper {
-            position: relative; width: 100%; height: 220px;
-            display: flex; align-items: center; justify-content: center;
-            margin: 10px 0; background: rgba(0, 4, 10, 0.9);
-            border: 1px solid var(--hud-border); border-radius: 8px; overflow: hidden;
-        }
-
-        .orb-svg { width: 210px; height: 210px; animation: pulseGlow 3s ease-in-out infinite alternate; }
-        @keyframes pulseGlow { 0% { filter: drop-shadow(0 0 5px var(--hud-cyan)); } 100% { filter: drop-shadow(0 0 18px var(--hud-cyan)); } }
-
-        .ring-cw { transform-origin: center; animation: rotateCW 16s linear infinite; }
-        .ring-ccw { transform-origin: center; animation: rotateCCW 10s linear infinite; }
-        .wireframe-sphere { transform-origin: center; animation: floatSphere 6s ease-in-out infinite alternate; }
-
-        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
-        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
-        @keyframes floatSphere { 0% { transform: scale(0.96); } 100% { transform: scale(1.04); } }
-
         .translate-subtitle-box {
             background: rgba(0, 0, 0, 0.9); border: 1px solid var(--hud-cyan);
             padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; line-height: 1.4; color: #fff;
@@ -191,7 +209,7 @@
 
     <div class="hud-top-bar">
         <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
-        <div>ENGINE: <span style="color: var(--hud-cyan); font-weight: bold;">TRANSLATE POPUP HUD ACTIVE</span></div>
+        <div>ORB FEED: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">ARC CORE ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
@@ -201,25 +219,73 @@
 
     <div class="hud-workspace">
         <div class="hud-panel" id="leftPanel">
-            <div class="panel-header"><span>INTERFACE // CAMERA STREAM</span></div>
-            <img id="cctvVideoFeed" src="https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop" style="width:100%; border-radius:4px; margin-top:4px;" alt="CCTV">
+            <div class="panel-header"><span>CORE DIAL // ORB HUD & SOUNDWAVE</span></div>
+            
+            <div class="core-orb-widget">
+                <!-- CCTV Video projected directly inside orb when connected -->
+                <img id="cctvVideoFeed" src="" alt="Live CCTV Feed">
+
+                <!-- Main Arc Reactor Wireframe Orb SVG -->
+                <svg class="orb-svg-main" id="mainOrbSvg" viewBox="0 0 200 200">
+                    <circle cx="100" cy="100" r="90" stroke="#00f3ff" stroke-width="4" fill="none" opacity="0.9" />
+                    <circle class="ring-cw" cx="100" cy="100" r="76" stroke="#ff9d00" stroke-width="2.5" stroke-dasharray="6 4 12 4" fill="none" />
+                    <circle class="ring-ccw" cx="100" cy="100" r="64" stroke="#00f3ff" stroke-width="3" stroke-dasharray="14 6" fill="none" opacity="0.8" />
+                    <g class="ring-cw">
+                        <rect x="95" y="12" width="10" height="6" fill="#ff9d00" />
+                        <rect x="95" y="182" width="10" height="6" fill="#ff9d00" />
+                        <rect x="12" y="95" width="6" height="10" fill="#00f3ff" />
+                        <rect x="182" y="95" width="6" height="10" fill="#00f3ff" />
+                    </g>
+                    <g class="wireframe-sphere" id="wireframeSphereGroup">
+                        <circle cx="100" cy="100" r="32" stroke="#00f3ff" stroke-width="1.5" fill="none" />
+                        <polygon points="100,68 116,80 84,80" stroke="#00f3ff" stroke-width="1" fill="none" />
+                        <polygon points="100,132 116,120 84,120" stroke="#00f3ff" stroke-width="1" fill="none" />
+                        <polygon points="68,100 80,84 80,116" stroke="#00f3ff" stroke-width="1" fill="none" />
+                        <polygon points="132,100 120,84 120,116" stroke="#00f3ff" stroke-width="1" fill="none" />
+                        <line x1="84" y1="80" x2="116" y2="120" stroke="#00f3ff" stroke-width="1" />
+                        <line x1="116" y1="80" x2="84" y2="120" stroke="#00f3ff" stroke-width="1" />
+                    </g>
+                </svg>
+
+                <!-- Audio Frequency Waveform Canvas Overlay -->
+                <canvas id="audioWaveCanvas" width="220" height="220"></canvas>
+            </div>
+
+            <div class="panel-header" style="margin-top:4px;"><span>CCTV ORB CONTROLS</span></div>
+            <div style="display: flex; gap: 4px; margin-top: 4px;">
+                <button onclick="sendCommandCustom('connect to cctv')">📹 CONNECT CCTV</button>
+                <button onclick="sendCommandCustom('cancel cctv')">✕ CANCEL CCTV</button>
+            </div>
+
+            <div class="panel-header" style="margin-top:8px;"><span>INSTANT OCR SCANNER</span></div>
+            <div class="instant-dropzone" onclick="document.getElementById('fileInput').click()">
+                📁 DROP FILES OR SCREENSHOTS HERE
+            </div>
         </div>
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Type or say "open translate" to launch the dynamic floating pop-up window.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Orb HUD visualizer online. Speech audio creates real-time soundwaves across core orb. Say "connect to cctv" or "cancel cctv" to toggle feed modes.</div>
             </div>
         </div>
 
         <div class="hud-panel" id="rightPanel">
-            <div class="panel-header"><span>QUICK ACTIONS</span></div>
-            <button onclick="openTranslateHUD()" style="margin-top:6px;">🌐 TRANSLATE POPUP</button>
-            <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:8px;">⌚ WATCH PWA WIDGET</a>
+            <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
+            <div style="font-size: 0.7rem; margin-top: 4px;">
+                POWER CORE: 98%<br>
+                SOUNDWAVE DSP: ACTIVE
+            </div>
+
+            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
+
+            <div class="panel-header"><span>QUICK ACCESS</span></div>
+            <button onclick="openTranslateHUD()" style="margin-top:4px;">🌐 TRANSLATE POPUP</button>
+            <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:6px;">⌚ WATCH PWA WIDGET</a>
         </div>
     </div>
 
     <div class="hud-center-pill">
-        <textarea id="userInput" placeholder="Command J.A.R.V.I.S... (Type 'open translate')"></textarea>
+        <textarea id="userInput" placeholder="Command J.A.R.V.I.S... (Try 'connect to cctv' or 'cancel cctv')"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
@@ -230,7 +296,6 @@
             <button onclick="closeTranslateHUD()">✕ CLOSE</button>
         </div>
 
-        <!-- TOP: LANGUAGE SELECTOR & DICTATION -->
         <div style="margin-top: 10px; display: flex; gap: 6px; align-items: center;">
             <select id="targetLangSelect" style="flex:1;">
                 <option value="English">English</option>
@@ -243,41 +308,21 @@
             <button id="translateMicBtn" onclick="triggerTranslateDictation()">🎙️ DICTATE</button>
         </div>
 
-        <!-- CENTER: RECREATED ARC REACTOR / WIREFRAME ORB HUD -->
-        <div class="orb-hud-wrapper">
-            <svg class="orb-svg" viewBox="0 0 200 200">
-                <!-- Outer Cyan Ring -->
+        <div style="position: relative; width: 100%; height: 210px; display: flex; align-items: center; justify-content: center; margin: 10px 0; background: rgba(0, 4, 10, 0.9); border: 1px solid var(--hud-border); border-radius: 8px;">
+            <svg class="orb-svg-main" viewBox="0 0 200 200">
                 <circle cx="100" cy="100" r="90" stroke="#00f3ff" stroke-width="4" fill="none" opacity="0.9" />
-                
-                <!-- Orange Segmented Ring -->
                 <circle class="ring-cw" cx="100" cy="100" r="76" stroke="#ff9d00" stroke-width="2.5" stroke-dasharray="6 4 12 4" fill="none" />
-                
-                <!-- Middle Dashed Blue Pattern -->
                 <circle class="ring-ccw" cx="100" cy="100" r="64" stroke="#00f3ff" stroke-width="3" stroke-dasharray="14 6" fill="none" opacity="0.8" />
-                
-                <!-- Block Status Indicators -->
-                <g class="ring-cw">
-                    <rect x="95" y="12" width="10" height="6" fill="#ff9d00" />
-                    <rect x="95" y="182" width="10" height="6" fill="#ff9d00" />
-                    <rect x="12" y="95" width="6" height="10" fill="#00f3ff" />
-                    <rect x="182" y="95" width="6" height="10" fill="#00f3ff" />
-                </g>
-
-                <!-- Center Geodesic Wireframe Sphere (Matching image_c01b05) -->
                 <g class="wireframe-sphere">
                     <circle cx="100" cy="100" r="32" stroke="#00f3ff" stroke-width="1.5" fill="none" />
-                    <!-- Triangular Mesh Facets -->
                     <polygon points="100,68 116,80 84,80" stroke="#00f3ff" stroke-width="1" fill="none" />
                     <polygon points="100,132 116,120 84,120" stroke="#00f3ff" stroke-width="1" fill="none" />
                     <polygon points="68,100 80,84 80,116" stroke="#00f3ff" stroke-width="1" fill="none" />
                     <polygon points="132,100 120,84 120,116" stroke="#00f3ff" stroke-width="1" fill="none" />
-                    <line x1="84" y1="80" x2="116" y2="120" stroke="#00f3ff" stroke-width="1" />
-                    <line x1="116" y1="80" x2="84" y2="120" stroke="#00f3ff" stroke-width="1" />
                 </g>
             </svg>
         </div>
 
-        <!-- BOTTOM: LIVE AI SUBTITLE DISPLAY -->
         <div class="translate-subtitle-box" id="translateSubtitleBox">
             <span style="color: var(--hud-cyan); font-style: italic;">Awaiting speech dictation... Press [🎙️ DICTATE] above.</span>
         </div>
@@ -296,7 +341,7 @@
     </div>
 
     <script>
-        let currentAudio = null;
+        let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
 
         setInterval(() => {
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
@@ -337,6 +382,94 @@
             sendCommand();
         }
 
+        // REAL-TIME SOUNDWAVE VISUALIZER ENGINE OVER ORB
+        function setupAudioVisualizerDSP(audioElement) {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+
+            const source = audioCtx.createMediaElementSource(audioElement);
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            const canvas = document.getElementById('audioWaveCanvas');
+            const ctx = canvas.getContext('2d');
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            function renderSoundwaves() {
+                animFrameId = requestAnimationFrame(renderSoundwaves);
+                analyser.getByteFrequencyData(dataArray);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = 68;
+
+                ctx.beginPath();
+                for (let i = 0; i < bufferLength; i++) {
+                    const angle = (i / bufferLength) * Math.PI * 2;
+                    const amplitude = dataArray[i] / 4.0;
+                    const x = centerX + Math.cos(angle) * (radius + amplitude);
+                    const y = centerY + Math.sin(angle) * (radius + amplitude);
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = '#00f3ff';
+                ctx.lineWidth = 2;
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = '#00f3ff';
+                ctx.stroke();
+
+                // Inner Orange Pulse Wave Ring
+                ctx.beginPath();
+                for (let i = 0; i < bufferLength; i++) {
+                    const angle = (i / bufferLength) * Math.PI * 2;
+                    const amplitude = (dataArray[i] / 6.0);
+                    const x = centerX + Math.cos(angle) * (radius - 12 - amplitude);
+                    const y = centerY + Math.sin(angle) * (radius - 12 - amplitude);
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = '#ff9d00';
+                ctx.lineWidth = 1.5;
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = '#ff9d00';
+                ctx.stroke();
+            }
+
+            renderSoundwaves();
+        }
+
+        function playJarvisVoiceWithVisualizer(audioUrl) {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+            }
+
+            currentAudio = new Audio(audioUrl);
+            setupAudioVisualizerDSP(currentAudio);
+            
+            currentAudio.onended = () => {
+                if (animFrameId) cancelAnimationFrame(animFrameId);
+                const canvas = document.getElementById('audioWaveCanvas');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            };
+
+            currentAudio.play();
+        }
+
         function triggerTranslateDictation() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const subtitleBox = document.getElementById('translateSubtitleBox');
@@ -370,9 +503,7 @@
                     subtitleBox.innerHTML = `<b>Original:</b> ${data.original_text}<br><b style='color:#00f3ff;'>Translation (${data.target_lang}):</b> ${data.translated_text}`;
 
                     if (data.audio) {
-                        if (currentAudio) currentAudio.pause();
-                        currentAudio = new Audio('/api/audio?t=' + new Date().getTime());
-                        currentAudio.play();
+                        playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime());
                     }
                 } catch(err) {
                     btn.innerText = "🎙️ DICTATE";
@@ -401,6 +532,30 @@
                 });
                 const data = await res.json();
 
+                // DYNAMIC ORB SWITCHING LOGIC
+                const cctvImg = document.getElementById('cctvVideoFeed');
+                const mainOrb = document.getElementById('mainOrbSvg');
+                const orbTag = document.getElementById('orbStatusTag');
+                const wireframeSphere = document.getElementById('wireframeSphereGroup');
+
+                if (data.cctv_stream_url) {
+                    cctvImg.src = data.cctv_stream_url;
+                    cctvImg.style.opacity = '1';
+                    if (wireframeSphere) wireframeSphere.style.opacity = '0.25';
+                    if (orbTag) {
+                        orbTag.innerText = "LIVE CCTV STREAM";
+                        orbTag.style.color = "#ff9d00";
+                    }
+                } else if (data.cancel_cctv) {
+                    cctvImg.style.opacity = '0';
+                    setTimeout(() => { cctvImg.src = ""; }, 600);
+                    if (wireframeSphere) wireframeSphere.style.opacity = '1';
+                    if (orbTag) {
+                        orbTag.innerText = "ARC CORE ACTIVE";
+                        orbTag.style.color = "#00f3ff";
+                    }
+                }
+
                 if (data.open_translate_hud) { openTranslateHUD(); }
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
 
@@ -408,9 +563,7 @@
                 terminal.scrollTop = terminal.scrollHeight;
 
                 if (data.audio) {
-                    if (currentAudio) currentAudio.pause();
-                    currentAudio = new Audio('/api/audio?t=' + new Date().getTime());
-                    currentAudio.play();
+                    playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime());
                 }
             } catch (e) {
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
