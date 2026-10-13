@@ -191,8 +191,8 @@
         }
 
         textarea {
-            flex: 1; height: 32px; background: transparent; border: none;
-            color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.82rem; outline: none;
+            flex: 1; height: 36px; background: transparent; border: none;
+            color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.85rem; outline: none;
         }
 
         button, select, input[type="text"] {
@@ -291,7 +291,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Single Bettany voice active. Text highlighting, OCR, Smart Home IoT, and executive briefings online.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Keyboard traps online. Press [Ctrl+K] to focus input box, [Escape] to close modals, or [Ctrl+L] to lock.</div>
             </div>
         </div>
 
@@ -323,7 +323,7 @@
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
         <button id="micBtn" onclick="toggleVoiceChat()">🎙️ IDLE</button>
-        <textarea id="userInput" placeholder="Command J.A.R.V.I.S..."></textarea>
+        <textarea id="userInput" placeholder="Command J.A.R.V.I.S... (Ctrl+K)"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
@@ -367,6 +367,64 @@
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
+        // --- KEYBOARD & INPUT EVENT DETECTOR TRAPS ---
+        window.addEventListener('keydown', function(e) {
+            // Global Ctrl+K / Cmd+K Focus Trap
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                const uInput = document.getElementById('userInput');
+                if (uInput) { uInput.focus(); uInput.select(); }
+            }
+
+            // Global Ctrl+L / Cmd+L Lock Trap
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+                e.preventDefault();
+                triggerSecurityLock();
+            }
+
+            // Global Escape Key Modal Discard Trap
+            if (e.key === 'Escape') {
+                closeSettingsHUD();
+                closeTranslateHUD();
+                const uInput = document.getElementById('userInput');
+                if (uInput) uInput.focus();
+            }
+        });
+
+        // Dedicated Textarea Keydown Handler
+        const userInputEl = document.getElementById('userInput');
+        if (userInputEl) {
+            userInputEl.addEventListener('keydown', function(e) {
+                e.stopPropagation(); // Prevents shortcut bubbling issues
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendCommand();
+                }
+            });
+        }
+
+        // Dedicated Lock Input Handler
+        const unlockInputEl = document.getElementById('unlockPhraseInput');
+        if (unlockInputEl) {
+            unlockInputEl.addEventListener('keydown', function(e) {
+                e.stopPropagation();
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    attemptSecurityUnlock();
+                }
+            });
+        }
+
+        // Mobile Visual Viewport Resizer
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                const centerPill = document.querySelector('.hud-center-pill');
+                if (centerPill) {
+                    centerPill.style.bottom = `${window.innerHeight - window.visualViewport.height + 8}px`;
+                }
+            });
+        }
+
         function playHUDChime() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -388,6 +446,10 @@
             playHUDChime();
             stopCurrentSpeechAudio();
             document.getElementById('securityLockOverlay').style.display = 'flex';
+            setTimeout(() => {
+                const lockIn = document.getElementById('unlockPhraseInput');
+                if (lockIn) lockIn.focus();
+            }, 100);
         }
 
         function attemptSecurityUnlock() {
@@ -396,6 +458,8 @@
                 document.getElementById('securityLockOverlay').style.display = 'none';
                 document.getElementById('unlockPhraseInput').value = '';
                 playHUDChime();
+                const uInput = document.getElementById('userInput');
+                if (uInput) uInput.focus();
             } else { alert("Security Authorization Failed."); }
         }
 
@@ -482,6 +546,8 @@
                 if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
+            } finally {
+                input.focus(); // Autofocus restoration after message dispatch
             }
         }
 

@@ -217,21 +217,6 @@ def scan_cctv():
     ]
     return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': cctv_apps})
 
-@app.route('/api/frigate_events', methods=['GET'])
-def frigate_events():
-    events = [
-        {"timestamp": "17:05:12", "camera": "PERIMETER-NORTH", "label": "Person Detected", "confidence": "94%"},
-        {"timestamp": "16:42:01", "camera": "MAIN-LAB", "label": "Vehicle Arrived", "confidence": "98%"}
-    ]
-    return jsonify({'status': 'success', 'events': events})
-
-@app.route('/api/smart_home', methods=['POST'])
-def smart_home():
-    data = request.json or {}
-    device = data.get('device', 'light')
-    action = data.get('action', 'toggle')
-    return jsonify({'status': 'success', 'message': f"Smart Home Gateway Executed: {action.upper()} on {device}."})
-
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
     anomalies = []
@@ -361,8 +346,7 @@ def ask():
     close_translate_hud = False
     new_reminder = None
     trigger_lock = False
-    
-    # Adaptive Voice Pitch and Rate Settings
+
     voice_pitch = '-3Hz'
     voice_rate = '+2%'
 
@@ -377,22 +361,22 @@ def ask():
         trigger_lock = True
         reply = f"Stark Protocol Engaged. Chat terminal locked for user authorization, {honorific}."
 
-    elif "turn on" in cmd_lower or "turn off" in cmd_lower or "set temperature" in cmd_lower or "smart light" in cmd_lower:
+    elif "turn on" in cmd_lower or "turn off" in cmd_lower or "smart light" in cmd_lower:
         device = "Living Room Lights" if "light" in cmd_lower else "AC Unit"
         act = "ON" if "on" in cmd_lower else "OFF"
-        reply = f"Smart Home IoT Command Sent: Configured {device} state to {act}, {honorific}."
+        reply = f"Smart Home Gateway Command: Executed {act} on {device}, {honorific}."
 
     elif "play" in cmd_lower and ("spotify" in cmd_lower or "music" in cmd_lower or "youtube" in cmd_lower):
         query = re.sub(r'play|on spotify|on youtube|music', '', user_prompt, flags=re.IGNORECASE).strip()
         encoded = urllib.parse.quote(query)
         target_url = f"https://open.spotify.com/search/{encoded}" if "spotify" in cmd_lower else f"https://www.youtube.com/results?search_query={encoded}"
         google_maps_url = target_url
-        reply = f"Media deep-link created for '{query}'. Click link card below to open playback, {honorific}."
+        reply = f"Media playback deep-link created for '{query}'. Click link below, {honorific}."
 
-    elif "daily briefing" in cmd_lower or "morning briefing" in cmd_lower or "brief me" in cmd_lower:
+    elif "daily briefing" in cmd_lower or "brief me" in cmd_lower:
         weather_summary = fetch_global_weather(location, lat, lon)
         news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global feeds clear."
-        reply = f"Good day, {honorific}. Here is your Executive Daily Briefing:\n\n1. Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\nAll primary armor systems optimal."
+        reply = f"Good day, {honorific}. Executive Briefing:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\nAll primary armor systems optimal."
 
     elif "remind me" in cmd_lower or "set reminder" in cmd_lower or "set alert" in cmd_lower or "set timer" in cmd_lower:
         time_match = re.search(r'in (\d+)\s*(second|sec|minute|min|hour|hr)', cmd_lower)
@@ -414,14 +398,14 @@ def ask():
 
     elif "open translate" in cmd_lower or "activate translate" in cmd_lower:
         open_translate_hud = True
-        reply = f"Activating Universal Neural Translation HUD, {honorific}."
+        reply = f"Activating Universal Translation HUD, {honorific}."
 
     elif "scan cctv" in cmd_lower or "check camera" in cmd_lower:
         cctv_data = scan_cctv().get_json()
         cams = cctv_data.get('cameras', [])
         cctv_apps_list = cctv_data.get('supported_apps', [])
         cctv_stream_url = cams[0]['stream_url'] if cams else None
-        reply = f"Linked to CCTV feed '{cams[0]['name']}'. Camera deep-links generated, {honorific}."
+        reply = f"Linked to CCTV feed '{cams[0]['name']}'. Deep-link buttons generated, {honorific}."
 
     elif "weather" in cmd_lower or "temperature" in cmd_lower:
         reply = fetch_global_weather(location, lat, lon)
