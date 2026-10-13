@@ -24,10 +24,16 @@
             height: 100vh;
             display: flex; flex-direction: column;
             overflow: hidden;
-            user-select: none;
             background-image: 
                 radial-gradient(circle at 50% 50%, var(--hud-glow) 0%, transparent 85%),
                 linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
+        }
+
+        /* FULL HIGHLIGHT & COPY SUPPORT ENABLER */
+        body, .hud-panel, #chat-terminal, .msg-line, .hud-table, .deepseek-think-card, .translate-subtitle-box {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+            -moz-user-select: text !important;
         }
 
         .hud-top-bar {
@@ -36,6 +42,7 @@
             padding: 4px 10px; font-size: 0.7rem; letter-spacing: 1px;
             background: rgba(0, 243, 255, 0.03);
             flex-wrap: wrap; gap: 4px;
+            user-select: none !important;
         }
 
         .status-pill {
@@ -64,7 +71,7 @@
             font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
             display: flex; justify-content: space-between; opacity: 0.8;
             border-bottom: 1px dashed var(--hud-border); padding-bottom: 3px;
-            cursor: pointer;
+            cursor: pointer; user-select: none !important;
         }
 
         @media (max-width: 850px) {
@@ -81,7 +88,7 @@
             display: flex; align-items: center; justify-content: center;
             margin: 4px 0; border: 1px solid var(--hud-border);
             border-radius: 4px; background: rgba(0, 5, 12, 0.85);
-            overflow: hidden;
+            overflow: hidden; user-select: none !important;
         }
 
         #cctvVideoFeed {
@@ -142,8 +149,6 @@
         .gauge-bg { background: rgba(0, 0, 0, 0.6); height: 5px; border: 1px solid var(--hud-border); border-radius: 2px; }
         .gauge-fill { height: 100%; background: var(--hud-cyan); box-shadow: 0 0 6px var(--hud-cyan); }
 
-        .ecg-box { height: 28px; display: flex; align-items: center; justify-content: center; opacity: 0.85; }
-
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
@@ -164,7 +169,6 @@
             box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
         }
 
-        /* Generated Dynamic Table Style */
         .hud-table {
             width: 100%; border-collapse: collapse; margin: 8px 0;
             font-size: 0.75rem; color: #fff; background: rgba(0, 243, 255, 0.05);
@@ -179,6 +183,7 @@
             display: inline-block; margin-top: 4px; margin-right: 4px; padding: 4px 8px;
             background: var(--hud-glow); border: 1px solid var(--hud-cyan);
             border-radius: 4px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.68rem;
+            cursor: pointer;
         }
         .hud-action-badge:hover { background: var(--hud-cyan); color: #000; }
 
@@ -225,7 +230,16 @@
             z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
         }
 
-        #translateModal { max-width: 440px !important; padding: 12px !important; }
+        /* Redesigned Sleek Floating Translate HUD Overlay */
+        #translateModal {
+            max-width: 480px !important;
+            padding: 14px !important;
+            border-radius: 12px !important;
+            backdrop-filter: blur(12px);
+            background: rgba(1, 12, 28, 0.95);
+            border: 1.5px solid var(--hud-cyan);
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.35);
+        }
 
         .modal-header {
             font-size: 0.85rem; font-weight: bold; letter-spacing: 1px;
@@ -247,10 +261,10 @@
         .translate-subtitle-box {
             background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
-            padding: 10px; border-radius: 4px; margin-top: 8px;
+            padding: 12px; border-radius: 6px; margin-top: 10px;
             font-size: 0.95rem; line-height: 1.4; color: #fff;
             box-shadow: inset 0 0 15px var(--hud-glow);
-            min-height: 65px; word-break: break-word;
+            min-height: 75px; word-break: break-word;
         }
 
         .welcome-body {
@@ -271,7 +285,6 @@
         .blackout-active { background: #000 !important; background-image: none !important; }
         .blackout-active .hud-top-bar, .blackout-active .arc-radar-container { display: none !important; }
 
-        /* Security Lock Overlay */
         #securityLockOverlay {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 3, 8, 0.98); z-index: 5000;
@@ -285,16 +298,16 @@
     <div id="securityLockOverlay">
         <div style="font-size: 3rem; animation: pulse 1s infinite alternate;">🔒</div>
         <div style="font-size: 1.2rem; font-weight: bold; letter-spacing: 2px;">STARK PROTOCOL SECURITY LOCK</div>
-        <div style="font-size: 0.75rem; color: #fff;">Unrecognized user activity detected. Provide custom wake phrase to unlock:</div>
+        <div style="font-size: 0.75rem; color: #fff;">Unrecognized user activity detected. Speak or type wake phrase to unlock:</div>
         <div style="display: flex; gap: 6px; margin-top: 10px;">
-            <input type="text" id="unlockPhraseInput" placeholder="Speak or type wake phrase..." style="width: 220px; border-color: #ff2200; color: #ff2200;">
+            <input type="text" id="unlockPhraseInput" placeholder="Enter wake phrase..." style="width: 220px; border-color: #ff2200; color: #ff2200;">
             <button onclick="attemptSecurityUnlock()" style="border-color: #ff2200; color: #ff2200;">UNLOCK</button>
         </div>
     </div>
 
     <div class="hud-top-bar" id="hudHeader">
         <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
-        <div>ENGINE: <span id="currentEngineTag" style="color: var(--hud-cyan); font-weight: bold;">AUTO-HYBRID</span></div>
+        <div>ENGINE: <span id="currentEngineTag" style="color: var(--hud-cyan); font-weight: bold;">UNIFIED HYBRID CORE</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
@@ -330,9 +343,6 @@
                         <g stroke="var(--hud-cyan)" stroke-width="0.8" fill="none" opacity="0.4">
                             <polygon points="30,25 38,20 46,25 46,35 38,40 30,35" />
                             <polygon points="46,25 54,20 62,25 62,35 54,40 46,35" />
-                            <polygon points="38,40 46,35 54,40 54,50 46,55 38,50" />
-                            <polygon points="230,150 238,145 246,150 246,160 238,165 230,160" />
-                            <polygon points="246,150 254,145 262,150 262,160 254,165 246,160" />
                         </g>
 
                         <path d="M 65 60 A 80 80 0 0 0 65 140" stroke="var(--hud-cyan)" stroke-width="2.5" fill="none" />
@@ -340,16 +350,14 @@
 
                         <circle cx="150" cy="100" r="70" stroke="var(--hud-cyan)" stroke-width="3" fill="none" />
                         <circle cx="150" cy="100" r="62" stroke="var(--hud-cyan)" stroke-width="6" fill="none" stroke-dasharray="8 4 12 4 4 4 16 6 8 8" opacity="0.9" />
-                        <circle cx="150" cy="100" r="48" stroke="var(--hud-cyan)" stroke-width="1.5" fill="none" stroke-dasharray="3 3" />
-                        <circle cx="150" cy="100" r="32" stroke="var(--hud-cyan)" stroke-width="2" fill="none" />
                     </svg>
 
                     <canvas id="audioWaveCanvas" width="160" height="160"></canvas>
                 </div>
 
-                <div class="panel-header"><span>SYSTEM //</span> <span>INSTANT FILE DROP</span></div>
+                <div class="panel-header"><span>SYSTEM //</span> <span>INSTANT FILE DROPZONE</span></div>
                 <div class="instant-dropzone" onclick="document.getElementById('fileInput').click()">
-                    📁 DROP FILES HERE TO INSTANTLY PROCESS ACROSS ALL MODELS
+                    📁 DROP FILES HERE FOR INSTANT MULTI-MODEL ANALYSIS
                 </div>
 
                 <div class="panel-header" style="margin-top:6px;"><span>ACTIVE //</span> <span>REMINDERS & ALERTS</span></div>
@@ -361,7 +369,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Mobile Voice Engine Ready. Drop files directly into the left workspace box for instant multi-model processing.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Unified Hybrid Engine operational. Text highlight/copy enabled. Share & export files directly from chat responses.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -396,12 +404,10 @@
 
                 <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
 
-                <div class="panel-header"><span>ENGINE QUICK-SWITCH //</span></div>
+                <div class="panel-header"><span>EXERCISE ROUTINES //</span></div>
                 <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                    <button onclick="setAiEngineMode('auto')">⚡ AUTO-HYBRID</button>
-                    <button onclick="setAiEngineMode('deepseek')" style="border-color: #a855f7;">🧠 DEEPSEEK-R1</button>
-                    <button onclick="setAiEngineMode('gemini')" style="border-color: #3b82f6;">🌐 GEMINI SEARCH</button>
-                    <button onclick="setAiEngineMode('chatgpt')" style="border-color: #10b981;">💻 CHATGPT CODE</button>
+                    <button onclick="sendCommandCustom('plan a 5 day gym exercise plan with tables')">💪 5-DAY GYM PLAN</button>
+                    <button onclick="sendCommandCustom('plan a 20 min home cardio workout routine with tables')">🏃 HOME CARDIO</button>
                 </div>
             </div>
         </div>
@@ -421,16 +427,6 @@
         <div class="modal-header">
             <div>⚙️ MASTER CONFIGURATION</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
-        </div>
-
-        <div class="setting-row">
-            <span class="setting-label">AI Intelligence Mode:</span>
-            <select id="settingAiEngine" onchange="saveCustomSettings()">
-                <option value="auto">Auto-Hybrid Core (Default)</option>
-                <option value="deepseek">DeepSeek-R1 (Chain-of-Thought Reasoning)</option>
-                <option value="gemini">Google Gemini (Multimodal & Web Search)</option>
-                <option value="chatgpt">ChatGPT (Advanced Code & Analysis)</option>
-            </select>
         </div>
 
         <div class="setting-row">
@@ -461,13 +457,14 @@
         </div>
     </div>
 
+    <!-- Redesigned Universal Translate HUD Overlay -->
     <div class="hud-modal" id="translateModal">
         <div class="modal-header">
-            <div>🌐 TRANSLATION HUD</div>
+            <div>🌐 UNIVERSAL NEURAL TRANSLATE HUD</div>
             <button onclick="closeTranslateHUD()">✕ CLOSE</button>
         </div>
-        <div style="margin-top: 8px; display: flex; gap: 6px; align-items: center;">
-            <label style="font-size: 0.68rem;">Target Language:</label>
+        <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
+            <label style="font-size: 0.72rem; font-weight: bold;">Target Language:</label>
             <select id="targetLangSelect" style="flex:1;">
                 <option value="English">English</option>
                 <option value="Spanish">Spanish</option>
@@ -475,13 +472,26 @@
                 <option value="German">German</option>
                 <option value="Japanese">Japanese</option>
                 <option value="Mandarin Chinese">Mandarin Chinese</option>
+                <option value="Arabic">Arabic</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Russian">Russian</option>
+                <option value="Portuguese">Portuguese</option>
+                <option value="Italian">Italian</option>
+                <option value="Korean">Korean</option>
+                <option value="Vietnamese">Vietnamese</option>
+                <option value="Malay">Malay / Indonesian</option>
+                <option value="Tagalog">Tagalog (Filipino)</option>
+                <option value="Turkish">Turkish</option>
+                <option value="Dutch">Dutch</option>
+                <option value="Polish">Polish</option>
+                <option value="Thai">Thai</option>
             </select>
             <button onclick="triggerTranslateDictation()">🎙️ SPEAK</button>
         </div>
 
-        <div style="margin-top: 6px; font-size: 0.65rem; opacity: 0.8;">Instant Subtitles:</div>
+        <div style="margin-top: 10px; font-size: 0.68rem; opacity: 0.8; font-weight: bold;">LIVE NEURAL SUBTITLE STREAM:</div>
         <div class="translate-subtitle-box" id="translateSubtitleBox">
-            <span style="color: var(--hud-cyan); font-style: italic;">Awaiting foreign language speech...</span>
+            <span style="color: var(--hud-cyan); font-style: italic;">Awaiting foreign language speech input...</span>
         </div>
     </div>
 
@@ -490,21 +500,24 @@
             <div>STARK INDUSTRIES // MARK LXXXV INITIALIZATION</div>
         </div>
         <div class="welcome-body">
-            <div>Welcome. Mobile speech synthesis and security unlock subroutines online:</div>
+            <div>Welcome. J.A.R.V.I.S. is online with Unified Hybrid Intelligence & Export Subroutines:</div>
             
             <div class="command-card">
-                <b>🧠 Intelligence Reasoning Engine:</b><br>
-                <div style="margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap;">
-                    <button id="btnEngineAuto" class="btn-active" onclick="selectWelcomeEngine('auto')">Auto-Hybrid</button>
-                    <button id="btnEngineDeepSeek" onclick="selectWelcomeEngine('deepseek')">DeepSeek-R1</button>
-                    <button id="btnEngineGemini" onclick="selectWelcomeEngine('gemini')">Google Gemini</button>
-                    <button id="btnEngineChatGPT" onclick="selectWelcomeEngine('chatgpt')">ChatGPT</button>
+                <b>👤 How should J.A.R.V.I.S. address you?</b><br>
+                <div style="margin-top: 6px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button id="btnSir" class="btn-active" onclick="selectWelcomeHonorific('Sir')">Sir</button>
+                    <button id="btnMaam" onclick="selectWelcomeHonorific('Ma\'am')">Ma'am</button>
+                    <button id="btnCommander" onclick="selectWelcomeHonorific('Commander')">Commander</button>
                 </div>
             </div>
 
             <div class="command-card">
-                <b>📱 Phone Speech & Tables:</b><br>
-                Supports native phone Web Speech API voice synthesis, automatic Markdown table generation, reminder alerts, and custom CCTV deep-linking.
+                <b>⚡ Integrated Multi-Subroutine Matrix:</b><br>
+                • Full text highlight, copy, and file export sharing.<br>
+                • Universal language translation HUD card overlay.<br>
+                • Instant file dropzone for document processing.<br>
+                • Custom exercise routine planner with Markdown tables.<br>
+                • Real-time phone Web Speech API out-loud synthesis.
             </div>
 
             <button style="margin-top: 10px; padding: 10px; width: 100%; font-size: 0.8rem;" onclick="launchHUDInitialization()">🚀 LAUNCH HUD INITIALIZATION</button>
@@ -519,7 +532,6 @@
         let isListening = false;
         let userLat = null, userLon = null;
         let userHonorific = "Sir";
-        let userEngineMode = "auto";
         let customWakeWord = "jarvis";
 
         let currentAudio = null;
@@ -580,9 +592,6 @@
             const savedHonorific = localStorage.getItem('jarvis_honorific');
             if (savedHonorific) { userHonorific = savedHonorific; selectWelcomeHonorific(savedHonorific); }
 
-            const savedEngine = localStorage.getItem('jarvis_engine');
-            if (savedEngine) { userEngineMode = savedEngine; setAiEngineMode(savedEngine); }
-
             const savedWake = localStorage.getItem('jarvis_wakeword');
             if (savedWake) customWakeWord = savedWake;
 
@@ -595,28 +604,21 @@
 
         function showOnboardingGuide() { document.getElementById('welcomeModal').style.display = 'flex'; }
 
-        function selectWelcomeEngine(mode) {
-            userEngineMode = mode;
-            document.getElementById('btnEngineAuto').classList.remove('btn-active');
-            document.getElementById('btnEngineDeepSeek').classList.remove('btn-active');
-            document.getElementById('btnEngineGemini').classList.remove('btn-active');
-            document.getElementById('btnEngineChatGPT').classList.remove('btn-active');
+        function selectWelcomeHonorific(title) {
+            userHonorific = title;
+            document.getElementById('btnSir').classList.remove('btn-active');
+            document.getElementById('btnMaam').classList.remove('btn-active');
+            document.getElementById('btnCommander').classList.remove('btn-active');
 
-            if (mode === 'auto') document.getElementById('btnEngineAuto').classList.add('btn-active');
-            if (mode === 'deepseek') document.getElementById('btnEngineDeepSeek').classList.add('btn-active');
-            if (mode === 'gemini') document.getElementById('btnEngineGemini').classList.add('btn-active');
-            if (mode === 'chatgpt') document.getElementById('btnEngineChatGPT').classList.add('btn-active');
-        }
+            if (title === 'Sir') document.getElementById('btnSir').classList.add('btn-active');
+            if (title === "Ma'am") document.getElementById('btnMaam').classList.add('btn-active');
+            if (title === 'Commander') document.getElementById('btnCommander').classList.add('btn-active');
 
-        function setAiEngineMode(mode) {
-            userEngineMode = mode;
-            localStorage.setItem('jarvis_engine', mode);
-            document.getElementById('currentEngineTag').innerText = mode.toUpperCase();
+            document.getElementById('settingHonorific').value = title;
         }
 
         function launchHUDInitialization() {
             localStorage.setItem('jarvis_honorific', userHonorific);
-            localStorage.setItem('jarvis_engine', userEngineMode);
             localStorage.setItem('jarvis_onboarded', 'true');
 
             document.getElementById('welcomeModal').style.display = 'none';
@@ -628,13 +630,10 @@
 
         function saveCustomSettings() {
             userHonorific = document.getElementById('settingHonorific').value || "Sir";
-            userEngineMode = document.getElementById('settingAiEngine').value || "auto";
             customWakeWord = document.getElementById('settingWakeWord').value.toLowerCase().trim() || "jarvis";
 
             localStorage.setItem('jarvis_honorific', userHonorific);
-            localStorage.setItem('jarvis_engine', userEngineMode);
             localStorage.setItem('jarvis_wakeword', customWakeWord);
-            document.getElementById('currentEngineTag').innerText = userEngineMode.toUpperCase();
         }
 
         function applyHUDTheme(hexColor) {
@@ -686,7 +685,7 @@
             activeRecognition.interimResults = false;
 
             activeRecognition.onstart = () => {
-                document.getElementById('translateSubtitleBox').innerHTML = `<span style="color:var(--hud-cyan);">[LISTENING...]</span>`;
+                document.getElementById('translateSubtitleBox').innerHTML = `<span style="color:var(--hud-cyan);">[LISTENING TO SPEECH...]</span>`;
             };
 
             activeRecognition.onresult = async (e) => {
@@ -798,6 +797,25 @@
             }
         }
 
+        async function shareGeneratedFile(fileUrl, fileName) {
+            if (navigator.share) {
+                try {
+                    const response = await fetch(fileUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], fileName, { type: 'text/plain' });
+                    await navigator.share({
+                        title: fileName,
+                        text: 'J.A.R.V.I.S. Exported Document',
+                        files: [file]
+                    });
+                } catch (e) {
+                    window.open(fileUrl, '_blank');
+                }
+            } else {
+                window.open(fileUrl, '_blank');
+            }
+        }
+
         function convertMarkdownTablesToHTML(text) {
             const tableRegex = /\|(.+)\|[\r\n]+\|[-:| ]+\|[\r\n]+((?:\|.+\|[\r\n]*)+)/g;
             return text.replace(tableRegex, (match, headerRow, bodyRows) => {
@@ -826,8 +844,7 @@
                 files: pendingFiles,
                 latitude: userLat,
                 longitude: userLon,
-                honorific: userHonorific,
-                ai_engine_mode: userEngineMode
+                honorific: userHonorific
             };
 
             input.value = ''; pendingImages = []; pendingFiles = [];
@@ -861,7 +878,7 @@
                     appendHtml += `<div class="deepseek-think-card"><b>🧠 [DEEPSEEK REASONING LOG]:</b><br>${data.reasoning_steps.replace(/\n/g, '<br>')}</div>`;
                 }
 
-                appendHtml += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${formattedResponse}`;
+                appendHtml += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S. [HYBRID]:</b> ${formattedResponse}`;
                 
                 if (data.cctv_apps) {
                     appendHtml += `<br><b>Surveillance Apps:</b><br>`;
@@ -871,7 +888,11 @@
                 }
 
                 if (data.google_maps_url) { appendHtml += `<br><a class="hud-action-badge" href="${data.google_maps_url}" target="_blank">MAPS LINK</a>`; }
-                if (data.created_file_url) { appendHtml += `<br><a class="hud-action-badge" href="${data.created_file_url}" download>SAVE FILE</a>`; }
+                
+                if (data.created_file_url) { 
+                    appendHtml += `<br><a class="hud-action-badge" href="${data.created_file_url}" download>SAVE FILE</a>`;
+                    appendHtml += `<a class="hud-action-badge" onclick="shareGeneratedFile('${data.created_file_url}', '${data.created_filename}')">EXPORT / SHARE</a>`;
+                }
 
                 appendHtml += `</div>`;
 

@@ -104,7 +104,7 @@ def search_general_knowledge(query):
         results = list(DDGS().text(query, max_results=6))
         if results:
             snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
-            return f"Comprehensive Search & Knowledge Synthesis for '{query}':\n\n" + "\n\n".join(snippets[:4])
+            return f"Comprehensive Knowledge Synthesis for '{query}':\n\n" + "\n\n".join(snippets[:4])
         return None
     except Exception:
         return None
@@ -219,13 +219,13 @@ def get_news():
 @app.route('/api/scan_cctv', methods=['GET'])
 def scan_cctv():
     cctv_apps = [
-        {"id": "google_home", "name": "Google Home Cameras", "app_url": "googlehome://"},
-        {"id": "ring", "name": "Ring Security", "app_url": "ring://"},
-        {"id": "arlo", "name": "Arlo Surveillance", "app_url": "arlo://"},
-        {"id": "hikvision", "name": "Hikvision iVMS", "app_url": "ivms4500://"},
+        {"id": "google_home", "name": "Google Home", "app_url": "googlehome://"},
+        {"id": "ring", "name": "Ring", "app_url": "ring://"},
+        {"id": "arlo", "name": "Arlo", "app_url": "arlo://"},
+        {"id": "hikvision", "name": "Hikvision", "app_url": "ivms4500://"},
         {"id": "tuya", "name": "Tuya / Smart Life", "app_url": "smartlife://"},
         {"id": "dahua", "name": "Dahua DMSS", "app_url": "dmss://"},
-        {"id": "yi", "name": "YI Home Camera", "app_url": "yihome://"}
+        {"id": "yi", "name": "YI Home", "app_url": "yihome://"}
     ]
     
     demo_cctv_streams = [
@@ -296,9 +296,9 @@ def translate_audio_or_text():
         return jsonify({'status': 'error', 'response': 'No speech or text provided to translate.'})
 
     system_instructions = (
-        f"You are J.A.R.V.I.S.'s Instant Neural Translator. "
-        f"Automatically detect the language of the user's speech/text and translate it instantly into {target_lang}. "
-        f"Output ONLY the clear translated text without conversational intro or filler."
+        f"You are J.A.R.V.I.S.'s Advanced Neural Translator covering every spoken world language and regional dialect. "
+        f"Automatically detect the source language of the user input and translate it with 100% natural accuracy into {target_lang}. "
+        f"Output ONLY the clean translated text without intro, quotes, or filler."
     )
 
     translated_text = ""
@@ -353,7 +353,6 @@ def ask():
     honorific = data.get('honorific', 'Sir')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     is_dnd = data.get('dnd_mode', False)
-    ai_engine_mode = data.get('ai_engine_mode', 'auto')
     temperature = float(data.get('temperature', 0.2))
     voice_pitch = data.get('voice_pitch', '-3Hz')
     voice_rate = data.get('voice_rate', '+2%')
@@ -399,18 +398,6 @@ def ask():
         }
         REMINDERS_STORE.append(new_reminder)
         reply = f"Alert set: '{new_reminder['text']}' configured to trigger in {delay_seconds} seconds, {honorific}."
-
-    elif "switch mode deepseek" in cmd_lower or "use deepseek" in cmd_lower:
-        ai_engine_mode = "deepseek"
-        reply = f"Reasoning profile updated to DeepSeek-R1 Chain-of-Thought Engine, {honorific}."
-
-    elif "switch mode gemini" in cmd_lower or "use gemini" in cmd_lower:
-        ai_engine_mode = "gemini"
-        reply = f"Reasoning profile updated to Google Gemini Multimodal Vision & Search, {honorific}."
-
-    elif "switch mode chatgpt" in cmd_lower or "use chatgpt" in cmd_lower:
-        ai_engine_mode = "chatgpt"
-        reply = f"Reasoning profile updated to ChatGPT Advanced Code & Analysis, {honorific}."
 
     elif "system check" in cmd_lower or "run system check" in cmd_lower or "full system check" in cmd_lower:
         diag_res = run_diagnostics().get_json()
@@ -458,7 +445,7 @@ def ask():
         google_maps_url = f"https://www.google.com/maps/search/?api=1&query={encoded_dest}"
         reply = f"Google Maps navigation link generated for {destination}. Click the link button in the HUD to launch maps, {honorific}."
 
-    elif "create file" in cmd_lower or "generate file" in cmd_lower or "make file" in cmd_lower or "downloadable file" in cmd_lower:
+    elif "create file" in cmd_lower or "generate file" in cmd_lower or "export file" in cmd_lower or "make file" in cmd_lower:
         fname = f"jarvis_export_{int(time.time())}.txt"
         file_path = os.path.join(GENERATED_FILES_DIR, fname)
         file_content = f"J.A.R.V.I.S. EXPORT FILE\nTimestamp: {time.ctime()}\nInstruction: {user_prompt}\n\nGenerated output successfully compiled for {honorific}."
@@ -466,7 +453,7 @@ def ask():
             f.write(file_content)
         created_filename = fname
         created_file_url = f"/api/download_generated/{fname}"
-        reply = f"Downloadable file '{fname}' compiled successfully, {honorific}."
+        reply = f"Downloadable file '{fname}' compiled successfully. You can download or export it to other apps using the button below, {honorific}."
 
     elif "news" in cmd_lower or "headlines" in cmd_lower:
         if GLOBAL_NEWS_CACHE:
@@ -483,63 +470,42 @@ def ask():
         for f in files:
             file_name = f.get('name', 'Attachment')
             file_content = f.get('content', '')
-            file_snippets.append(f"--- [INSTANT FILE DROP ANALYSIS: {file_name}] ---\n{file_content}\n")
+            file_snippets.append(f"--- [INSTANT FILE ANALYSIS: {file_name}] ---\n{file_content}\n")
         file_context_str = "\n".join(file_snippets)
 
     if not reply:
         user_memory = get_user_memory()
         
-        emotional_support_protocol = (
-            "\n[EMOTIONAL SUPPORT PROTOCOL ACTIVE]: "
-            "You are not only an ultra-advanced AI suit system; you are also a deeply loyal, caring, empathetic companion. "
-            "If the user shows signs of stress, fatigue, loneliness, or emotional burden, offer sincere warmth, emotional validation, and encouraging reassurance before offering technical solutions. "
-        )
-
-        table_formatting_protocol = (
-            "\n[TABLE GENERATION PROTOCOL]: "
-            "When the user requests structured data, schedules, comparisons, or tables, format the table clearly using clean Markdown table syntax (`| Col 1 | Col 2 |`). "
-        )
-
-        if ai_engine_mode == 'deepseek':
-            engine_prompt_prefix = "[ENGINE: DEEPSEEK-R1 REASONING PROTOCOL]\nPerform internal reasoning in <think>...</think> tags."
-        elif ai_engine_mode == 'gemini':
-            engine_prompt_prefix = "[ENGINE: GOOGLE GEMINI MULTIMODAL PROTOCOL]\n"
-        elif ai_engine_mode == 'chatgpt':
-            engine_prompt_prefix = "[ENGINE: CHATGPT CODE & CREATIVE ANALYSIS PROTOCOL]\n"
-        else:
-            engine_prompt_prefix = "[ENGINE: AUTO-HYBRID J.A.R.V.I.S. CORE]\n"
-
-        system_instructions = (
-            f"{engine_prompt_prefix}"
-            "You are J.A.R.V.I.S., created by Stark Industries. "
-            f"{emotional_support_protocol}"
-            f"{table_formatting_protocol}"
-            "IMPORTANT: Always append a short, highly actionable '💡 Proactive Tactical Tip:' at the end of your response. "
-            f"Always complete your response addressing the user strictly using their chosen title: '{honorific}'. "
-            f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
+        unified_hybrid_instructions = (
+            "[COMBINED HYBRID INTELLIGENCE ENGINE PROTOCOL ACTIVE]:\n"
+            "You integrate all intelligence subroutines into one single seamless persona:\n"
+            "1. DeepSeek-R1 Chain-of-Thought Reasoning (Provide step-by-step logic inside <think>...</think> tags for complex queries).\n"
+            "2. Google Gemini Real-Time Multimodal & Web Retrieval Search.\n"
+            "3. ChatGPT Clean Code, Markdown Tables, and Structuring Capability.\n"
+            "4. Comprehensive Exercise & Workout Routine Planning Subroutine (Deliver clean tables for sets, reps, and workout schedules).\n"
+            "5. Emotional Support Protocol: Offer warm, empathetic, caring reassurance and emotional validation if the user expresses stress, burnout, or fatigue.\n"
+            "6. Always end with a short '💡 Proactive Tactical Tip:'.\n"
+            f"Always complete your response addressing the user strictly using their chosen title: '{honorific}'."
         )
 
         full_prompt = user_prompt
         if file_context_str:
             full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt if user_prompt else 'Perform instant analysis on dropped files.'}"
 
-        search_data = ""
-        if ai_engine_mode == 'gemini' or 'search' in cmd_lower or 'who is' in cmd_lower or 'what is' in cmd_lower:
-            search_data = search_general_knowledge(full_prompt)
-
+        search_data = search_general_knowledge(full_prompt)
         if search_data:
             full_prompt = f"{full_prompt}\n\n[REAL-TIME RETRIEVAL DATA]:\n{search_data}"
 
         if HAS_OLLAMA:
             try:
-                model_to_use = 'llava' if images else ('qwen2.5:0.5b' if ai_engine_mode != 'deepseek' else 'deepseek-r1:1.5b')
+                model_to_use = 'llava' if images else 'deepseek-r1:1.5b'
                 message_obj = {"role": "user", "content": full_prompt}
                 if images:
                     message_obj["images"] = images
 
                 response = ollama.chat(
                     model=model_to_use,
-                    messages=[{"role": "system", "content": system_instructions}, message_obj],
+                    messages=[{"role": "system", "content": unified_hybrid_instructions}, message_obj],
                     options={"num_predict": 800, "temperature": temperature},
                     keep_alive=-1
                 )
@@ -558,8 +524,8 @@ def ask():
 
         if not reply:
             ai_answer = search_data if search_data else search_general_knowledge(full_prompt)
-            reply = ai_answer if ai_answer else f"I am here for you, {honorific}. Output compiled under {ai_engine_mode.upper()} engine configuration."
-            reply += f"\n\n💡 Proactive Tactical Tip: Take a deep breath if you're working through complex tasks. I am right here to handle the calculations, {honorific}."
+            reply = ai_answer if ai_answer else f"I am fully here for you, {honorific}. Unified Hybrid Engine operational."
+            reply += f"\n\n💡 Proactive Tactical Tip: Remember to pace yourself today. I have all systems running to handle your tasks, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific + "."):
@@ -579,7 +545,7 @@ def ask():
         'response': clean_text, 
         'raw_markdown': reply,
         'reasoning_steps': reasoning_steps,
-        'ai_engine_mode': ai_engine_mode,
+        'ai_engine_mode': 'unified_hybrid',
         'audio': has_audio,
         'google_maps_url': google_maps_url,
         'created_file_url': created_file_url,
