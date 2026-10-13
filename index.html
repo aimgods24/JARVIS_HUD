@@ -92,15 +92,10 @@
         #cctvVideoFeed {
             position: absolute; width: 140px; height: 140px;
             border-radius: 50%; object-fit: cover; z-index: 0;
-            opacity: 0.75; display: none; filter: contrast(1.2) hue-rotate(150deg);
+            opacity: 0.85; display: none; filter: contrast(1.2);
         }
 
         .core-orb-svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
-
-        #audioWaveCanvas {
-            position: absolute; width: 160px; height: 160px;
-            border-radius: 50%; z-index: 2; pointer-events: none;
-        }
 
         .arc-radar-container {
             position: absolute; top: 48%; left: 50%;
@@ -132,10 +127,6 @@
         @keyframes rotateCW { 100% { transform: rotate(360deg); } }
         @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
 
-        .gauge-row { display: flex; flex-direction: column; gap: 2px; font-size: 0.68rem; }
-        .gauge-bg { background: rgba(0, 0, 0, 0.6); height: 5px; border: 1px solid var(--hud-border); border-radius: 2px; }
-        .gauge-fill { height: 100%; background: var(--hud-cyan); box-shadow: 0 0 6px var(--hud-cyan); }
-
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
@@ -148,22 +139,12 @@
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
-        .deepseek-think-card {
-            background: rgba(168, 85, 247, 0.08);
-            border: 1px solid #a855f7;
-            border-radius: 4px; padding: 8px; margin: 4px 0;
-            font-size: 0.72rem; color: #d8b4fe;
-            box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
-        }
-
         .hud-table {
             width: 100%; border-collapse: collapse; margin: 8px 0;
             font-size: 0.75rem; color: #fff; background: rgba(0, 243, 255, 0.05);
             border: 1px solid var(--hud-cyan);
         }
-        .hud-table th, .hud-table td {
-            border: 1px solid var(--hud-border); padding: 6px 8px; text-align: left;
-        }
+        .hud-table th, .hud-table td { border: 1px solid var(--hud-border); padding: 6px 8px; text-align: left; }
         .hud-table th { background: rgba(0, 243, 255, 0.2); color: var(--hud-cyan); }
 
         .hud-action-badge {
@@ -211,22 +192,10 @@
             z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
         }
 
-        #translateModal {
-            max-width: 480px !important; padding: 14px !important; border-radius: 12px !important;
-            backdrop-filter: blur(12px); background: rgba(1, 12, 28, 0.95); border: 1.5px solid var(--hud-cyan);
-            box-shadow: 0 0 40px rgba(0, 243, 255, 0.35);
-        }
-
         .modal-header {
             font-size: 0.85rem; font-weight: bold; letter-spacing: 1px;
             border-bottom: 1px solid var(--hud-cyan); padding-bottom: 8px;
             display: flex; justify-content: space-between; align-items: center;
-        }
-
-        .translate-subtitle-box {
-            background: rgba(0, 0, 0, 0.85); border: 1px solid var(--hud-border);
-            padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 0.95rem; line-height: 1.4; color: #fff;
-            box-shadow: inset 0 0 15px var(--hud-glow); min-height: 75px; word-break: break-word;
         }
 
         #securityLockOverlay {
@@ -240,9 +209,9 @@
 <body>
 
     <div id="securityLockOverlay">
-        <div style="font-size: 3rem; animation: pulse 1s infinite alternate;">🔒</div>
+        <div style="font-size: 3rem;">🔒</div>
         <div style="font-size: 1.2rem; font-weight: bold; letter-spacing: 2px;">STARK PROTOCOL SECURITY LOCK</div>
-        <div style="font-size: 0.75rem; color: #fff;">Unrecognized user activity detected. Speak or type wake phrase to unlock:</div>
+        <div style="font-size: 0.75rem; color: #fff;">Unrecognized user activity. Type wake phrase to unlock:</div>
         <div style="display: flex; gap: 6px; margin-top: 10px;">
             <input type="text" id="unlockPhraseInput" placeholder="Enter wake phrase..." style="width: 220px; border-color: #ff2200; color: #ff2200;">
             <button onclick="attemptSecurityUnlock()" style="border-color: #ff2200; color: #ff2200;">UNLOCK</button>
@@ -251,12 +220,12 @@
 
     <div class="hud-top-bar">
         <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
-        <div>ENGINE: <span id="currentEngineTag" style="color: var(--hud-cyan); font-weight: bold;">UNIFIED HYBRID CORE</span></div>
+        <div>ENGINE: <span id="currentEngineTag" style="color: var(--hud-cyan); font-weight: bold;">UNIVERSAL INTENT CORE</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
-        <button onclick="sendCommandCustom('daily briefing')">🎙️ BRIEFING</button>
-        <button onclick="sendCommandCustom('system check')">🔍 SYS CHECK</button>
+        <button onclick="sendCommandCustom('brief me')">🎙️ BRIEFING</button>
+        <button onclick="sendCommandCustom('check cameras')">📹 CCTV</button>
         <button onclick="triggerSecurityLock()">🔒 LOCK</button>
     </div>
 
@@ -268,54 +237,44 @@
         </div>
 
         <div class="hud-panel" id="leftPanel">
-            <div class="panel-header"><span>HI-TECH INTERFACE // CORE DIAL</span></div>
+            <div class="panel-header"><span>INTERFACE // CCTV & CAMERA FEED</span></div>
             <div class="core-orb-widget">
-                <img id="cctvVideoFeed" src="" alt="CCTV Stream Feed">
+                <img id="cctvVideoFeed" src="" alt="Universal CCTV Feed">
                 <svg class="core-orb-svg" viewBox="0 0 300 200">
                     <circle cx="150" cy="100" r="70" stroke="var(--hud-cyan)" stroke-width="3" fill="none" />
                     <circle cx="150" cy="100" r="62" stroke="var(--hud-cyan)" stroke-width="6" fill="none" stroke-dasharray="8 4 12 4" opacity="0.9" />
                 </svg>
-                <canvas id="audioWaveCanvas" width="160" height="160"></canvas>
             </div>
 
-            <div class="panel-header"><span>INSTANT FILE DROP & OCR SCANNER</span></div>
+            <div class="panel-header"><span>UNIVERSAL RTSP / IP STREAM CONNECT</span></div>
+            <div style="display: flex; gap: 4px; margin-top: 4px;">
+                <input type="text" id="customCctvUrl" placeholder="rtsp:// or http:// camera stream..." style="flex:1; font-size:0.65rem;">
+                <button onclick="connectCustomCCTVStream()">CONNECT</button>
+            </div>
+
+            <div class="panel-header" style="margin-top:6px;"><span>INSTANT OCR SCANNER</span></div>
             <div class="instant-dropzone" onclick="document.getElementById('fileInput').click()">
-                📁 DROP FILES OR SCREENSHOTS HERE FOR INSTANT MULTI-MODEL ANALYSIS
-            </div>
-
-            <div class="panel-header" style="margin-top:6px;"><span>ACTIVE // ALERTS & OBJECT LOGS</span></div>
-            <div id="reminderLogContainer" style="font-size: 0.65rem; opacity: 0.85; display: flex; flex-direction: column; gap: 4px; max-height: 80px; overflow-y: auto;">
-                <div>• No active alerts set.</div>
+                📁 DROP FILES OR SCREENSHOTS HERE
             </div>
         </div>
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Keyboard traps online. Press [Ctrl+K] to focus input box, [Escape] to close modals, or [Ctrl+L] to lock.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Contextual Intent Engine active. Speak naturally without strict keywords.</div>
             </div>
         </div>
 
         <div class="hud-panel" id="rightPanel">
-            <div class="panel-header"><span>ARMOR & SYSTEM STATUS</span></div>
-            <div class="gauge-row" style="margin-top:4px;">
-                <div>POWER CORE: 98%</div>
-                <div class="gauge-bg"><div class="gauge-fill" style="width: 98%;"></div></div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 6px;">
-                <button onclick="sendCommandCustom('system check')">🔍 CHECK</button>
-                <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
-                <button onclick="sendCommandCustom('scan cctv')">📹 CCTV</button>
-                <button onclick="sendCommandCustom('turn on living room lights')">💡 IOT LIGHTS</button>
+            <div class="panel-header"><span>ARMOR STATUS</span></div>
+            <div style="font-size: 0.7rem; margin-top: 4px;">
+                POWER CORE: 98%<br>
+                HONORIFIC: <span id="lblHonorific">Sir</span>
             </div>
 
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
 
-            <div class="panel-header"><span>EXERCISE ROUTINES //</span></div>
-            <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
-                <button onclick="sendCommandCustom('plan a 5 day gym exercise plan with tables')">💪 5-DAY GYM PLAN</button>
-                <button onclick="sendCommandCustom('plan a 20 min home cardio workout routine with tables')">🏃 HOME CARDIO</button>
-            </div>
+            <div class="panel-header"><span>SMARTWATCH WIDGET LINK</span></div>
+            <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:4px;">⌚ OPEN WATCH PWA WIDGET</a>
         </div>
     </div>
 
@@ -323,104 +282,82 @@
         <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
         <button onclick="document.getElementById('fileInput').click()">📁</button>
         <button id="micBtn" onclick="toggleVoiceChat()">🎙️ IDLE</button>
-        <textarea id="userInput" placeholder="Command J.A.R.V.I.S... (Ctrl+K)"></textarea>
+        <textarea id="userInput" placeholder="Command J.A.R.V.I.S naturally... (Ctrl+K)"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
+    <!-- CUSTOMIZATION SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
-            <div>⚙️ MASTER CONFIGURATION</div>
+            <div>⚙️ SYSTEM CUSTOMIZATION SETTINGS</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
         </div>
-        <div style="margin-top: 10px;">
-            <label style="font-size:0.75rem;">Custom Unlock Wake Phrase:</label>
-            <input type="text" id="settingWakeWord" style="width: 140px;" placeholder="jarvis" onchange="saveCustomSettings()">
-        </div>
-    </div>
-
-    <div class="hud-modal" id="translateModal">
-        <div class="modal-header">
-            <div>🌐 TRANSLATE & MEETING TRANSCRIBER</div>
-            <button onclick="closeTranslateHUD()">✕ CLOSE</button>
-        </div>
-        <div style="margin-top: 10px; display: flex; gap: 8px; align-items: center;">
-            <select id="targetLangSelect" style="flex:1;">
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Japanese">Japanese</option>
-                <option value="Mandarin Chinese">Mandarin Chinese</option>
-            </select>
-            <button onclick="triggerTranslateDictation()">🎙️ SPEAK</button>
-        </div>
-        <div class="translate-subtitle-box" id="translateSubtitleBox">
-            <span style="color: var(--hud-cyan); font-style: italic;">Awaiting speech input...</span>
+        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 0.75rem;">
+            <div>
+                <label>User Honorific Title:</label><br>
+                <select id="settingHonorific" style="width: 100%; margin-top: 4px;" onchange="saveCustomSettings()">
+                    <option value="Sir">Sir</option>
+                    <option value="Ma'am">Ma'am</option>
+                    <option value="Commander">Commander</option>
+                    <option value="Boss">Boss</option>
+                </select>
+            </div>
+            <div>
+                <label>Security Wake Phrase:</label><br>
+                <input type="text" id="settingWakeWord" style="width: 100%; margin-top: 4px;" placeholder="jarvis" onchange="saveCustomSettings()">
+            </div>
+            <div>
+                <label>HUD Accent Theme Color:</label><br>
+                <select id="settingThemeColor" style="width: 100%; margin-top: 4px;" onchange="saveCustomSettings()">
+                    <option value="#00f3ff">Cyan Gold (Default Mark LXXXV)</option>
+                    <option value="#ff2200">Stark Red</option>
+                    <option value="#a855f7">DeepSeek Purple</option>
+                    <option value="#10b981">Matrix Emerald</option>
+                </select>
+            </div>
         </div>
     </div>
 
     <script>
-        let pendingImages = [], pendingFiles = [], activeRecognition = null, activeAudioStream = null, isListening = false;
-        let userLat = null, userLon = null, userHonorific = "Sir", customWakeWord = "jarvis", currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
+        let pendingImages = [], pendingFiles = [], userHonorific = "Sir", customWakeWord = "jarvis", currentAudio = null, audioCtx = null;
 
         setInterval(() => {
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        // --- KEYBOARD & INPUT EVENT DETECTOR TRAPS ---
+        function saveCustomSettings() {
+            userHonorific = document.getElementById('settingHonorific').value;
+            customWakeWord = document.getElementById('settingWakeWord').value || "jarvis";
+            const themeColor = document.getElementById('settingThemeColor').value;
+            document.documentElement.style.setProperty('--hud-cyan', themeColor);
+            document.getElementById('lblHonorific').innerText = userHonorific;
+            playHUDChime();
+        }
+
         window.addEventListener('keydown', function(e) {
-            // Global Ctrl+K / Cmd+K Focus Trap
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
                 e.preventDefault();
                 const uInput = document.getElementById('userInput');
                 if (uInput) { uInput.focus(); uInput.select(); }
             }
-
-            // Global Ctrl+L / Cmd+L Lock Trap
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
                 e.preventDefault();
                 triggerSecurityLock();
             }
-
-            // Global Escape Key Modal Discard Trap
             if (e.key === 'Escape') {
                 closeSettingsHUD();
-                closeTranslateHUD();
                 const uInput = document.getElementById('userInput');
                 if (uInput) uInput.focus();
             }
         });
 
-        // Dedicated Textarea Keydown Handler
         const userInputEl = document.getElementById('userInput');
         if (userInputEl) {
             userInputEl.addEventListener('keydown', function(e) {
-                e.stopPropagation(); // Prevents shortcut bubbling issues
+                e.stopPropagation();
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendCommand();
-                }
-            });
-        }
-
-        // Dedicated Lock Input Handler
-        const unlockInputEl = document.getElementById('unlockPhraseInput');
-        if (unlockInputEl) {
-            unlockInputEl.addEventListener('keydown', function(e) {
-                e.stopPropagation();
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    attemptSecurityUnlock();
-                }
-            });
-        }
-
-        // Mobile Visual Viewport Resizer
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-                const centerPill = document.querySelector('.hud-center-pill');
-                if (centerPill) {
-                    centerPill.style.bottom = `${window.innerHeight - window.visualViewport.height + 8}px`;
                 }
             });
         }
@@ -437,19 +374,9 @@
             } catch(e) {}
         }
 
-        function stopCurrentSpeechAudio() {
-            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
-            if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
-        }
-
         function triggerSecurityLock() {
             playHUDChime();
-            stopCurrentSpeechAudio();
             document.getElementById('securityLockOverlay').style.display = 'flex';
-            setTimeout(() => {
-                const lockIn = document.getElementById('unlockPhraseInput');
-                if (lockIn) lockIn.focus();
-            }, 100);
         }
 
         function attemptSecurityUnlock() {
@@ -458,46 +385,23 @@
                 document.getElementById('securityLockOverlay').style.display = 'none';
                 document.getElementById('unlockPhraseInput').value = '';
                 playHUDChime();
-                const uInput = document.getElementById('userInput');
-                if (uInput) uInput.focus();
             } else { alert("Security Authorization Failed."); }
         }
 
         function openSettingsHUD() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsHUD() { document.getElementById('settingsModal').style.display = 'none'; }
-        function openTranslateHUD() { document.getElementById('translateModal').style.display = 'flex'; }
-        function closeTranslateHUD() { document.getElementById('translateModal').style.display = 'none'; }
-
-        function processFiles(files) {
-            Array.from(files).forEach(file => {
-                const reader = new FileReader();
-                if (file.type.startsWith('image/')) {
-                    reader.onload = (evt) => pendingImages.push(evt.target.result.split(',')[1]);
-                    reader.readAsDataURL(file);
-                } else {
-                    reader.onload = (evt) => pendingFiles.push({ name: file.name, content: evt.target.result });
-                    reader.readAsText(file);
-                }
-            });
-            setTimeout(() => { sendCommand(); }, 300);
-        }
-
-        function handleFileSelect(e) { processFiles(e.target.files); }
 
         function sendCommandCustom(cmdText) {
             document.getElementById('userInput').value = cmdText;
             sendCommand();
         }
 
-        async function shareGeneratedFile(fileUrl, fileName) {
-            if (navigator.share) {
-                try {
-                    const response = await fetch(fileUrl);
-                    const blob = await response.blob();
-                    const file = new File([blob], fileName, { type: 'text/plain' });
-                    await navigator.share({ title: fileName, files: [file] });
-                } catch (e) { window.open(fileUrl, '_blank'); }
-            } else { window.open(fileUrl, '_blank'); }
+        function connectCustomCCTVStream() {
+            const url = document.getElementById('customCctvUrl').value.trim();
+            if (!url) return;
+            const img = document.getElementById('cctvVideoFeed');
+            img.src = url; img.style.display = 'block';
+            playHUDChime();
         }
 
         function convertMarkdownTablesToHTML(text) {
@@ -514,8 +418,6 @@
 
         async function sendCommand() {
             playHUDChime();
-            stopCurrentSpeechAudio();
-
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if (!text && pendingImages.length === 0 && pendingFiles.length === 0) return;
@@ -523,7 +425,7 @@
             const terminal = document.getElementById('chat-terminal');
             terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
 
-            const payload = { prompt: text, images: pendingImages, files: pendingFiles, latitude: userLat, longitude: userLon, honorific: userHonorific };
+            const payload = { prompt: text, images: pendingImages, files: pendingFiles, honorific: userHonorific };
             input.value = ''; pendingImages = []; pendingFiles = [];
 
             try {
@@ -531,36 +433,24 @@
                 const data = await res.json();
 
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
-                let formattedResponse = convertMarkdownTablesToHTML(data.response);
-                let appendHtml = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${formattedResponse}`;
-                
-                if (data.created_file_url) { 
-                    appendHtml += `<br><a class="hud-action-badge" href="${data.created_file_url}" download>SAVE FILE</a>`;
-                    appendHtml += `<a class="hud-action-badge" onclick="shareGeneratedFile('${data.created_file_url}', '${data.created_filename}')">EXPORT / SHARE</a>`;
+                if (data.cctv_stream_url) {
+                    const img = document.getElementById('cctvVideoFeed');
+                    img.src = data.cctv_stream_url; img.style.display = 'block';
                 }
-                appendHtml += `</div>`;
 
+                let formattedResponse = convertMarkdownTablesToHTML(data.response);
+                let appendHtml = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${formattedResponse}</div>`;
                 terminal.innerHTML += appendHtml;
                 terminal.scrollTop = terminal.scrollHeight;
 
-                if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
+                if (data.audio) {
+                    if (currentAudio) currentAudio.pause();
+                    currentAudio = new Audio('/api/audio?t=' + new Date().getTime());
+                    currentAudio.play();
+                }
             } catch (e) {
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
-            } finally {
-                input.focus(); // Autofocus restoration after message dispatch
-            }
-        }
-
-        function playJarvisAudioWithDSP(audioUrl) {
-            stopCurrentSpeechAudio();
-            if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
-
-            currentAudio = new Audio(audioUrl);
-            const source = audioCtx.createMediaElementSource(currentAudio);
-            analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
-            source.connect(analyser); analyser.connect(audioCtx.destination);
-            currentAudio.play();
+            } finally { input.focus(); }
         }
     </script>
 </body>

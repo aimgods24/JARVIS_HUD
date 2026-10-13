@@ -40,7 +40,7 @@ def fetch_latest_global_news():
     global GLOBAL_NEWS_CACHE
     while True:
         try:
-            results = list(DDGS().text("breaking world global news headlines today", max_results=8))
+            results = list(DDGS().text("breaking world news headlines today", max_results=8))
             if results:
                 GLOBAL_NEWS_CACHE = [f"📰 [{res['title']}] - {res['body']}" for res in results]
         except Exception as e:
@@ -89,7 +89,7 @@ def fetch_global_weather(location_query, lat=None, lon=None):
             }
             condition = wmo_codes.get(data.get('weather_code', 0), "Clear")
 
-            return (f"Live World Meteorological Telemetry [{target_name} @ {lat:.4f}, {lon:.4f}]:\n"
+            return (f"Live Meteorological Telemetry [{target_name} @ {lat:.4f}, {lon:.4f}]:\n"
                     f"• Condition: {condition}\n"
                     f"• Temperature: {temp}°C (Feels like {feels}°C)\n"
                     f"• Humidity: {humidity}%\n"
@@ -128,6 +128,25 @@ def convert_symbols_to_words(text):
     clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
 
+# Contextual Intent Inference Parser
+def parse_contextual_intent(prompt):
+    p = prompt.lower()
+    
+    if any(w in p for w in ["dark", "cant see", "turn on lights", "brighten", "lights on", "lights off", "too cold", "too hot", "turn on ac"]):
+        return "SMART_HOME"
+    if any(w in p for w in ["who is outside", "door", "front porch", "camera", "cctv", "security feed", "perimeter", "check footage"]):
+        return "CCTV_SCAN"
+    if any(w in p for w in ["good morning", "brief me", "schedule today", "whats happening", "daily update", "status report"]):
+        return "DAILY_BRIEFING"
+    if any(w in p for w in ["play music", "put on some tracks", "spotify", "youtube", "play video", "listen to"]):
+        return "MEDIA_PLAYBACK"
+    if any(w in p for w in ["lock up", "secure terminal", "intruder", "lock system", "unauthorized"]):
+        return "SECURITY_LOCK"
+    if any(w in p for w in ["health check", "diagnostics", "system state", "check hardware"]):
+        return "SYS_DIAGNOSTICS"
+        
+    return "GENERAL"
+
 @app.route('/')
 def home():
     if os.path.exists('index.html'):
@@ -149,36 +168,39 @@ def watch_tile():
     <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <title>JARVIS WATCH HUD</title>
+        <link rel="manifest" href="/manifest.json">
+        <title>JARVIS WATCH WIDGET</title>
         <style>
-            body { background: #000; color: #00f3ff; font-family: monospace; text-align: center; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
-            .ring { width: 110px; height: 110px; border-radius: 50%; border: 3px dashed #00f3ff; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; animation: spin 10s linear infinite; box-shadow: 0 0 15px #00f3ff; }
-            @keyframes spin { 100% { transform: rotate(360deg); } }
-            button { margin-top: 10px; background: rgba(0,243,255,0.2); border: 1px solid #00f3ff; color: #00f3ff; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 0.75rem; }
-            #out { font-size: 0.65rem; margin-top: 8px; max-height: 50px; overflow: hidden; }
+            body { background: #000; color: #00f3ff; font-family: -apple-system, sans-serif; text-align: center; margin: 0; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+            .widget-ring { width: 120px; height: 120px; border-radius: 50%; border: 3px solid #00f3ff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; box-shadow: 0 0 15px #00f3ff; cursor: pointer; }
+            .widget-ring:active { transform: scale(0.95); opacity: 0.8; }
+            button { margin-top: 10px; background: rgba(0,243,255,0.2); border: 1px solid #00f3ff; color: #00f3ff; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.7rem; width: 100%; }
+            #out { font-size: 0.65rem; margin-top: 6px; max-height: 45px; overflow: hidden; text-overflow: ellipsis; }
         </style>
     </head>
     <body>
-        <div class="ring">JARVIS<br>WATCH</div>
-        <button onclick="triggerWatchVoice()">🎙️ SPEAK</button>
-        <div id="out">Tap to command...</div>
+        <div class="widget-ring" onclick="triggerWatchVoice()">
+            <span>J.A.R.V.I.S.</span>
+            <span style="font-size:0.5rem; opacity:0.8;">TAP TO SPEAK</span>
+        </div>
+        <div id="out">Widget Connected</div>
         <script>
             function triggerWatchVoice() {
-                if ('vibrate' in navigator) navigator.vibrate(50);
+                if ('vibrate' in navigator) navigator.vibrate(40);
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) { document.getElementById('out').innerText = "Voice unavailable."; return; }
+                if (!SpeechRecognition) { document.getElementById('out').innerText = "Mic Unavailable"; return; }
                 const rec = new SpeechRecognition();
                 rec.onstart = () => document.getElementById('out').innerText = "Listening...";
                 rec.onresult = (e) => {
                     const txt = e.results[0][0].transcript;
-                    document.getElementById('out').innerText = "Cmd: " + txt;
+                    document.getElementById('out').innerText = txt;
                     fetch('/api/ask', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({prompt: txt, honorific: 'Sir'})
                     }).then(r => r.json()).then(d => {
                         document.getElementById('out').innerText = d.response;
-                        if ('vibrate' in navigator) navigator.vibrate([100, 50, 100]);
+                        if ('vibrate' in navigator) navigator.vibrate([80, 40, 80]);
                     });
                 };
                 rec.start();
@@ -191,31 +213,39 @@ def watch_tile():
 
 @app.route('/manifest.json')
 def manifest():
-    return jsonify({"name": "JARVIS Mark LXXXV HUD", "short_name": "JARVIS", "start_url": "/", "display": "standalone", "theme_color": "#00f3ff"})
+    return jsonify({
+        "name": "JARVIS Mark LXXXV HUD",
+        "short_name": "JARVIS",
+        "start_url": "/watch",
+        "display": "standalone",
+        "background_color": "#000000",
+        "theme_color": "#00f3ff",
+        "icons": [{"src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=192&auto=format&fit=crop", "sizes": "192x192", "type": "image/png"}]
+    })
 
 @app.route('/sw.js')
 def service_worker():
-    if os.path.exists('sw.js'):
-        return send_file('sw.js')
-    return ("", 204)
+    return ("self.addEventListener('fetch', function(e) {});", 200, {'Content-Type': 'application/javascript'})
 
-@app.route('/api/scan_cctv', methods=['GET'])
+@app.route('/api/scan_cctv', methods=['POST', 'GET'])
 def scan_cctv():
-    cctv_apps = [
-        {"id": "google_home", "name": "Google Home", "app_url": "googlehome://"},
-        {"id": "ring", "name": "Ring", "app_url": "ring://"},
-        {"id": "arlo", "name": "Arlo", "app_url": "arlo://"},
-        {"id": "hikvision", "name": "Hikvision", "app_url": "ivms4500://"},
-        {"id": "tuya", "name": "Tuya / Smart Life", "app_url": "smartlife://"},
-        {"id": "dahua", "name": "Dahua DMSS", "app_url": "dmss://"},
-        {"id": "yi", "name": "YI Home", "app_url": "yihome://"}
+    data = request.json or {}
+    custom_url = data.get('custom_stream_url', '').strip()
+    
+    universal_cctv_protocols = [
+        {"id": "rtsp_generic", "name": "Universal RTSP / ONVIF IP Bridge", "protocol": "rtsp://", "status": "Active"},
+        {"id": "webrtc_generic", "name": "WebRTC Low-Latency Stream", "protocol": "webrtc://", "status": "Active"},
+        {"id": "hikvision", "name": "Hikvision / Dahua / Axis / Reolink", "app_url": "ivms4500://"},
+        {"id": "google_nest", "name": "Google Nest / Home", "app_url": "googlehome://"},
+        {"id": "ring", "name": "Ring / Blink / Wyze", "app_url": "ring://"},
+        {"id": "tuya", "name": "Tuya / Smart Life / Arlo", "app_url": "smartlife://"}
     ]
     
     demo_cctv_streams = [
-        {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
+        {"id": "cam_01", "name": "FRONT-PORCH-CAM", "stream_url": custom_url if custom_url else "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
         {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"}
     ]
-    return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': cctv_apps})
+    return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': universal_cctv_protocols})
 
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
@@ -263,59 +293,6 @@ def run_diagnostics():
 def download_generated(filename):
     return send_from_directory(GENERATED_FILES_DIR, filename, as_attachment=True)
 
-@app.route('/api/translate', methods=['POST'])
-def translate_audio_or_text():
-    data = request.json or {}
-    text = data.get('text', '').strip()
-    target_lang = data.get('target_lang', 'English').strip()
-    voice_pitch = data.get('voice_pitch', '-3Hz')
-    voice_rate = data.get('voice_rate', '+2%')
-
-    if not text:
-        return jsonify({'status': 'error', 'response': 'No text provided for translation.'})
-
-    system_instructions = (
-        f"You are J.A.R.V.I.S.'s Advanced Neural Translator covering all world languages. "
-        f"Detect source language and translate into {target_lang}. Output ONLY translated text."
-    )
-
-    translated_text = ""
-    if HAS_OLLAMA:
-        try:
-            response = ollama.chat(
-                model='qwen2.5:0.5b',
-                messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": text}],
-                options={"temperature": 0.1}
-            )
-            translated_text = response['message']['content'].strip()
-        except Exception:
-            pass
-
-    if not translated_text:
-        try:
-            res = list(DDGS().text(f"translate into {target_lang}: '{text}'", max_results=1))
-            if res: translated_text = res[0]['body']
-        except Exception:
-            pass
-
-    if not translated_text: translated_text = text
-
-    spoken_text = convert_symbols_to_words(translated_text)
-    has_audio = False
-    try:
-        asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
-        has_audio = True
-    except Exception:
-        has_audio = False
-
-    return jsonify({
-        'status': 'success',
-        'original_text': text,
-        'translated_text': translated_text,
-        'target_lang': target_lang,
-        'audio': has_audio
-    })
-
 @app.route('/api/ask', methods=['POST'])
 def ask():
     data = request.json or {}
@@ -333,97 +310,53 @@ def ask():
         return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
 
     cmd_lower = user_prompt.lower()
+    inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
     reasoning_steps = None
     google_maps_url = None
     created_file_url = None
     created_filename = None
-    trigger_blackout = False
-    disable_blackout = False
     cctv_stream_url = None
     cctv_apps_list = None
     open_translate_hud = False
-    close_translate_hud = False
     new_reminder = None
     trigger_lock = False
 
     voice_pitch = '-3Hz'
     voice_rate = '+2%'
 
-    if "emergency" in cmd_lower or "lock" in cmd_lower or "alert" in cmd_lower:
-        voice_pitch = '+1Hz'
-        voice_rate = '+8%'
-    elif "relax" in cmd_lower or "tired" in cmd_lower or "sleep" in cmd_lower:
-        voice_pitch = '-5Hz'
-        voice_rate = '-4%'
-
-    if "lock system" in cmd_lower or "lock chat" in cmd_lower or "unrecognized user" in cmd_lower:
+    # Inferred Contextual Execution Pipeline
+    if inferred_intent == "SECURITY_LOCK":
         trigger_lock = True
-        reply = f"Stark Protocol Engaged. Chat terminal locked for user authorization, {honorific}."
+        reply = f"Stark Security Protocol Engaged. Locking chat terminal, {honorific}."
 
-    elif "turn on" in cmd_lower or "turn off" in cmd_lower or "smart light" in cmd_lower:
-        device = "Living Room Lights" if "light" in cmd_lower else "AC Unit"
-        act = "ON" if "on" in cmd_lower else "OFF"
-        reply = f"Smart Home Gateway Command: Executed {act} on {device}, {honorific}."
+    elif inferred_intent == "SMART_HOME":
+        act = "OFF" if "off" in cmd_lower else "ON"
+        device = "Living Room AC" if "ac" in cmd_lower or "cold" in cmd_lower or "hot" in cmd_lower else "Primary Lights"
+        reply = f"Inferred intent detected: Configured {device} state to {act}, {honorific}."
 
-    elif "play" in cmd_lower and ("spotify" in cmd_lower or "music" in cmd_lower or "youtube" in cmd_lower):
-        query = re.sub(r'play|on spotify|on youtube|music', '', user_prompt, flags=re.IGNORECASE).strip()
-        encoded = urllib.parse.quote(query)
-        target_url = f"https://open.spotify.com/search/{encoded}" if "spotify" in cmd_lower else f"https://www.youtube.com/results?search_query={encoded}"
-        google_maps_url = target_url
-        reply = f"Media playback deep-link created for '{query}'. Click link below, {honorific}."
-
-    elif "daily briefing" in cmd_lower or "brief me" in cmd_lower:
-        weather_summary = fetch_global_weather(location, lat, lon)
-        news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global feeds clear."
-        reply = f"Good day, {honorific}. Executive Briefing:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\nAll primary armor systems optimal."
-
-    elif "remind me" in cmd_lower or "set reminder" in cmd_lower or "set alert" in cmd_lower or "set timer" in cmd_lower:
-        time_match = re.search(r'in (\d+)\s*(second|sec|minute|min|hour|hr)', cmd_lower)
-        rem_text = re.sub(r'remind me to|set reminder for|set alert for|set timer for', '', user_prompt, flags=re.IGNORECASE).strip()
-        delay_seconds = 60
-        if time_match:
-            val = int(time_match.group(1))
-            unit = time_match.group(2)
-            if 'sec' in unit: delay_seconds = val
-            elif 'min' in unit: delay_seconds = val * 60
-            elif 'hr' in unit: delay_seconds = val * 3600
-        new_reminder = {"id": int(time.time()), "text": rem_text if rem_text else "Alert", "delay_seconds": delay_seconds}
-        REMINDERS_STORE.append(new_reminder)
-        reply = f"Alert set: '{new_reminder['text']}' in {delay_seconds} seconds, {honorific}."
-
-    elif "system check" in cmd_lower or "run system check" in cmd_lower:
-        diag_res = run_diagnostics().get_json()
-        reply = f"{diag_res.get('report', '')}, {honorific}."
-
-    elif "open translate" in cmd_lower or "activate translate" in cmd_lower:
-        open_translate_hud = True
-        reply = f"Activating Universal Translation HUD, {honorific}."
-
-    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower:
+    elif inferred_intent == "CCTV_SCAN":
         cctv_data = scan_cctv().get_json()
         cams = cctv_data.get('cameras', [])
         cctv_apps_list = cctv_data.get('supported_apps', [])
         cctv_stream_url = cams[0]['stream_url'] if cams else None
-        reply = f"Linked to CCTV feed '{cams[0]['name']}'. Deep-link buttons generated, {honorific}."
+        reply = f"Inferred intent: Connecting to security camera '{cams[0]['name']}'. Stream feeds linked, {honorific}."
 
-    elif "weather" in cmd_lower or "temperature" in cmd_lower:
-        reply = fetch_global_weather(location, lat, lon)
+    elif inferred_intent == "DAILY_BRIEFING":
+        weather_summary = fetch_global_weather(location, lat, lon)
+        news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global news feeds nominal."
+        reply = f"Good day, {honorific}. Executive Briefing:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\nAll armor systems optimal."
 
-    elif "direction" in cmd_lower or "navigate" in cmd_lower or "map to" in cmd_lower:
-        dest_match = re.sub(r'get directions to|directions to|navigate to|map to', '', user_prompt, flags=re.IGNORECASE).strip()
-        encoded_dest = urllib.parse.quote(dest_match if dest_match else "Destination")
-        google_maps_url = f"https://www.google.com/maps/search/?api=1&query={encoded_dest}"
-        reply = f"Navigation link compiled. Click button to launch maps, {honorific}."
+    elif inferred_intent == "MEDIA_PLAYBACK":
+        query = re.sub(r'play|put on|some tracks|music|video|listen to|spotify|youtube', '', user_prompt, flags=re.IGNORECASE).strip()
+        encoded = urllib.parse.quote(query if query else "Ambient Tracks")
+        target_url = f"https://open.spotify.com/search/{encoded}" if "spotify" in cmd_lower else f"https://www.youtube.com/results?search_query={encoded}"
+        google_maps_url = target_url
+        reply = f"Inferred media intent: Prepared playback for '{query if query else 'Ambient Tracks'}'. Click deep link below, {honorific}."
 
-    elif "create file" in cmd_lower or "export file" in cmd_lower or "make file" in cmd_lower:
-        fname = f"jarvis_export_{int(time.time())}.txt"
-        file_path = os.path.join(GENERATED_FILES_DIR, fname)
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(f"J.A.R.V.I.S. EXPORT FILE\nTimestamp: {time.ctime()}\nInstruction: {user_prompt}\n\nCompiled for {honorific}.")
-        created_filename = fname
-        created_file_url = f"/api/download_generated/{fname}"
-        reply = f"Downloadable file '{fname}' compiled. Share or save below, {honorific}."
+    elif inferred_intent == "SYS_DIAGNOSTICS":
+        diag_res = run_diagnostics().get_json()
+        reply = f"{diag_res.get('report', '')}, {honorific}."
 
     file_context_str = ""
     if files:
@@ -465,8 +398,8 @@ def ask():
                 reply = None
 
         if not reply:
-            reply = search_data if search_data else f"I am here for you, {honorific}. Systems operational."
-            reply += f"\n\n💡 Proactive Tactical Tip: Stay focused; I am monitoring all calculations, {honorific}."
+            reply = search_data if search_data else f"I am listening and monitoring, {honorific}. Systems operational."
+            reply += f"\n\n💡 Proactive Tactical Tip: Stay focused; calculations running, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific + "."): clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
@@ -489,12 +422,9 @@ def ask():
         'google_maps_url': google_maps_url,
         'created_file_url': created_file_url,
         'created_filename': created_filename,
-        'blackout': trigger_blackout,
-        'disable_blackout': disable_blackout,
         'cctv_stream_url': cctv_stream_url,
         'cctv_apps': cctv_apps_list,
         'open_translate_hud': open_translate_hud,
-        'close_translate_hud': close_translate_hud,
         'new_reminder': new_reminder,
         'trigger_lock': trigger_lock
     })
