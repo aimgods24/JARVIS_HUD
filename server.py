@@ -413,7 +413,9 @@ def ask():
 
         system_instructions = (
             f"You are J.A.R.V.I.S. Mark LXXXV. Address the user as '{honorific}'. "
-            f"Be authoritative, concise, and smart. "
+            f"Be authoritative, highly intelligent, concise, and smart. "
+            f"Structure complex explanations clearly with markdown headers, tables, bullet points, and runnable code blocks when relevant. "
+            f"Always begin your response with step-by-step internal reasoning enclosed inside <think>...</think> tags. "
             f"Include a '💡 Proactive Tactical Tip:' at the bottom of responses."
         )
 
@@ -430,7 +432,7 @@ def ask():
                 response = ollama.chat(
                     model=model_to_use,
                     messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": full_prompt}],
-                    options={"num_predict": 800, "temperature": temperature}
+                    options={"num_predict": 1000, "temperature": temperature}
                 )
                 raw_reply = response['message']['content'].strip()
                 if "<think>" in raw_reply and "</think>" in raw_reply:
@@ -443,6 +445,7 @@ def ask():
                 reply = None
 
         if not reply:
+            reasoning_steps = "1. Parse user prompt intent.\n2. Cross-reference internal telemetry.\n3. Construct optimal executive output."
             reply = search_data if search_data else f"I am online and monitoring telemetry, {honorific}."
             reply += f"\n\n💡 Proactive Tactical Tip: Keep systems synchronized, {honorific}."
 

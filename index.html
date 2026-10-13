@@ -6,6 +6,7 @@
     <title>JARVIS // MARK LXXXV MASTER CORE</title>
     <link rel="manifest" href="/manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --hud-cyan: #00f3ff;
@@ -121,6 +122,19 @@
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
+        .reasoning-box {
+            background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.25);
+            border-radius: 4px; padding: 6px 8px; font-size: 0.72rem; color: #a3e8ff; margin-bottom: 6px;
+        }
+
+        .hud-table {
+            width: 100%; border-collapse: collapse; margin: 8px 0;
+            font-size: 0.75rem; color: #fff; background: rgba(0, 243, 255, 0.05);
+            border: 1px solid var(--hud-cyan);
+        }
+        .hud-table th, .hud-table td { border: 1px solid var(--hud-border); padding: 6px 8px; text-align: left; }
+        .hud-table th { background: rgba(0, 243, 255, 0.2); color: var(--hud-cyan); }
+
         .hud-action-badge {
             display: inline-block; margin-top: 4px; margin-right: 4px; padding: 4px 8px;
             background: var(--hud-glow); border: 1px solid var(--hud-cyan);
@@ -172,7 +186,6 @@
             box-shadow: inset 0 0 12px var(--hud-glow); min-height: 65px; word-break: break-word;
         }
 
-        /* NEON CYBER-MESH TRANSLATE ORB */
         .cyber-mesh-wrapper {
             position: relative; width: 100%; height: 230px;
             display: flex; align-items: center; justify-content: center;
@@ -181,9 +194,7 @@
             box-shadow: inset 0 0 25px rgba(189, 0, 255, 0.4);
         }
 
-        #translateMeshCanvas {
-            position: absolute; width: 220px; height: 220px;
-        }
+        #translateMeshCanvas { position: absolute; width: 220px; height: 220px; }
 
         #securityLockOverlay {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -196,9 +207,47 @@
             display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem;
             border-bottom: 1px dashed rgba(0, 243, 255, 0.2); padding-bottom: 8px; margin-bottom: 8px;
         }
+
+        /* CINEMATIC WELCOME SCREEN OVERLAY */
+        #welcomeOverlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(1, 8, 16, 0.98); z-index: 4000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; color: var(--hud-cyan); text-align: left;
+            backdrop-filter: blur(15px); box-shadow: inset 0 0 60px var(--hud-glow);
+        }
+
+        .welcome-card {
+            width: 100%; max-width: 650px; background: rgba(0, 12, 24, 0.95);
+            border: 2px solid var(--hud-cyan); border-radius: 10px; padding: 20px;
+            box-shadow: 0 0 30px var(--hud-glow); display: flex; flex-direction: column; gap: 12px;
+            max-height: 80vh; overflow-y: auto;
+        }
+
+        #typewriterText {
+            font-size: 0.88rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
+            min-height: 140px; border-left: 2px solid var(--hud-cyan); padding-left: 10px;
+        }
     </style>
 </head>
 <body>
+
+    <!-- CINEMATIC SLOW TYPEWRITER WELCOME SCREEN OVERLAY -->
+    <div id="welcomeOverlay">
+        <div class="welcome-card">
+            <div style="font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;">
+                ⚡ J.A.R.V.I.S. MARK LXXXV // SYSTEM BOOT PROTOCOL
+            </div>
+
+            <div id="typewriterText"></div>
+
+            <div id="welcomeActionArea" style="display: none; flex-direction: column; gap: 8px; margin-top: 10px;">
+                <button onclick="dismissWelcomeScreen()" style="padding: 10px; font-size: 0.8rem; background: var(--hud-cyan); color: #000;">
+                    INITIALIZE DASHBOARD TERMINAL →
+                </button>
+            </div>
+        </div>
+    </div>
 
     <div id="securityLockOverlay">
         <div style="font-size: 3rem;">🔒</div>
@@ -213,6 +262,7 @@
         <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
         <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
+        <button onclick="showWelcomeScreenManual()">📖 TACTICAL GUIDE</button>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
         <button onclick="sendCommandCustom('brief me')">🎙️ BRIEFING</button>
@@ -243,16 +293,14 @@
         </div>
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
-            <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Expanded Customization Palette online. Select from 10 dynamic color themes in ⚙️ SETTINGS to customize your HUD accent.</div>
-            </div>
+            <div id="chat-terminal"></div>
         </div>
 
         <div class="hud-panel" id="rightPanel">
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 POWER CORE: 99%<br>
-                THEME PALETTE: 10 COLOR SCHEMES<br>
+                INTELLIGENCE ENGINE: HYBRID R1<br>
                 INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
@@ -267,7 +315,7 @@
         <button onclick="sendCommand()">SEND</button>
     </div>
 
-    <!-- TRANSLATION FLOATING POP-UP HUD MODAL (Cyber-Mesh Orb) -->
+    <!-- TRANSLATION FLOATING POP-UP HUD MODAL -->
     <div class="hud-modal" id="translateModal">
         <div class="modal-header">
             <div>🌐 NEURAL TRANSLATION HUD</div>
@@ -295,7 +343,7 @@
         </div>
     </div>
 
-    <!-- EXPANDED 10-THEME CUSTOMIZATION SETTINGS MODAL -->
+    <!-- CONFIGURATION SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
             <div>⚙️ MASTER CONFIGURATION SETTINGS</div>
@@ -349,13 +397,6 @@
                 <label>Custom Response Prefix:</label>
                 <input type="text" id="settingCustomPrefix" placeholder="e.g., Right away Sir," onchange="saveCustomSettings()">
             </div>
-            <div class="setting-row">
-                <label>HUD Typography Font Style:</label>
-                <select id="settingHUDFont" onchange="saveCustomSettings()">
-                    <option value="'Consolas', monospace">Consolas Monospace</option>
-                    <option value="'Courier New', monospace">Courier Classic</option>
-                </select>
-            </div>
         </div>
     </div>
 
@@ -368,6 +409,50 @@
         setInterval(() => {
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
+
+        // --- CINEMATIC SLOW TYPEWRITER WELCOME PROTOCOL ---
+        const welcomeMessageScript = 
+`Greetings, Sir. I am J.A.R.V.I.S. (Just A Rather Very Intelligent System).
+Mark LXXXV Tactical Interface online and fully operational.
+
+--- TACTICAL USER OPERATING GUIDE ---
+1. COMMAND DISPATCH: Type your prompt or code request in the center pill. Desktop users press [ENTER] to send (or [SHIFT+ENTER] for newlines). Mobile users tap the [SEND] button or soft keyboard 'Go'.
+2. STEP-BY-STEP REASONING: Every executive query displays a collapsible DeepSeek-R1 logic block detailing internal calculations before output generation.
+3. CCTV SURVEILLANCE MATRIX: Type 'connect to cctv' to view live camera telemetry directly inside the 3D Arc Core Orb. Say 'cancel cctv' to return to the WebGL Hologram.
+4. VOICE BARGE-IN INTERRUPT: Press [ESC] or [F9] at any time to instantly halt speech synthesis playback.
+5. GLOBAL TRANSLATOR: Click [🌐 TRANSLATE] in the top navigation bar to open the floating neural translation HUD with the Cyber-Mesh wireframe sphere.
+6. WATCH WIDGET: Navigate to /watch or click [⌚ WATCH PWA WIDGET] for smartwatch tap-to-speak dictation.
+
+All systems online. Awaiting your command.`;
+
+        let typeIndex = 0;
+        function runCinematicTypewriter() {
+            const container = document.getElementById('typewriterText');
+            if (typeIndex < welcomeMessageScript.length) {
+                container.textContent += welcomeMessageScript.charAt(typeIndex);
+                typeIndex++;
+                setTimeout(runCinematicTypewriter, 18);
+            } else {
+                document.getElementById('welcomeActionArea').style.display = 'flex';
+            }
+        }
+
+        function showWelcomeScreenManual() {
+            document.getElementById('typewriterText').textContent = '';
+            typeIndex = 0;
+            document.getElementById('welcomeActionArea').style.display = 'none';
+            document.getElementById('welcomeOverlay').style.display = 'flex';
+            runCinematicTypewriter();
+        }
+
+        function dismissWelcomeScreen() {
+            document.getElementById('welcomeOverlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('welcomeOverlay').style.display = 'none';
+                document.getElementById('welcomeOverlay').style.opacity = '1';
+            }, 400);
+            localStorage.setItem('jarvis_welcomed', 'true');
+        }
 
         // --- THREE.JS 3D HOLOGRAPHIC ARC REACTOR CORE ---
         let scene, camera, renderer, particleSphere, wireCore, coreMat;
@@ -466,6 +551,15 @@
         window.addEventListener('load', () => {
             init3DHologramCore();
             renderCyberMeshTranslateOrb();
+
+            if (!localStorage.getItem('jarvis_welcomed')) {
+                runCinematicTypewriter();
+            } else {
+                document.getElementById('welcomeOverlay').style.display = 'none';
+            }
+
+            const terminal = document.getElementById('chat-terminal');
+            terminal.innerHTML = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Executive Intelligence Interface Mark LXXXV initialized. All tactical protocols online. Type or speak your command.</div>`;
         });
 
         function stopVoicePlaybackImmediate() {
@@ -523,7 +617,6 @@
             const selectedThemeColor = document.getElementById('settingThemeColor').value;
             document.documentElement.style.setProperty('--hud-cyan', selectedThemeColor);
             
-            // Hex to RGBA conversion for glow effect
             let hex = selectedThemeColor.replace('#', '');
             if(hex.length === 6) {
                 let r = parseInt(hex.substring(0,2), 16);
@@ -535,9 +628,6 @@
             if (coreMat) {
                 coreMat.color.setHex(parseInt(hex, 16));
             }
-
-            const selectedFont = document.getElementById('settingHUDFont').value;
-            document.documentElement.style.setProperty('--hud-font', selectedFont);
         }
 
         function triggerSecurityLock() { document.getElementById('securityLockOverlay').style.display = 'flex'; }
@@ -711,7 +801,15 @@
                 if (data.open_translate_hud) { openTranslateHUD(); }
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
 
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
+                let renderedOutput = "";
+                if (data.reasoning_steps) {
+                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 DEEPSEEK-R1 RATIONALE & THOUGHT PROCESS</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
+                }
+
+                const parsedMarkdown = typeof marked !== 'undefined' ? marked.parse(data.raw_markdown || data.response) : data.response;
+                renderedOutput += parsedMarkdown;
+
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b><br>${renderedOutput}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
 
                 if (data.audio) { playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
