@@ -3,22 +3,13 @@ import edge_tts
 import asyncio
 import os
 import re
+import json
 import random
-import subprocess
 import threading
 import time
 import requests
-import sys
-import io
-import shutil
 import urllib.parse
 from duckduckgo_search import DDGS
-
-try:
-    import pyautogui
-    HAS_PYAUTOGUI = True
-except Exception:
-    HAS_PYAUTOGUI = False
 
 try:
     import ollama
@@ -29,11 +20,37 @@ except Exception:
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-MEMORY_FILE = "jarvis_memory.txt"
+MEMORY_FILE = "jarvis_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
 GLOBAL_NEWS_CACHE = []
+
+def init_memory():
+    if not os.path.exists(MEMORY_FILE):
+        default_mem = {
+            "user_preferences": {"honorific": "Sir", "location": "Bayan Lepas, Penang, Malaysia"},
+            "facts": [],
+            "task_history": []
+        }
+        with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(default_mem, f, indent=2)
+
+init_memory()
+
+def get_memory_data():
+    try:
+        with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {"user_preferences": {}, "facts": [], "task_history": []}
+
+def save_memory_fact(fact_str):
+    data = get_memory_data()
+    if fact_str not in data.get("facts", []):
+        data.setdefault("facts", []).append(fact_str)
+        with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
 
 def fetch_latest_global_news():
     global GLOBAL_NEWS_CACHE
@@ -48,12 +65,6 @@ def fetch_latest_global_news():
 
 news_thread = threading.Thread(target=fetch_latest_global_news, daemon=True)
 news_thread.start()
-
-def get_user_memory():
-    if os.path.exists(MEMORY_FILE):
-        with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-            return f.read()
-    return ""
 
 def fetch_global_weather(location_query, lat=None, lon=None):
     try:
@@ -103,14 +114,14 @@ def search_general_knowledge(query):
         results = list(DDGS().text(query, max_results=6))
         if results:
             snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
-            return f"Comprehensive Knowledge Synthesis for '{query}':\n\n" + "\n\n".join(snippets[:4])
+            return f"Knowledge Synthesis for '{query}':\n\n" + "\n\n".join(snippets[:4])
         return None
     except Exception:
         return None
 
 def convert_symbols_to_words(text):
-    clean = re.sub(r'```[\s\S]*?```', ' Code block provided in terminal interface. ', text)
-    clean = re.sub(r'<svg[\s\S]*?<\/svg>', ' Schematic graphic generated on dashboard. ', clean)
+    clean = re.sub(r'```[\s\S]*?```', ' Code block provided in terminal. ', text)
+    clean = re.sub(r'<svg[\s\S]*?<\/svg>', ' Schematic generated. ', clean)
 
     symbol_map = {
         '@': ' at ', '#': ' hashtag ', '$': ' dollars ', '%': ' percent ',
@@ -131,7 +142,7 @@ def parse_contextual_intent(prompt):
     p = prompt.lower()
     if any(w in p for w in ["cancel cctv", "disconnect camera", "close camera", "stop feed", "turn off camera", "close cctv", "hide cctv", "stop cctv"]):
         return "CANCEL_CCTV"
-    if any(w in p for w in ["connect to cctv", "scan cctv", "check camera", "show camera", "cctv feed", "front door camera", "security feed", "perimeter camera", "view feed"]):
+    if any(w in p for w in ["connect to cctv", "scan cctv", "check camera", "show camera", "cctv feed", "front door camera", "security feed", "perimeter camera", "view feed", "switch camera"]):
         return "CCTV_SCAN"
     if any(w in p for w in ["open translate", "activate translate", "launch translate", "translate mode", "translator"]):
         return "OPEN_TRANSLATE"
@@ -145,6 +156,8 @@ def parse_contextual_intent(prompt):
         return "SECURITY_LOCK"
     if any(w in p for w in ["health check", "diagnostics", "system state", "check hardware"]):
         return "SYS_DIAGNOSTICS"
+    if any(w in p for w in ["remember that", "save note", "keep in mind"]):
+        return "SAVE_FACT"
         
     return "GENERAL"
 
@@ -175,7 +188,6 @@ def watch_tile():
             body { background: #000; color: #00f3ff; font-family: -apple-system, sans-serif; text-align: center; margin: 0; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
             .widget-ring { width: 120px; height: 120px; border-radius: 50%; border: 3px solid #00f3ff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; box-shadow: 0 0 15px #00f3ff; cursor: pointer; }
             .widget-ring:active { transform: scale(0.95); opacity: 0.8; }
-            button { margin-top: 10px; background: rgba(0,243,255,0.2); border: 1px solid #00f3ff; color: #00f3ff; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.7rem; width: 100%; }
             #out { font-size: 0.65rem; margin-top: 6px; max-height: 45px; overflow: hidden; text-overflow: ellipsis; }
         </style>
     </head>
@@ -184,7 +196,7 @@ def watch_tile():
             <span>J.A.R.V.I.S.</span>
             <span style="font-size:0.5rem; opacity:0.8;">TAP TO SPEAK</span>
         </div>
-        <div id="out">Widget Connected</div>
+        <div id="out">Widget Active</div>
         <script>
             function triggerWatchVoice() {
                 if ('vibrate' in navigator) navigator.vibrate(40);
@@ -231,26 +243,34 @@ def service_worker():
 @app.route('/api/scan_cctv', methods=['POST', 'GET'])
 def scan_cctv():
     data = request.json or {}
-    custom_url = data.get('custom_stream_url', '').strip()
+    cam_id = data.get('cam_id', 'cam_01')
     
-    universal_cctv_protocols = [
-        {"id": "rtsp_generic", "name": "Universal RTSP / ONVIF IP Bridge", "protocol": "rtsp://", "status": "Active"},
-        {"id": "webrtc_generic", "name": "WebRTC Low-Latency Stream", "protocol": "webrtc://", "status": "Active"},
-        {"id": "hikvision", "name": "Hikvision / Dahua / Axis / Reolink", "app_url": "ivms4500://"},
-        {"id": "google_nest", "name": "Google Nest / Home", "app_url": "googlehome://"},
-        {"id": "ring", "name": "Ring / Blink / Wyze", "app_url": "ring://"},
-        {"id": "tuya", "name": "Tuya / Smart Life / Arlo", "app_url": "smartlife://"}
+    cameras = [
+        {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
+        {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"},
+        {"id": "cam_03", "name": "FRONT-PORCH-CAM", "stream_url": "https://images.unsplash.com/photo-1508873696983-2df515122519?w=400&auto=format&fit=crop"},
+        {"id": "cam_04", "name": "REAR-GATE-CAM", "stream_url": "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?w=400&auto=format&fit=crop"}
     ]
     
-    demo_cctv_streams = [
-        {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": custom_url if custom_url else "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
-        {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"}
-    ]
-    return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': universal_cctv_protocols})
+    selected = next((c for c in cameras if c['id'] == cam_id), cameras[0])
+    return jsonify({'status': 'success', 'selected_camera': selected, 'all_cameras': cameras})
 
-@app.route('/api/download_generated/<filename>')
-def download_generated(filename):
-    return send_from_directory(GENERATED_FILES_DIR, filename, as_attachment=True)
+@app.route('/api/agent_task', methods=['POST'])
+def run_autonomous_agent_task():
+    data = request.json or {}
+    task_desc = data.get('task', '').strip()
+    
+    if not task_desc:
+        return jsonify({'status': 'error', 'message': 'No task description specified.'})
+
+    search_data = search_general_knowledge(task_desc)
+    result_text = f"Autonomous Background Worker Execution Complete:\nTask Goal: '{task_desc}'\n\nResults:\n{search_data if search_data else 'Task completed successfully.'}"
+
+    return jsonify({
+        'status': 'success',
+        'task': task_desc,
+        'summary': result_text
+    })
 
 @app.route('/api/translate', methods=['POST'])
 def translate_audio_or_text():
@@ -263,18 +283,15 @@ def translate_audio_or_text():
     if not text:
         return jsonify({'status': 'error', 'response': 'No speech text provided for translation.'})
 
-    system_instructions = (
-        f"You are J.A.R.V.I.S.'s Universal Subtitle & Translation Engine. "
-        f"Detect the source language and translate directly into {target_lang}. "
-        f"Output strictly ONLY the translated text without extra conversational fluff."
-    )
-
     translated_text = ""
     if HAS_OLLAMA:
         try:
             response = ollama.chat(
                 model='qwen2.5:0.5b',
-                messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": text}],
+                messages=[
+                    {"role": "system", "content": f"Translate input into {target_lang}. Return ONLY the direct translation."},
+                    {"role": "user", "content": text}
+                ],
                 options={"temperature": 0.1}
             )
             translated_text = response['message']['content'].strip()
@@ -330,79 +347,84 @@ def ask():
     reply = None
     reasoning_steps = None
     google_maps_url = None
-    created_file_url = None
-    created_filename = None
     cctv_stream_url = None
     cancel_cctv = False
-    cctv_apps_list = None
     open_translate_hud = False
-    new_reminder = None
     trigger_lock = False
 
-    if inferred_intent == "CANCEL_CCTV":
+    if inferred_intent == "SAVE_FACT":
+        fact = re.sub(r'remember that|save note|keep in mind', '', user_prompt, flags=re.IGNORECASE).strip()
+        if fact:
+            save_memory_fact(fact)
+            reply = f"Memory updated and indexed in cross-session persistence storage, {honorific}: '{fact}'"
+
+    elif inferred_intent == "CANCEL_CCTV":
         cancel_cctv = True
-        reply = f"CCTV feed disconnected. Reverting orb HUD interface to Arc Core mode, {honorific}."
+        reply = f"CCTV feed disconnected. Reverting HUD core to 3D WebGL Arc Core visualizer, {honorific}."
 
     elif inferred_intent == "CCTV_SCAN":
         cctv_data = scan_cctv().get_json()
-        cams = cctv_data.get('cameras', [])
-        cctv_apps_list = cctv_data.get('supported_apps', [])
-        cctv_stream_url = cams[0]['stream_url'] if cams else None
-        reply = f"CCTV signal acquired. Live video feed projected directly into the core HUD orb, {honorific}."
+        cam = cctv_data.get('selected_camera', {})
+        cctv_stream_url = cam.get('stream_url')
+        reply = f"CCTV signal acquired ({cam.get('name')}). Live feed projected inside the 3D core orb, {honorific}."
 
     elif inferred_intent == "OPEN_TRANSLATE":
         open_translate_hud = True
-        reply = f"Activating floating Universal Translation HUD window, {honorific}."
+        reply = f"Activating floating Universal Translation HUD pop-up, {honorific}."
 
     elif inferred_intent == "SECURITY_LOCK":
         trigger_lock = True
-        reply = f"Stark Security Protocol Engaged. Locking chat terminal, {honorific}."
+        reply = f"Stark Security Protocol Engaged. Locking chat terminal interface, {honorific}."
 
     elif inferred_intent == "SMART_HOME":
         act = "OFF" if "off" in cmd_lower else "ON"
-        device = "Living Room AC" if "ac" in cmd_lower or "cold" in cmd_lower or "hot" in cmd_lower else "Primary Lights"
-        reply = f"Inferred intent detected: Configured {device} state to {act}, {honorific}."
+        device = "Living Room Climate Control" if "ac" in cmd_lower or "cold" in cmd_lower or "hot" in cmd_lower else "Primary Lights"
+        reply = f"Inferred Smart Home payload dispatched: Set {device} state to {act}, {honorific}."
 
     elif inferred_intent == "DAILY_BRIEFING":
         weather_summary = fetch_global_weather(location, lat, lon)
-        news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global news feeds nominal."
-        reply = f"Good day, {honorific}. Executive Briefing:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\nAll armor systems optimal."
+        news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global telemetry feeds optimal."
+        mem_data = get_memory_data()
+        facts_count = len(mem_data.get('facts', []))
+        reply = f"Good day, {honorific}. Executive Briefing:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\n3. Memory Records: {facts_count} active facts archived."
 
     elif inferred_intent == "MEDIA_PLAYBACK":
         query = re.sub(r'play|put on|some tracks|music|video|listen to|spotify|youtube', '', user_prompt, flags=re.IGNORECASE).strip()
         encoded = urllib.parse.quote(query if query else "Ambient Tracks")
         target_url = f"https://open.spotify.com/search/{encoded}" if "spotify" in cmd_lower else f"https://www.youtube.com/results?search_query={encoded}"
         google_maps_url = target_url
-        reply = f"Inferred media intent: Prepared playback for '{query if query else 'Ambient Tracks'}'. Click deep link below, {honorific}."
+        reply = f"Inferred media intent: Prepared stream link for '{query if query else 'Ambient Tracks'}'. Click link below, {honorific}."
 
     file_context_str = ""
     if files:
-        file_snippets = [f"--- [FILE ANALYSIS: {f.get('name', 'Doc')}] ---\n{f.get('content', '')}\n" for f in files]
+        file_snippets = [f"--- [DOC ANALYSIS: {f.get('name', 'Doc')}] ---\n{f.get('content', '')}\n" for f in files]
         file_context_str = "\n".join(file_snippets)
 
     if not reply:
-        user_memory = get_user_memory()
-        unified_hybrid_instructions = (
-            "[COMBINED HYBRID INTELLIGENCE ENGINE PROTOCOL ACTIVE]:\n"
-            "Integrate DeepSeek-R1 reasoning (<think>...</think>), Gemini web search, ChatGPT code/tables, OCR text extraction, and exercise planning.\n"
-            "EMOTIONAL SUPPORT: Offer warm, empathetic validation if user seems tired or stressed.\n"
-            f"Always complete response addressing user as '{honorific}' and end with '💡 Proactive Tactical Tip:'."
+        mem_data = get_memory_data()
+        saved_facts = mem_data.get('facts', [])
+        facts_context = f"\n[PERSISTENT USER MEMORY]:\n" + "\n".join([f"• {f}" for f in saved_facts[-5:]]) if saved_facts else ""
+
+        system_instructions = (
+            f"You are J.A.R.V.I.S. Mark LXXXV. Address the user as '{honorific}'. "
+            f"Be authoritative, concise, and smart. "
+            f"Include a '💡 Proactive Tactical Tip:' at the bottom of responses."
         )
 
         full_prompt = user_prompt
         if file_context_str: full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt}"
+        if facts_context: full_prompt = f"{full_prompt}\n{facts_context}"
 
-        search_data = search_general_knowledge(full_prompt)
-        if search_data: full_prompt = f"{full_prompt}\n\n[RETRIEVAL DATA]:\n{search_data}"
+        search_data = search_general_knowledge(user_prompt)
+        if search_data: full_prompt = f"{full_prompt}\n\n[EXTERNAL SEARCH DATA]:\n{search_data}"
 
         if HAS_OLLAMA:
             try:
                 model_to_use = 'llava' if images else 'deepseek-r1:1.5b'
                 response = ollama.chat(
                     model=model_to_use,
-                    messages=[{"role": "system", "content": unified_hybrid_instructions}, {"role": "user", "content": full_prompt}],
-                    options={"num_predict": 800, "temperature": temperature},
-                    keep_alive=-1
+                    messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": full_prompt}],
+                    options={"num_predict": 800, "temperature": temperature}
                 )
                 raw_reply = response['message']['content'].strip()
                 if "<think>" in raw_reply and "</think>" in raw_reply:
@@ -415,8 +437,8 @@ def ask():
                 reply = None
 
         if not reply:
-            reply = search_data if search_data else f"I am listening and monitoring, {honorific}. Systems operational."
-            reply += f"\n\n💡 Proactive Tactical Tip: Stay focused; calculations running, {honorific}."
+            reply = search_data if search_data else f"I am online and monitoring telemetry, {honorific}."
+            reply += f"\n\n💡 Proactive Tactical Tip: Keep systems synchronized, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific + "."): clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
@@ -434,16 +456,11 @@ def ask():
         'response': clean_text, 
         'raw_markdown': reply,
         'reasoning_steps': reasoning_steps,
-        'ai_engine_mode': 'unified_hybrid',
         'audio': has_audio,
         'google_maps_url': google_maps_url,
-        'created_file_url': created_file_url,
-        'created_filename': created_filename,
         'cctv_stream_url': cctv_stream_url,
         'cancel_cctv': cancel_cctv,
-        'cctv_apps': cctv_apps_list,
         'open_translate_hud': open_translate_hud,
-        'new_reminder': new_reminder,
         'trigger_lock': trigger_lock
     })
 

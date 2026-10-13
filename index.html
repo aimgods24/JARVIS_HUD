@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JARVIS // MARK LXXXV TACTICAL HUD</title>
+    <title>JARVIS // MARK LXXXV DREAM HUD</title>
     <link rel="manifest" href="/manifest.json">
+    <!-- Three.js Library for 3D Holographic Rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
             --hud-cyan: #00f3ff;
@@ -90,32 +92,23 @@
             box-shadow: inset 0 0 15px var(--hud-glow);
         }
 
+        #webglCanvas {
+            position: absolute; width: 100%; height: 100%; z-index: 1;
+        }
+
         #cctvVideoFeed {
             position: absolute; width: 160px; height: 160px;
-            border-radius: 50%; object-fit: cover; z-index: 1;
+            border-radius: 50%; object-fit: cover; z-index: 2;
             opacity: 0; transition: opacity 0.6s ease;
             filter: contrast(1.2) brightness(1.1);
             border: 2px solid var(--hud-cyan);
             box-shadow: 0 0 20px var(--hud-cyan);
         }
 
-        .orb-svg-main {
-            width: 210px; height: 210px; z-index: 2; pointer-events: none;
-            transition: opacity 0.5s ease;
-        }
-
         #audioWaveCanvas {
             position: absolute; width: 220px; height: 220px;
             z-index: 3; pointer-events: none; border-radius: 50%;
         }
-
-        .ring-cw { transform-origin: center; animation: rotateCW 16s linear infinite; }
-        .ring-ccw { transform-origin: center; animation: rotateCCW 10s linear infinite; }
-        .wireframe-sphere { transform-origin: center; animation: floatSphere 6s ease-in-out infinite alternate; }
-
-        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
-        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
-        @keyframes floatSphere { 0% { transform: scale(0.96); } 100% { transform: scale(1.04); } }
 
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
@@ -213,8 +206,8 @@
     </div>
 
     <div class="hud-top-bar">
-        <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
-        <div>ORB FEED: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">ARC CORE ACTIVE</span></div>
+        <div><span class="status-pill"></span>JARVIS // DREAM HUD</div>
+        <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
@@ -224,55 +217,42 @@
 
     <div class="hud-workspace">
         <div class="hud-panel" id="leftPanel">
-            <div class="panel-header"><span>CORE DIAL // ORB HUD & SOUNDWAVE</span></div>
+            <div class="panel-header"><span>CORE DIAL // 3D HOLOGRAM & SOUNDWAVE</span></div>
             
             <div class="core-orb-widget">
+                <canvas id="webglCanvas"></canvas>
                 <img id="cctvVideoFeed" src="" alt="Live CCTV Feed">
-
-                <svg class="orb-svg-main" id="mainOrbSvg" viewBox="0 0 200 200">
-                    <circle cx="100" cy="100" r="90" stroke="#00f3ff" stroke-width="4" fill="none" opacity="0.9" />
-                    <circle class="ring-cw" cx="100" cy="100" r="76" stroke="#ff9d00" stroke-width="2.5" stroke-dasharray="6 4 12 4" fill="none" />
-                    <circle class="ring-ccw" cx="100" cy="100" r="64" stroke="#00f3ff" stroke-width="3" stroke-dasharray="14 6" fill="none" opacity="0.8" />
-                    <g class="ring-cw">
-                        <rect x="95" y="12" width="10" height="6" fill="#ff9d00" />
-                        <rect x="95" y="182" width="10" height="6" fill="#ff9d00" />
-                        <rect x="12" y="95" width="6" height="10" fill="#00f3ff" />
-                        <rect x="182" y="95" width="6" height="10" fill="#00f3ff" />
-                    </g>
-                    <g class="wireframe-sphere" id="wireframeSphereGroup">
-                        <circle cx="100" cy="100" r="32" stroke="#00f3ff" stroke-width="1.5" fill="none" />
-                        <polygon points="100,68 116,80 84,80" stroke="#00f3ff" stroke-width="1" fill="none" />
-                        <polygon points="100,132 116,120 84,120" stroke="#00f3ff" stroke-width="1" fill="none" />
-                        <polygon points="68,100 80,84 80,116" stroke="#00f3ff" stroke-width="1" fill="none" />
-                        <polygon points="132,100 120,84 120,116" stroke="#00f3ff" stroke-width="1" fill="none" />
-                        <line x1="84" y1="80" x2="116" y2="120" stroke="#00f3ff" stroke-width="1" />
-                        <line x1="116" y1="80" x2="84" y2="120" stroke="#00f3ff" stroke-width="1" />
-                    </g>
-                </svg>
-
                 <canvas id="audioWaveCanvas" width="220" height="220"></canvas>
             </div>
 
-            <div class="panel-header" style="margin-top:4px;"><span>CCTV ORB CONTROLS</span></div>
+            <div class="panel-header" style="margin-top:4px;"><span>CCTV MATRIX SWITCHER</span></div>
+            <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
+                <button onclick="sendCommandCustom('connect to cctv')">📹 CAM 1</button>
+                <button onclick="sendCommandCustom('cancel cctv')">✕ CANCEL</button>
+            </div>
+
+            <div class="panel-header" style="margin-top:8px;"><span>AUTONOMOUS AGENT RUNNER</span></div>
             <div style="display: flex; gap: 4px; margin-top: 4px;">
-                <button onclick="sendCommandCustom('connect to cctv')">📹 CONNECT CCTV</button>
-                <button onclick="sendCommandCustom('cancel cctv')">✕ CANCEL CCTV</button>
+                <input type="text" id="agentTaskInput" placeholder="Assign background agent task..." style="flex:1; font-size:0.65rem;">
+                <button onclick="dispatchAgentTask()">EXECUTE</button>
             </div>
         </div>
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Expanded Customization Suite online. Click ⚙️ SETTINGS to adjust speech cadence, visualizer modes, chime volume, or theme accents.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Dream Architecture initialized. Interactive 3D WebGL Holographic Arc Core online. Press [ESC] or [F9] at any time for instant voice barge-in interrupt.</div>
             </div>
         </div>
 
         <div class="hud-panel" id="rightPanel">
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
-                POWER CORE: 98%<br>
-                SETTINGS: EXPANDED SUITE
+                POWER CORE: 99%<br>
+                3D ENGINE: THREE.JS WEBGL<br>
+                INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
+            <button onclick="stopVoicePlaybackImmediate()" style="color:#ff9d00; border-color:#ff9d00;">⏹️ INTERRUPT VOICE</button>
             <button onclick="openTranslateHUD()" style="margin-top:4px;">🌐 TRANSLATE POPUP</button>
             <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:6px;">⌚ WATCH PWA WIDGET</a>
         </div>
@@ -302,32 +282,18 @@
             <button id="translateMicBtn" onclick="triggerTranslateDictation()">🎙️ DICTATE</button>
         </div>
 
-        <div style="position: relative; width: 100%; height: 210px; display: flex; align-items: center; justify-content: center; margin: 10px 0; background: rgba(0, 4, 10, 0.9); border: 1px solid var(--hud-border); border-radius: 8px;">
-            <svg class="orb-svg-main" viewBox="0 0 200 200">
-                <circle cx="100" cy="100" r="90" stroke="#00f3ff" stroke-width="4" fill="none" opacity="0.9" />
-                <circle class="ring-cw" cx="100" cy="100" r="76" stroke="#ff9d00" stroke-width="2.5" stroke-dasharray="6 4 12 4" fill="none" />
-                <circle class="ring-ccw" cx="100" cy="100" r="64" stroke="#00f3ff" stroke-width="3" stroke-dasharray="14 6" fill="none" opacity="0.8" />
-                <g class="wireframe-sphere">
-                    <circle cx="100" cy="100" r="32" stroke="#00f3ff" stroke-width="1.5" fill="none" />
-                    <polygon points="100,68 116,80 84,80" stroke="#00f3ff" stroke-width="1" fill="none" />
-                    <polygon points="100,132 116,120 84,120" stroke="#00f3ff" stroke-width="1" fill="none" />
-                </g>
-            </svg>
-        </div>
-
-        <div class="translate-subtitle-box" id="translateSubtitleBox">
+        <div class="translate-subtitle-box" id="translateSubtitleBox" style="margin-top:10px;">
             <span style="color: var(--hud-cyan); font-style: italic;">Awaiting speech dictation... Press [🎙️ DICTATE] above.</span>
         </div>
     </div>
 
-    <!-- EXPANDED CUSTOMIZATION SETTINGS MODAL -->
+    <!-- SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
-            <div>⚙️ MASTER CUSTOMIZATION SETTINGS</div>
+            <div>⚙️ MASTER CONFIGURATION</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
         </div>
         <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
-            
             <div class="setting-row">
                 <label>User Honorific Title:</label>
                 <select id="settingHonorific" onchange="saveCustomSettings()">
@@ -337,64 +303,24 @@
                     <option value="Boss">Boss</option>
                 </select>
             </div>
-
             <div class="setting-row">
                 <label>Security Wake Phrase:</label>
                 <input type="text" id="settingWakeWord" placeholder="jarvis" onchange="saveCustomSettings()">
             </div>
-
-            <div class="setting-row">
-                <label>HUD Accent Color Theme:</label>
-                <select id="settingThemeColor" onchange="saveCustomSettings()">
-                    <option value="#00f3ff">Cyan Gold (Default Mark LXXXV)</option>
-                    <option value="#ff2200">Stark Red</option>
-                    <option value="#a855f7">DeepSeek Purple</option>
-                    <option value="#10b981">Matrix Emerald</option>
-                </select>
-            </div>
-
             <div class="setting-row">
                 <label>Voice Speech Speed (<span id="speedValLabel">+2%</span>):</label>
                 <input type="range" id="settingVoiceRate" min="-10" max="25" value="2" oninput="updateSettingLabels()" onchange="saveCustomSettings()">
             </div>
-
             <div class="setting-row">
                 <label>Voice Pitch Adjustment (<span id="pitchValLabel">-3Hz</span>):</label>
                 <input type="range" id="settingVoicePitch" min="-10" max="10" value="-3" oninput="updateSettingLabels()" onchange="saveCustomSettings()">
             </div>
-
-            <div class="setting-row">
-                <label>Sound Effects & Chime Volume:</label>
-                <select id="settingChimeVolume" onchange="saveCustomSettings()">
-                    <option value="0.05">Medium (Default)</option>
-                    <option value="0.10">High</option>
-                    <option value="0.02">Low</option>
-                    <option value="0.00">Muted</option>
-                </select>
-            </div>
-
-            <div class="setting-row">
-                <label>Orb Visualizer Rendering Mode:</label>
-                <select id="settingVisualizerMode" onchange="saveCustomSettings()">
-                    <option value="radial">Radial Ring Waveform (Default)</option>
-                    <option value="stealth">Stealth Arc Ring Pulse</option>
-                </select>
-            </div>
-
-            <div class="setting-row">
-                <label>Auto-Scroll Chat Terminal:</label>
-                <select id="settingAutoScroll" onchange="saveCustomSettings()">
-                    <option value="true">Enabled</option>
-                    <option value="false">Disabled</option>
-                </select>
-            </div>
-
         </div>
     </div>
 
     <script>
         let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
-        let userHonorific = "Sir", customWakeWord = "jarvis", chimeVolume = 0.05, selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", enableAutoScroll = true, visualizerMode = "radial";
+        let userHonorific = "Sir", customWakeWord = "jarvis", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz";
 
         const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -402,31 +328,75 @@
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        function updateSettingLabels() {
-            const rVal = document.getElementById('settingVoiceRate').value;
-            const pVal = document.getElementById('settingVoicePitch').value;
-            document.getElementById('speedValLabel').innerText = (rVal >= 0 ? "+" : "") + rVal + "%";
-            document.getElementById('pitchValLabel').innerText = (pVal >= 0 ? "+" : "") + pVal + "Hz";
+        // --- THREE.JS 3D HOLOGRAPHIC ARC REACTOR CORE ---
+        let scene, camera, renderer, particleSphere, wireCore;
+
+        function init3DHologramCore() {
+            const container = document.querySelector('.core-orb-widget');
+            const canvas = document.getElementById('webglCanvas');
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 180;
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+
+            // Wireframe Icosahedron Core
+            const coreGeo = new THREE.IcosahedronGeometry(36, 2);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.8 });
+            wireCore = new THREE.Mesh(coreGeo, coreMat);
+            scene.add(wireCore);
+
+            // Surrounding Particle Field
+            const particleGeo = new THREE.BufferGeometry();
+            const particleCount = 400;
+            const posArray = new Float32Array(particleCount * 3);
+
+            for(let i=0; i<particleCount*3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 160;
+            }
+
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particleMat = new THREE.PointsMaterial({ size: 2, color: 0xff9d00, transparent: true, opacity: 0.85 });
+            particleSphere = new THREE.Points(particleGeo, particleMat);
+            scene.add(particleSphere);
+
+            function animate3DCore() {
+                requestAnimationFrame(animate3DCore);
+                wireCore.rotation.x += 0.005;
+                wireCore.rotation.y += 0.008;
+                particleSphere.rotation.y -= 0.003;
+                renderer.render(scene, camera);
+            }
+            animate3DCore();
         }
 
-        function saveCustomSettings() {
-            userHonorific = document.getElementById('settingHonorific').value;
-            customWakeWord = document.getElementById('settingWakeWord').value || "jarvis";
-            const themeColor = document.getElementById('settingThemeColor').value;
-            document.documentElement.style.setProperty('--hud-cyan', themeColor);
+        window.addEventListener('load', init3DHologramCore);
 
-            const rVal = document.getElementById('settingVoiceRate').value;
-            const pVal = document.getElementById('settingVoicePitch').value;
-            selectedVoiceRate = (rVal >= 0 ? "+" : "") + rVal + "%";
-            selectedVoicePitch = (pVal >= 0 ? "+" : "") + pVal + "Hz";
-
-            chimeVolume = parseFloat(document.getElementById('settingChimeVolume').value);
-            visualizerMode = document.getElementById('settingVisualizerMode').value;
-            enableAutoScroll = document.getElementById('settingAutoScroll').value === "true";
-
-            playHUDChime();
+        // --- VOICE BARGE-IN & INSTANT INTERRUPT HANDLER ---
+        function stopVoicePlaybackImmediate() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            if (animFrameId) cancelAnimationFrame(animFrameId);
+            const canvas = document.getElementById('audioWaveCanvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
         }
 
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' || e.key === 'F9') {
+                stopVoicePlaybackImmediate();
+                closeSettingsHUD();
+                closeTranslateHUD();
+            }
+        });
+
+        // --- DUAL DESKTOP / MOBILE KEYBOARD HANDLING ---
         const userInputEl = document.getElementById('userInput');
         if (userInputEl) {
             userInputEl.addEventListener('keydown', function(e) {
@@ -444,36 +414,55 @@
             });
         }
 
-        function playHUDChime() {
-            if (chimeVolume <= 0) return;
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-                gain.gain.setValueAtTime(chimeVolume, ctx.currentTime);
-                osc.connect(gain); gain.connect(ctx.destination);
-                osc.start(); osc.stop(ctx.currentTime + 0.15);
-            } catch(e) {}
+        function updateSettingLabels() {
+            const rVal = document.getElementById('settingVoiceRate').value;
+            const pVal = document.getElementById('settingVoicePitch').value;
+            document.getElementById('speedValLabel').innerText = (rVal >= 0 ? "+" : "") + rVal + "%";
+            document.getElementById('pitchValLabel').innerText = (pVal >= 0 ? "+" : "") + pVal + "Hz";
         }
 
-        function triggerSecurityLock() {
-            playHUDChime();
-            document.getElementById('securityLockOverlay').style.display = 'flex';
+        function saveCustomSettings() {
+            userHonorific = document.getElementById('settingHonorific').value;
+            customWakeWord = document.getElementById('settingWakeWord').value || "jarvis";
+            const rVal = document.getElementById('settingVoiceRate').value;
+            const pVal = document.getElementById('settingVoicePitch').value;
+            selectedVoiceRate = (rVal >= 0 ? "+" : "") + rVal + "%";
+            selectedVoicePitch = (pVal >= 0 ? "+" : "") + pVal + "Hz";
         }
 
-        function attemptSecurityUnlock() {
-            document.getElementById('securityLockOverlay').style.display = 'none';
-        }
-
+        function triggerSecurityLock() { document.getElementById('securityLockOverlay').style.display = 'flex'; }
+        function attemptSecurityUnlock() { document.getElementById('securityLockOverlay').style.display = 'none'; }
         function openSettingsHUD() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsHUD() { document.getElementById('settingsModal').style.display = 'none'; }
-        function openTranslateHUD() { playHUDChime(); document.getElementById('translateModal').style.display = 'flex'; }
+        function openTranslateHUD() { document.getElementById('translateModal').style.display = 'flex'; }
         function closeTranslateHUD() { document.getElementById('translateModal').style.display = 'none'; }
 
         function sendCommandCustom(cmdText) {
             document.getElementById('userInput').value = cmdText;
             sendCommand();
+        }
+
+        async function dispatchAgentTask() {
+            const input = document.getElementById('agentTaskInput');
+            const taskText = input.value.trim();
+            if (!taskText) return;
+
+            const terminal = document.getElementById('chat-terminal');
+            terminal.innerHTML += `<div class="msg-line msg-user"><b>AUTONOMOUS AGENT DISPATCHED:</b> ${taskText}</div>`;
+            input.value = '';
+
+            try {
+                const res = await fetch('/api/agent_task', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ task: taskText })
+                });
+                const data = await res.json();
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.summary}</div>`;
+                terminal.scrollTop = terminal.scrollHeight;
+            } catch (e) {
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Agent task failed.</div>`;
+            }
         }
 
         function setupAudioVisualizerDSP(audioElement) {
@@ -497,12 +486,12 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 const centerX = canvas.width / 2;
                 const centerY = canvas.height / 2;
-                const radius = visualizerMode === "stealth" ? 80 : 68;
+                const radius = 68;
 
                 ctx.beginPath();
                 for (let i = 0; i < bufferLength; i++) {
                     const angle = (i / bufferLength) * Math.PI * 2;
-                    const amplitude = dataArray[i] / (visualizerMode === "stealth" ? 6.0 : 4.0);
+                    const amplitude = dataArray[i] / 4.0;
                     const x = centerX + Math.cos(angle) * (radius + amplitude);
                     const y = centerY + Math.sin(angle) * (radius + amplitude);
 
@@ -512,28 +501,15 @@
                 ctx.closePath();
                 ctx.strokeStyle = '#00f3ff';
                 ctx.lineWidth = 2;
-                ctx.shadowBlur = 12;
-                ctx.shadowColor = '#00f3ff';
                 ctx.stroke();
             }
-
             renderSoundwaves();
         }
 
         function playJarvisVoiceWithVisualizer(audioUrl) {
-            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
-            if (animFrameId) { cancelAnimationFrame(animFrameId); }
-
+            stopVoicePlaybackImmediate();
             currentAudio = new Audio(audioUrl);
             setupAudioVisualizerDSP(currentAudio);
-            
-            currentAudio.onended = () => {
-                if (animFrameId) cancelAnimationFrame(animFrameId);
-                const canvas = document.getElementById('audioWaveCanvas');
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            };
-
             currentAudio.play();
         }
 
@@ -557,7 +533,6 @@
                 const text = e.results[0][0].transcript;
                 const targetLang = document.getElementById('targetLangSelect').value;
                 btn.innerText = "🎙️ TRANSLATING...";
-                subtitleBox.innerHTML = `<b>Heard:</b> "${text}"<br><span style='color:#00f3ff;'>Translating into ${targetLang}...</span>`;
 
                 try {
                     const res = await fetch('/api/translate', {
@@ -585,7 +560,6 @@
         }
 
         async function sendCommand() {
-            playHUDChime();
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if (!text) return;
@@ -609,25 +583,22 @@
 
                 const cctvImg = document.getElementById('cctvVideoFeed');
                 const orbTag = document.getElementById('orbStatusTag');
-                const wireframeSphere = document.getElementById('wireframeSphereGroup');
 
                 if (data.cctv_stream_url) {
                     cctvImg.src = data.cctv_stream_url;
                     cctvImg.style.opacity = '1';
-                    if (wireframeSphere) wireframeSphere.style.opacity = '0.25';
                     if (orbTag) { orbTag.innerText = "LIVE CCTV STREAM"; orbTag.style.color = "#ff9d00"; }
                 } else if (data.cancel_cctv) {
                     cctvImg.style.opacity = '0';
                     setTimeout(() => { cctvImg.src = ""; }, 600);
-                    if (wireframeSphere) wireframeSphere.style.opacity = '1';
-                    if (orbTag) { orbTag.innerText = "ARC CORE ACTIVE"; orbTag.style.color = "#00f3ff"; }
+                    if (orbTag) { orbTag.innerText = "3D HOLOGRAM ACTIVE"; orbTag.style.color = "#00f3ff"; }
                 }
 
                 if (data.open_translate_hud) { openTranslateHUD(); }
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
 
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
-                if (enableAutoScroll) { terminal.scrollTop = terminal.scrollHeight; }
+                terminal.scrollTop = terminal.scrollHeight;
 
                 if (data.audio) { playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
