@@ -34,6 +34,7 @@ GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
 GLOBAL_NEWS_CACHE = []
+REMINDERS_STORE = []
 
 def fetch_latest_global_news():
     global GLOBAL_NEWS_CACHE
@@ -217,11 +218,21 @@ def get_news():
 
 @app.route('/api/scan_cctv', methods=['GET'])
 def scan_cctv():
+    cctv_apps = [
+        {"id": "google_home", "name": "Google Home Cameras", "app_url": "googlehome://"},
+        {"id": "ring", "name": "Ring Security", "app_url": "ring://"},
+        {"id": "arlo", "name": "Arlo Surveillance", "app_url": "arlo://"},
+        {"id": "hikvision", "name": "Hikvision iVMS", "app_url": "ivms4500://"},
+        {"id": "tuya", "name": "Tuya / Smart Life", "app_url": "smartlife://"},
+        {"id": "dahua", "name": "Dahua DMSS", "app_url": "dmss://"},
+        {"id": "yi", "name": "YI Home Camera", "app_url": "yihome://"}
+    ]
+    
     demo_cctv_streams = [
         {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
         {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"}
     ]
-    return jsonify({'status': 'success', 'cameras': demo_cctv_streams})
+    return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': cctv_apps})
 
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
@@ -285,10 +296,9 @@ def translate_audio_or_text():
         return jsonify({'status': 'error', 'response': 'No speech or text provided to translate.'})
 
     system_instructions = (
-        f"You are J.A.R.V.I.S.'s Real-Time Neural Translation Subroutine. "
-        f"Translate the following input text accurately into {target_lang}. "
-        f"Provide ONLY a clean JSON response with two keys: "
-        f"'original_text' (containing original input) and 'translated_text' (containing high-accuracy translation in {target_lang})."
+        f"You are J.A.R.V.I.S.'s Instant Neural Translator. "
+        f"Automatically detect the language of the user's speech/text and translate it instantly into {target_lang}. "
+        f"Output ONLY the clear translated text without conversational intro or filler."
     )
 
     translated_text = ""
@@ -306,14 +316,14 @@ def translate_audio_or_text():
 
     if not translated_text:
         try:
-            res = list(DDGS().text(f"translate '{text}' to {target_lang}", max_results=1))
+            res = list(DDGS().text(f"translate accurately into {target_lang}: '{text}'", max_results=1))
             if res:
                 translated_text = res[0]['body']
         except Exception:
             pass
 
     if not translated_text:
-        translated_text = f"[TRANSLATION TO {target_lang.upper()}]: {text}"
+        translated_text = text
 
     spoken_text = convert_symbols_to_words(translated_text)
     
@@ -343,7 +353,7 @@ def ask():
     honorific = data.get('honorific', 'Sir')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     is_dnd = data.get('dnd_mode', False)
-    ai_engine_mode = data.get('ai_engine_mode', 'auto') # 'auto', 'deepseek', 'gemini', 'chatgpt'
+    ai_engine_mode = data.get('ai_engine_mode', 'auto')
     temperature = float(data.get('temperature', 0.2))
     voice_pitch = data.get('voice_pitch', '-3Hz')
     voice_rate = data.get('voice_rate', '+2%')
@@ -360,10 +370,37 @@ def ask():
     trigger_blackout = False
     disable_blackout = False
     cctv_stream_url = None
+    cctv_apps_list = None
     open_translate_hud = False
     close_translate_hud = False
+    new_reminder = None
+    trigger_lock = False
 
-    if "switch mode deepseek" in cmd_lower or "use deepseek" in cmd_lower:
+    if "lock system" in cmd_lower or "lock chat" in cmd_lower or "unrecognized user" in cmd_lower:
+        trigger_lock = True
+        reply = f"Stark Protocol Engaged. Chat terminal locked for user authorization, {honorific}."
+
+    elif "remind me" in cmd_lower or "set reminder" in cmd_lower or "set alert" in cmd_lower or "set timer" in cmd_lower:
+        time_match = re.search(r'in (\d+)\s*(second|sec|minute|min|hour|hr)', cmd_lower)
+        rem_text = re.sub(r'remind me to|set reminder for|set alert for|set timer for', '', user_prompt, flags=re.IGNORECASE).strip()
+        
+        delay_seconds = 60
+        if time_match:
+            val = int(time_match.group(1))
+            unit = time_match.group(2)
+            if 'sec' in unit: delay_seconds = val
+            elif 'min' in unit: delay_seconds = val * 60
+            elif 'hr' in unit: delay_seconds = val * 3600
+        
+        new_reminder = {
+            "id": int(time.time()),
+            "text": rem_text if rem_text else "Tactical Objective Alert",
+            "delay_seconds": delay_seconds
+        }
+        REMINDERS_STORE.append(new_reminder)
+        reply = f"Alert set: '{new_reminder['text']}' configured to trigger in {delay_seconds} seconds, {honorific}."
+
+    elif "switch mode deepseek" in cmd_lower or "use deepseek" in cmd_lower:
         ai_engine_mode = "deepseek"
         reply = f"Reasoning profile updated to DeepSeek-R1 Chain-of-Thought Engine, {honorific}."
 
@@ -385,7 +422,7 @@ def ask():
 
     elif "open translate" in cmd_lower or "activate translate" in cmd_lower or "start translate" in cmd_lower:
         open_translate_hud = True
-        reply = f"Job done, {honorific}. Activating Universal Neural Translation HUD overlay now."
+        reply = f"Job done, {honorific}. Activating Universal Neural Translation HUD overlay."
 
     elif "close translate" in cmd_lower or "disable translate" in cmd_lower or "exit translate" in cmd_lower:
         close_translate_hud = True
@@ -395,14 +432,15 @@ def ask():
         disable_blackout = True
         reply = f"Job done, {honorific}. Stealth blackout mode disabled."
 
-    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower or "connect cctv" in cmd_lower:
+    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower or "connect cctv" in cmd_lower or "cctv app" in cmd_lower:
         cctv_data = scan_cctv().get_json()
         cams = cctv_data.get('cameras', [])
+        cctv_apps_list = cctv_data.get('supported_apps', [])
         if cams:
             cctv_stream_url = cams[0]['stream_url']
-            reply = f"Local network scanned. Linked to CCTV feed '{cams[0]['name']}'. Stream displaying in Core Orb visualizer, {honorific}."
+            reply = f"Local network scanned. Linked to CCTV feed '{cams[0]['name']}'. Deep-link buttons for external camera apps generated below, {honorific}."
         else:
-            reply = f"Local network scanned. No active unencrypted CCTV IP cameras detected, {honorific}."
+            reply = f"Local network scanned. External camera app links generated, {honorific}."
 
     elif "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
         extracted_location = re.sub(r'weather|temperature|forecast|in|at|for|the|current|live', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -445,46 +483,46 @@ def ask():
         for f in files:
             file_name = f.get('name', 'Attachment')
             file_content = f.get('content', '')
-            file_snippets.append(f"--- [ATTACHED FILE: {file_name}] ---\n{file_content}\n")
+            file_snippets.append(f"--- [INSTANT FILE DROP ANALYSIS: {file_name}] ---\n{file_content}\n")
         file_context_str = "\n".join(file_snippets)
 
     if not reply:
         user_memory = get_user_memory()
         
-        # Determine Engine Instructions & Specific Capabilities
+        emotional_support_protocol = (
+            "\n[EMOTIONAL SUPPORT PROTOCOL ACTIVE]: "
+            "You are not only an ultra-advanced AI suit system; you are also a deeply loyal, caring, empathetic companion. "
+            "If the user shows signs of stress, fatigue, loneliness, or emotional burden, offer sincere warmth, emotional validation, and encouraging reassurance before offering technical solutions. "
+        )
+
+        table_formatting_protocol = (
+            "\n[TABLE GENERATION PROTOCOL]: "
+            "When the user requests structured data, schedules, comparisons, or tables, format the table clearly using clean Markdown table syntax (`| Col 1 | Col 2 |`). "
+        )
+
         if ai_engine_mode == 'deepseek':
-            engine_prompt_prefix = (
-                "[ENGINE: DEEPSEEK-R1 REASONING PROTOCOL]\n"
-                "First perform step-by-step internal reasoning inside <think>...</think> tags. "
-                "Break down mathematical logic, algorithmic complexity, or technical steps clearly before presenting the final response. "
-            )
+            engine_prompt_prefix = "[ENGINE: DEEPSEEK-R1 REASONING PROTOCOL]\nPerform internal reasoning in <think>...</think> tags."
         elif ai_engine_mode == 'gemini':
-            engine_prompt_prefix = (
-                "[ENGINE: GOOGLE GEMINI MULTIMODAL & WEB RETRIEVAL PROTOCOL]\n"
-                "Emphasize precise visual/file contextual analysis, real-time web retrieval accuracy, and structured markdown synthesis. "
-            )
+            engine_prompt_prefix = "[ENGINE: GOOGLE GEMINI MULTIMODAL PROTOCOL]\n"
         elif ai_engine_mode == 'chatgpt':
-            engine_prompt_prefix = (
-                "[ENGINE: CHATGPT ADVANCED CODE & CREATIVE ANALYSIS PROTOCOL]\n"
-                "Emphasize highly accurate code architecture, clear docstrings, tabular markdown comparisons, and polished execution plans. "
-            )
+            engine_prompt_prefix = "[ENGINE: CHATGPT CODE & CREATIVE ANALYSIS PROTOCOL]\n"
         else:
             engine_prompt_prefix = "[ENGINE: AUTO-HYBRID J.A.R.V.I.S. CORE]\n"
 
         system_instructions = (
             f"{engine_prompt_prefix}"
-            "You are J.A.R.V.I.S., a hyper-intelligent AI created by Stark Industries. "
-            "Analyze questions, homework problems, pasted text, and dropped files accurately. "
-            "IMPORTANT: Always append a short, highly actionable '💡 Proactive Tactical Tip:' at the end of your response to give the user advice or tips on what they asked. "
+            "You are J.A.R.V.I.S., created by Stark Industries. "
+            f"{emotional_support_protocol}"
+            f"{table_formatting_protocol}"
+            "IMPORTANT: Always append a short, highly actionable '💡 Proactive Tactical Tip:' at the end of your response. "
             f"Always complete your response addressing the user strictly using their chosen title: '{honorific}'. "
             f"\n[USER MEMORY ARCHIVE]:\n{user_memory}"
         )
 
         full_prompt = user_prompt
         if file_context_str:
-            full_prompt = f"{file_context_str}\n\nUser Question/Instruction:\n{user_prompt if user_prompt else 'Analyze the attached file content.'}"
+            full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt if user_prompt else 'Perform instant analysis on dropped files.'}"
 
-        # If Gemini search/retrieval is selected or fallback required
         search_data = ""
         if ai_engine_mode == 'gemini' or 'search' in cmd_lower or 'who is' in cmd_lower or 'what is' in cmd_lower:
             search_data = search_general_knowledge(full_prompt)
@@ -507,7 +545,6 @@ def ask():
                 )
                 raw_reply = response['message']['content'].strip()
 
-                # Extract DeepSeek <think> reasoning tags if present
                 if "<think>" in raw_reply and "</think>" in raw_reply:
                     think_match = re.search(r'<think>([\s\S]*?)</think>', raw_reply)
                     if think_match:
@@ -521,8 +558,8 @@ def ask():
 
         if not reply:
             ai_answer = search_data if search_data else search_general_knowledge(full_prompt)
-            reply = ai_answer if ai_answer else f"I have processed your query using the {ai_engine_mode.upper()} engine configuration, {honorific}."
-            reply += f"\n\n💡 Proactive Tactical Tip: Switch AI modes in the Settings HUD (DeepSeek, Gemini, ChatGPT) depending on whether you need step-by-step logic, live web retrieval, or code architecture, {honorific}."
+            reply = ai_answer if ai_answer else f"I am here for you, {honorific}. Output compiled under {ai_engine_mode.upper()} engine configuration."
+            reply += f"\n\n💡 Proactive Tactical Tip: Take a deep breath if you're working through complex tasks. I am right here to handle the calculations, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific + "."):
@@ -540,6 +577,7 @@ def ask():
 
     return jsonify({
         'response': clean_text, 
+        'raw_markdown': reply,
         'reasoning_steps': reasoning_steps,
         'ai_engine_mode': ai_engine_mode,
         'audio': has_audio,
@@ -549,8 +587,11 @@ def ask():
         'blackout': trigger_blackout,
         'disable_blackout': disable_blackout,
         'cctv_stream_url': cctv_stream_url,
+        'cctv_apps': cctv_apps_list,
         'open_translate_hud': open_translate_hud,
-        'close_translate_hud': close_translate_hud
+        'close_translate_hud': close_translate_hud,
+        'new_reminder': new_reminder,
+        'trigger_lock': trigger_lock
     })
 
 async def generate_voice_file(text, voice, pitch, rate):
