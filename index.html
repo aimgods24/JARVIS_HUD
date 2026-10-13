@@ -29,7 +29,6 @@
                 linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
         }
 
-        /* FULL HIGHLIGHT & COPY SUPPORT ENABLER */
         body, .hud-panel, #chat-terminal, .msg-line, .hud-table, .deepseek-think-card, .translate-subtitle-box {
             user-select: text !important;
             -webkit-user-select: text !important;
@@ -230,7 +229,6 @@
             z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
         }
 
-        /* Redesigned Sleek Floating Translate HUD Overlay */
         #translateModal {
             max-width: 480px !important;
             padding: 14px !important;
@@ -293,7 +291,7 @@
         }
     </style>
 </head>
-<body onclick="unlockMobileAudioContext()">
+<body>
 
     <div id="securityLockOverlay">
         <div style="font-size: 3rem; animation: pulse 1s infinite alternate;">🔒</div>
@@ -369,7 +367,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Unified Hybrid Engine operational. Text highlight/copy enabled. Share & export files directly from chat responses.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Single Bettany voice channel active. Text selection, highlight, and copy fully enabled.</div>
             </div>
 
             <div class="waveform-box" id="waveformBox" style="margin-top: 4px;">
@@ -457,7 +455,6 @@
         </div>
     </div>
 
-    <!-- Redesigned Universal Translate HUD Overlay -->
     <div class="hud-modal" id="translateModal">
         <div class="modal-header">
             <div>🌐 UNIVERSAL NEURAL TRANSLATE HUD</div>
@@ -500,7 +497,7 @@
             <div>STARK INDUSTRIES // MARK LXXXV INITIALIZATION</div>
         </div>
         <div class="welcome-body">
-            <div>Welcome. J.A.R.V.I.S. is online with Unified Hybrid Intelligence & Export Subroutines:</div>
+            <div>Welcome. J.A.R.V.I.S. is online with single Bettany voice architecture:</div>
             
             <div class="command-card">
                 <b>👤 How should J.A.R.V.I.S. address you?</b><br>
@@ -513,11 +510,11 @@
 
             <div class="command-card">
                 <b>⚡ Integrated Multi-Subroutine Matrix:</b><br>
+                • Single Bettany voice channel (No overlapping dual voices).<br>
                 • Full text highlight, copy, and file export sharing.<br>
                 • Universal language translation HUD card overlay.<br>
                 • Instant file dropzone for document processing.<br>
-                • Custom exercise routine planner with Markdown tables.<br>
-                • Real-time phone Web Speech API out-loud synthesis.
+                • Custom exercise routine planner with Markdown tables.
             </div>
 
             <button style="margin-top: 10px; padding: 10px; width: 100%; font-size: 0.8rem;" onclick="launchHUDInitialization()">🚀 LAUNCH HUD INITIALIZATION</button>
@@ -538,7 +535,6 @@
         let audioCtx = null;
         let analyser = null;
         let animFrameId = null;
-        let mobileAudioUnlocked = false;
 
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
         if (isMobile) { document.body.classList.add('mobile-mode'); }
@@ -548,16 +544,6 @@
             document.getElementById('liveClock').innerText = now.toTimeString().split(' ')[0];
         }, 1000);
 
-        function unlockMobileAudioContext() {
-            if (!mobileAudioUnlocked) {
-                if ('speechSynthesis' in window) {
-                    const dummyUtterance = new SpeechSynthesisUtterance('');
-                    window.speechSynthesis.speak(dummyUtterance);
-                }
-                mobileAudioUnlocked = true;
-            }
-        }
-
         if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; },
@@ -565,9 +551,22 @@
             );
         }
 
+        function stopCurrentSpeechAudio() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            if (animFrameId) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+            clearCoreWaveCanvas();
+        }
+
         function triggerSecurityLock() {
+            stopCurrentSpeechAudio();
             document.getElementById('securityLockOverlay').style.display = 'flex';
-            speakNativeMobileText(`Security lock engaged, ${userHonorific}. Authorization phrase required.`);
         }
 
         function attemptSecurityUnlock() {
@@ -575,7 +574,6 @@
             if (inputVal === customWakeWord.toLowerCase() || inputVal.includes('jarvis') || inputVal.includes('stark')) {
                 document.getElementById('securityLockOverlay').style.display = 'none';
                 document.getElementById('unlockPhraseInput').value = '';
-                speakNativeMobileText(`Identity verified. Welcome back, ${userHonorific}.`);
             } else {
                 alert("Security Authorization Failed.");
             }
@@ -705,7 +703,7 @@
                         <div style="color:var(--hud-cyan); font-weight:bold;">TRANSLATION (${data.target_lang}): "${data.translated_text}"</div>
                     `;
 
-                    speakNativeMobileText(data.translated_text);
+                    if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
                 } catch(e) {
                     document.getElementById('translateSubtitleBox').innerHTML = `<span style="color:red;">Translation Anomaly.</span>`;
                 } finally {
@@ -788,15 +786,6 @@
             sendCommand();
         }
 
-        function speakNativeMobileText(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utter = new SpeechSynthesisUtterance(text);
-                utter.rate = 1.0; utter.pitch = 1.0;
-                window.speechSynthesis.speak(utter);
-            }
-        }
-
         async function shareGeneratedFile(fileUrl, fileName) {
             if (navigator.share) {
                 try {
@@ -829,7 +818,7 @@
         }
 
         async function sendCommand() {
-            unlockMobileAudioContext();
+            stopCurrentSpeechAudio();
 
             const input = document.getElementById('userInput');
             const text = input.value.trim();
@@ -867,7 +856,6 @@
                     document.getElementById('reminderLogContainer').innerHTML += `<div>🔔 Alert: '${r.text}' (${r.delay_seconds}s)</div>`;
                     setTimeout(() => {
                         alert(`⏰ J.A.R.V.I.S. ALERT: ${r.text}`);
-                        speakNativeMobileText(`Reminder alert, ${userHonorific}: ${r.text}`);
                     }, r.delay_seconds * 1000);
                 }
 
@@ -899,7 +887,6 @@
                 terminal.innerHTML += appendHtml;
                 terminal.scrollTop = terminal.scrollHeight;
 
-                speakNativeMobileText(data.response);
                 if (data.audio) { playJarvisAudioWithDSP('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
@@ -907,6 +894,8 @@
         }
 
         function playJarvisAudioWithDSP(audioUrl) {
+            stopCurrentSpeechAudio();
+
             if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
             if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
@@ -919,6 +908,53 @@
             analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
             source.connect(filter); filter.connect(analyser); analyser.connect(audioCtx.destination);
             currentAudio.play();
+            animateCoreOrbWaves();
+        }
+
+        function animateCoreOrbWaves() {
+            const canvas = document.getElementById('audioWaveCanvas');
+            if (!canvas || !analyser) return;
+            const ctx = canvas.getContext('2d');
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            function render() {
+                animFrameId = requestAnimationFrame(render);
+                analyser.getByteFrequencyData(dataArray);
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                const radius = 32;
+
+                ctx.beginPath();
+                ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--hud-cyan').trim() || '#00f3ff';
+                ctx.lineWidth = 2;
+                ctx.shadowColor = ctx.strokeStyle;
+                ctx.shadowBlur = 8;
+
+                const bars = dataArray.length;
+                for (let i = 0; i < bars; i++) {
+                    const rad = (i / bars) * Math.PI * 2;
+                    const amp = dataArray[i] / 255.0;
+                    const r = radius + amp * 22;
+
+                    const x = cx + Math.cos(rad) * r;
+                    const y = cy + Math.sin(rad) * r;
+
+                    if (i === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+            render();
+        }
+
+        function clearCoreWaveCanvas() {
+            const canvas = document.getElementById('audioWaveCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
     </script>
 </body>
