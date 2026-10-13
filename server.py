@@ -319,6 +319,9 @@ def ask():
     is_dnd = data.get('dnd_mode', False)
     temperature = float(data.get('temperature', 0.2))
 
+    voice_pitch = data.get('voice_pitch', '-3Hz')
+    voice_rate = data.get('voice_rate', '+2%')
+
     if not user_prompt and not images and not files:
         return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
 
@@ -335,9 +338,6 @@ def ask():
     open_translate_hud = False
     new_reminder = None
     trigger_lock = False
-
-    voice_pitch = '-3Hz'
-    voice_rate = '+2%'
 
     if inferred_intent == "CANCEL_CCTV":
         cancel_cctv = True

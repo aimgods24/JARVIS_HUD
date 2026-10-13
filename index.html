@@ -158,7 +158,7 @@
             color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.85rem; outline: none;
         }
 
-        button, select, input[type="text"] {
+        button, select, input[type="text"], input[type="range"] {
             background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
             color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 8px; font-size: 0.7rem; outline: none;
         }
@@ -167,12 +167,13 @@
         .hud-modal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 92vw; max-width: 480px;
+            width: 92vw; max-width: 520px;
             background: rgba(1, 10, 22, 0.98);
             border: 2px solid var(--hud-cyan); border-radius: 12px;
             box-shadow: 0 0 45px var(--hud-glow);
-            z-index: 2500; flex-direction: column; padding: 14px; color: var(--hud-cyan);
+            z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
             backdrop-filter: blur(10px);
+            max-height: 85vh; overflow-y: auto;
         }
 
         .modal-header {
@@ -192,6 +193,11 @@
             background: rgba(0, 3, 8, 0.98); z-index: 5000;
             flex-direction: column; align-items: center; justify-content: center; gap: 15px;
             color: #ff2200; box-shadow: inset 0 0 50px #ff2200; text-align: center;
+        }
+
+        .setting-row {
+            display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem;
+            border-bottom: 1px dashed rgba(0, 243, 255, 0.2); padding-bottom: 8px; margin-bottom: 8px;
         }
     </style>
 </head>
@@ -256,7 +262,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Keyboard detection upgraded. On desktop, press ENTER to send (SHIFT+ENTER for line breaks). On mobile devices, both the ENTER key and SEND button submit cleanly.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Expanded Customization Suite online. Click ⚙️ SETTINGS to adjust speech cadence, visualizer modes, chime volume, or theme accents.</div>
             </div>
         </div>
 
@@ -264,7 +270,7 @@
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 POWER CORE: 98%<br>
-                KEYBOARD: DUAL EXECUTION
+                SETTINGS: EXPANDED SUITE
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
             <button onclick="openTranslateHUD()" style="margin-top:4px;">🌐 TRANSLATE POPUP</button>
@@ -314,20 +320,81 @@
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
+    <!-- EXPANDED CUSTOMIZATION SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
-            <div>⚙️ CONFIGURATION</div>
+            <div>⚙️ MASTER CUSTOMIZATION SETTINGS</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
         </div>
-        <div style="margin-top:10px;">
-            <label>Wake Phrase:</label>
-            <input type="text" id="settingWakeWord" style="width:100%;" placeholder="jarvis">
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
+            
+            <div class="setting-row">
+                <label>User Honorific Title:</label>
+                <select id="settingHonorific" onchange="saveCustomSettings()">
+                    <option value="Sir">Sir</option>
+                    <option value="Ma'am">Ma'am</option>
+                    <option value="Commander">Commander</option>
+                    <option value="Boss">Boss</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label>Security Wake Phrase:</label>
+                <input type="text" id="settingWakeWord" placeholder="jarvis" onchange="saveCustomSettings()">
+            </div>
+
+            <div class="setting-row">
+                <label>HUD Accent Color Theme:</label>
+                <select id="settingThemeColor" onchange="saveCustomSettings()">
+                    <option value="#00f3ff">Cyan Gold (Default Mark LXXXV)</option>
+                    <option value="#ff2200">Stark Red</option>
+                    <option value="#a855f7">DeepSeek Purple</option>
+                    <option value="#10b981">Matrix Emerald</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label>Voice Speech Speed (<span id="speedValLabel">+2%</span>):</label>
+                <input type="range" id="settingVoiceRate" min="-10" max="25" value="2" oninput="updateSettingLabels()" onchange="saveCustomSettings()">
+            </div>
+
+            <div class="setting-row">
+                <label>Voice Pitch Adjustment (<span id="pitchValLabel">-3Hz</span>):</label>
+                <input type="range" id="settingVoicePitch" min="-10" max="10" value="-3" oninput="updateSettingLabels()" onchange="saveCustomSettings()">
+            </div>
+
+            <div class="setting-row">
+                <label>Sound Effects & Chime Volume:</label>
+                <select id="settingChimeVolume" onchange="saveCustomSettings()">
+                    <option value="0.05">Medium (Default)</option>
+                    <option value="0.10">High</option>
+                    <option value="0.02">Low</option>
+                    <option value="0.00">Muted</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label>Orb Visualizer Rendering Mode:</label>
+                <select id="settingVisualizerMode" onchange="saveCustomSettings()">
+                    <option value="radial">Radial Ring Waveform (Default)</option>
+                    <option value="stealth">Stealth Arc Ring Pulse</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label>Auto-Scroll Chat Terminal:</label>
+                <select id="settingAutoScroll" onchange="saveCustomSettings()">
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                </select>
+            </div>
+
         </div>
     </div>
 
     <script>
         let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
+        let userHonorific = "Sir", customWakeWord = "jarvis", chimeVolume = 0.05, selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", enableAutoScroll = true, visualizerMode = "radial";
 
         const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -335,17 +402,39 @@
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        // --- DUAL DESKTOP / MOBILE KEYBOARD DETECTION ---
+        function updateSettingLabels() {
+            const rVal = document.getElementById('settingVoiceRate').value;
+            const pVal = document.getElementById('settingVoicePitch').value;
+            document.getElementById('speedValLabel').innerText = (rVal >= 0 ? "+" : "") + rVal + "%";
+            document.getElementById('pitchValLabel').innerText = (pVal >= 0 ? "+" : "") + pVal + "Hz";
+        }
+
+        function saveCustomSettings() {
+            userHonorific = document.getElementById('settingHonorific').value;
+            customWakeWord = document.getElementById('settingWakeWord').value || "jarvis";
+            const themeColor = document.getElementById('settingThemeColor').value;
+            document.documentElement.style.setProperty('--hud-cyan', themeColor);
+
+            const rVal = document.getElementById('settingVoiceRate').value;
+            const pVal = document.getElementById('settingVoicePitch').value;
+            selectedVoiceRate = (rVal >= 0 ? "+" : "") + rVal + "%";
+            selectedVoicePitch = (pVal >= 0 ? "+" : "") + pVal + "Hz";
+
+            chimeVolume = parseFloat(document.getElementById('settingChimeVolume').value);
+            visualizerMode = document.getElementById('settingVisualizerMode').value;
+            enableAutoScroll = document.getElementById('settingAutoScroll').value === "true";
+
+            playHUDChime();
+        }
+
         const userInputEl = document.getElementById('userInput');
         if (userInputEl) {
             userInputEl.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     if (isTouchMobile) {
-                        // Mobile Behavior: Pressing Enter or Go submits command cleanly
                         e.preventDefault();
                         sendCommand();
                     } else {
-                        // Desktop Behavior: Enter submits, Shift+Enter creates new line
                         if (!e.shiftKey) {
                             e.preventDefault();
                             sendCommand();
@@ -356,12 +445,13 @@
         }
 
         function playHUDChime() {
+            if (chimeVolume <= 0) return;
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                gain.gain.setValueAtTime(chimeVolume, ctx.currentTime);
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.start(); osc.stop(ctx.currentTime + 0.15);
             } catch(e) {}
@@ -407,12 +497,12 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 const centerX = canvas.width / 2;
                 const centerY = canvas.height / 2;
-                const radius = 68;
+                const radius = visualizerMode === "stealth" ? 80 : 68;
 
                 ctx.beginPath();
                 for (let i = 0; i < bufferLength; i++) {
                     const angle = (i / bufferLength) * Math.PI * 2;
-                    const amplitude = dataArray[i] / 4.0;
+                    const amplitude = dataArray[i] / (visualizerMode === "stealth" ? 6.0 : 4.0);
                     const x = centerX + Math.cos(angle) * (radius + amplitude);
                     const y = centerY + Math.sin(angle) * (radius + amplitude);
 
@@ -473,7 +563,12 @@
                     const res = await fetch('/api/translate', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ text: text, target_lang: targetLang })
+                        body: JSON.stringify({ 
+                            text: text, 
+                            target_lang: targetLang,
+                            voice_pitch: selectedVoicePitch,
+                            voice_rate: selectedVoiceRate
+                        })
                     });
                     const data = await res.json();
                     btn.innerText = "🎙️ DICTATE";
@@ -503,7 +598,12 @@
                 const res = await fetch('/api/ask', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt: text, honorific: 'Sir' })
+                    body: JSON.stringify({ 
+                        prompt: text, 
+                        honorific: userHonorific,
+                        voice_pitch: selectedVoicePitch,
+                        voice_rate: selectedVoiceRate
+                    })
                 });
                 const data = await res.json();
 
@@ -527,7 +627,7 @@
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
 
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
-                terminal.scrollTop = terminal.scrollHeight;
+                if (enableAutoScroll) { terminal.scrollTop = terminal.scrollHeight; }
 
                 if (data.audio) { playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
