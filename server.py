@@ -128,10 +128,10 @@ def convert_symbols_to_words(text):
     clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
 
-# Contextual Intent Inference Parser
 def parse_contextual_intent(prompt):
     p = prompt.lower()
-    
+    if any(w in p for w in ["open translate", "activate translate", "launch translate", "translate mode", "translator"]):
+        return "OPEN_TRANSLATE"
     if any(w in p for w in ["dark", "cant see", "turn on lights", "brighten", "lights on", "lights off", "too cold", "too hot", "turn on ac"]):
         return "SMART_HOME"
     if any(w in p for w in ["who is outside", "door", "front porch", "camera", "cctv", "security feed", "perimeter", "check footage"]):
@@ -247,51 +247,63 @@ def scan_cctv():
     ]
     return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': universal_cctv_protocols})
 
-@app.route('/api/diagnostics', methods=['GET'])
-def run_diagnostics():
-    anomalies = []
-    status_summary = {}
-
-    if HAS_OLLAMA:
-        try:
-            ollama.list()
-            status_summary['ollama'] = 'ONLINE'
-        except Exception as e:
-            status_summary['ollama'] = 'OFFLINE / ANOMALY'
-            anomalies.append(f"Ollama local service unresponsive: {str(e)}")
-    else:
-        status_summary['ollama'] = 'NOT INSTALLED (FALLBACK ACTIVE)'
-
-    try:
-        w_check = requests.get("https://api.open-meteo.com/v1/forecast?latitude=5.2971&longitude=100.2588&current=temperature_2m", timeout=3)
-        status_summary['weather_api'] = 'ONLINE' if w_check.status_code == 200 else 'DEGRADED'
-    except Exception as e:
-        status_summary['weather_api'] = 'OFFLINE'
-        anomalies.append(f"Weather API request failed: {str(e)}")
-
-    try:
-        if not os.path.exists(MEMORY_FILE):
-            with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
-                f.write("System memory archive initialized.\n")
-            anomalies.append("Memory file missing. Self-healed by initializing new memory archive.")
-        status_summary['memory_archive'] = 'VERIFIED'
-    except Exception as e:
-        status_summary['memory_archive'] = 'READ/WRITE ERROR'
-        anomalies.append(f"Memory storage failure: {str(e)}")
-
-    try:
-        total, used, free = shutil.disk_usage("/")
-        free_gb = free / (1024 ** 3)
-        status_summary['free_disk'] = f"{free_gb:.2f} GB"
-    except Exception:
-        status_summary['free_disk'] = 'UNKNOWN'
-
-    report = "⚠️ Anomaly Report:\n" + "\n".join([f"  - {a}" for a in anomalies]) if anomalies else "Systems up and ready."
-    return jsonify({'status': 'success', 'report': report, 'has_anomalies': len(anomalies) > 0})
-
 @app.route('/api/download_generated/<filename>')
 def download_generated(filename):
     return send_from_directory(GENERATED_FILES_DIR, filename, as_attachment=True)
+
+@app.route('/api/translate', methods=['POST'])
+def translate_audio_or_text():
+    data = request.json or {}
+    text = data.get('text', '').strip()
+    target_lang = data.get('target_lang', 'English').strip()
+    voice_pitch = data.get('voice_pitch', '-3Hz')
+    voice_rate = data.get('voice_rate', '+2%')
+
+    if not text:
+        return jsonify({'status': 'error', 'response': 'No speech text provided for translation.'})
+
+    system_instructions = (
+        f"You are J.A.R.V.I.S.'s Universal Subtitle & Translation Engine. "
+        f"Detect the source language and translate directly into {target_lang}. "
+        f"Output strictly ONLY the translated text without extra conversational fluff."
+    )
+
+    translated_text = ""
+    if HAS_OLLAMA:
+        try:
+            response = ollama.chat(
+                model='qwen2.5:0.5b',
+                messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": text}],
+                options={"temperature": 0.1}
+            )
+            translated_text = response['message']['content'].strip()
+        except Exception:
+            pass
+
+    if not translated_text:
+        try:
+            res = list(DDGS().text(f"translate into {target_lang}: '{text}'", max_results=1))
+            if res: translated_text = res[0]['body']
+        except Exception:
+            pass
+
+    if not translated_text: translated_text = text
+
+    spoken_text = convert_symbols_to_words(translated_text)
+    has_audio = False
+    try:
+        asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
+        has_audio = True
+    except Exception:
+        has_audio = False
+
+    return jsonify({
+        'status': 'success',
+        'original_text': text,
+        'translated_text': translated_text,
+        'target_lang': target_lang,
+        'audio': has_audio
+    })
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
@@ -325,8 +337,11 @@ def ask():
     voice_pitch = '-3Hz'
     voice_rate = '+2%'
 
-    # Inferred Contextual Execution Pipeline
-    if inferred_intent == "SECURITY_LOCK":
+    if inferred_intent == "OPEN_TRANSLATE":
+        open_translate_hud = True
+        reply = f"Activating floating Universal Translation HUD window, {honorific}."
+
+    elif inferred_intent == "SECURITY_LOCK":
         trigger_lock = True
         reply = f"Stark Security Protocol Engaged. Locking chat terminal, {honorific}."
 
@@ -353,10 +368,6 @@ def ask():
         target_url = f"https://open.spotify.com/search/{encoded}" if "spotify" in cmd_lower else f"https://www.youtube.com/results?search_query={encoded}"
         google_maps_url = target_url
         reply = f"Inferred media intent: Prepared playback for '{query if query else 'Ambient Tracks'}'. Click deep link below, {honorific}."
-
-    elif inferred_intent == "SYS_DIAGNOSTICS":
-        diag_res = run_diagnostics().get_json()
-        reply = f"{diag_res.get('report', '')}, {honorific}."
 
     file_context_str = ""
     if files:

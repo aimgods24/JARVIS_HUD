@@ -9,6 +9,7 @@
         :root {
             --hud-cyan: #00f3ff;
             --hud-glow: rgba(0, 243, 255, 0.5);
+            --hud-orange: #ff9d00;
             --hud-bg: #010810;
             --hud-panel: rgba(1, 12, 24, 0.9);
             --hud-border: rgba(0, 243, 255, 0.35);
@@ -29,7 +30,7 @@
                 linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
         }
 
-        body, .hud-panel, #chat-terminal, .msg-line, .hud-table, .deepseek-think-card, .translate-subtitle-box {
+        body, .hud-panel, #chat-terminal, .msg-line, .hud-table, .translate-subtitle-box {
             user-select: text !important;
             -webkit-user-select: text !important;
             -moz-user-select: text !important;
@@ -78,54 +79,7 @@
             .hud-workspace { display: flex; flex-direction: column; overflow: visible; }
             .hud-panel { overflow: visible; width: 100%; }
             .hud-top-bar { font-size: 0.6rem; justify-content: center; text-align: center; }
-            .arc-radar-container { display: none !important; }
         }
-
-        .core-orb-widget {
-            position: relative; width: 100%; height: 210px;
-            display: flex; align-items: center; justify-content: center;
-            margin: 4px 0; border: 1px solid var(--hud-border);
-            border-radius: 4px; background: rgba(0, 5, 12, 0.85);
-            overflow: hidden; user-select: none !important;
-        }
-
-        #cctvVideoFeed {
-            position: absolute; width: 140px; height: 140px;
-            border-radius: 50%; object-fit: cover; z-index: 0;
-            opacity: 0.85; display: none; filter: contrast(1.2);
-        }
-
-        .core-orb-svg { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
-
-        .arc-radar-container {
-            position: absolute; top: 48%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 360px; height: 360px; border-radius: 50%;
-            border: 1px dashed var(--hud-border);
-            pointer-events: none; z-index: 0;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .radar-ring-out {
-            width: 280px; height: 280px; border-radius: 50%;
-            border: 1px solid var(--hud-border);
-            animation: rotateCW 18s linear infinite;
-        }
-
-        .radar-ring-mid {
-            position: absolute; width: 180px; height: 180px; border-radius: 50%;
-            border: 1px dashed var(--hud-cyan);
-            animation: rotateCCW 10s linear infinite;
-        }
-
-        .radar-core-tag {
-            position: absolute; text-align: center; font-size: 0.6rem; font-weight: bold;
-            background: rgba(1, 12, 24, 0.9); border: 1px solid var(--hud-cyan);
-            padding: 4px 8px; border-radius: 3px; box-shadow: 0 0 12px var(--hud-cyan);
-        }
-
-        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
-        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
 
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
@@ -153,14 +107,6 @@
             border-radius: 4px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.68rem;
             cursor: pointer;
         }
-        .hud-action-badge:hover { background: var(--hud-cyan); color: #000; }
-
-        .instant-dropzone {
-            border: 2px dashed var(--hud-cyan); border-radius: 4px; padding: 10px;
-            text-align: center; font-size: 0.7rem; background: rgba(0, 243, 255, 0.03);
-            cursor: pointer; transition: all 0.2s ease;
-        }
-        .instant-dropzone:hover { background: rgba(0, 243, 255, 0.12); box-shadow: 0 0 10px var(--hud-glow); }
 
         .hud-center-pill {
             position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
@@ -185,17 +131,43 @@
         .hud-modal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 90vw; max-width: 680px;
+            width: 92vw; max-width: 480px;
             background: rgba(1, 10, 22, 0.98);
-            border: 2px solid var(--hud-cyan); border-radius: 6px;
-            box-shadow: 0 0 35px var(--hud-glow);
-            z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
+            border: 2px solid var(--hud-cyan); border-radius: 12px;
+            box-shadow: 0 0 45px var(--hud-glow);
+            z-index: 2500; flex-direction: column; padding: 14px; color: var(--hud-cyan);
+            backdrop-filter: blur(10px);
         }
 
         .modal-header {
-            font-size: 0.85rem; font-weight: bold; letter-spacing: 1px;
-            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 8px;
+            font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;
+            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;
             display: flex; justify-content: space-between; align-items: center;
+        }
+
+        /* TRANSLATE ORB & HUD STYLES */
+        .orb-hud-wrapper {
+            position: relative; width: 100%; height: 220px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 10px 0; background: rgba(0, 4, 10, 0.9);
+            border: 1px solid var(--hud-border); border-radius: 8px; overflow: hidden;
+        }
+
+        .orb-svg { width: 210px; height: 210px; animation: pulseGlow 3s ease-in-out infinite alternate; }
+        @keyframes pulseGlow { 0% { filter: drop-shadow(0 0 5px var(--hud-cyan)); } 100% { filter: drop-shadow(0 0 18px var(--hud-cyan)); } }
+
+        .ring-cw { transform-origin: center; animation: rotateCW 16s linear infinite; }
+        .ring-ccw { transform-origin: center; animation: rotateCCW 10s linear infinite; }
+        .wireframe-sphere { transform-origin: center; animation: floatSphere 6s ease-in-out infinite alternate; }
+
+        @keyframes rotateCW { 100% { transform: rotate(360deg); } }
+        @keyframes rotateCCW { 100% { transform: rotate(-360deg); } }
+        @keyframes floatSphere { 0% { transform: scale(0.96); } 100% { transform: scale(1.04); } }
+
+        .translate-subtitle-box {
+            background: rgba(0, 0, 0, 0.9); border: 1px solid var(--hud-cyan);
+            padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; line-height: 1.4; color: #fff;
+            box-shadow: inset 0 0 12px var(--hud-glow); min-height: 65px; word-break: break-word;
         }
 
         #securityLockOverlay {
@@ -210,8 +182,7 @@
 
     <div id="securityLockOverlay">
         <div style="font-size: 3rem;">🔒</div>
-        <div style="font-size: 1.2rem; font-weight: bold; letter-spacing: 2px;">STARK PROTOCOL SECURITY LOCK</div>
-        <div style="font-size: 0.75rem; color: #fff;">Unrecognized user activity. Type wake phrase to unlock:</div>
+        <div style="font-size: 1.2rem; font-weight: bold;">STARK SECURITY LOCK</div>
         <div style="display: flex; gap: 6px; margin-top: 10px;">
             <input type="text" id="unlockPhraseInput" placeholder="Enter wake phrase..." style="width: 220px; border-color: #ff2200; color: #ff2200;">
             <button onclick="attemptSecurityUnlock()" style="border-color: #ff2200; color: #ff2200;">UNLOCK</button>
@@ -220,147 +191,116 @@
 
     <div class="hud-top-bar">
         <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
-        <div>ENGINE: <span id="currentEngineTag" style="color: var(--hud-cyan); font-weight: bold;">UNIVERSAL INTENT CORE</span></div>
+        <div>ENGINE: <span style="color: var(--hud-cyan); font-weight: bold;">TRANSLATE POPUP HUD ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
         <button onclick="sendCommandCustom('brief me')">🎙️ BRIEFING</button>
-        <button onclick="sendCommandCustom('check cameras')">📹 CCTV</button>
         <button onclick="triggerSecurityLock()">🔒 LOCK</button>
     </div>
 
     <div class="hud-workspace">
-        <div class="arc-radar-container">
-            <div class="radar-ring-out"></div>
-            <div class="radar-ring-mid"></div>
-            <div class="radar-core-tag">CORE<br>ACTIVE</div>
-        </div>
-
         <div class="hud-panel" id="leftPanel">
-            <div class="panel-header"><span>INTERFACE // CCTV & CAMERA FEED</span></div>
-            <div class="core-orb-widget">
-                <img id="cctvVideoFeed" src="" alt="Universal CCTV Feed">
-                <svg class="core-orb-svg" viewBox="0 0 300 200">
-                    <circle cx="150" cy="100" r="70" stroke="var(--hud-cyan)" stroke-width="3" fill="none" />
-                    <circle cx="150" cy="100" r="62" stroke="var(--hud-cyan)" stroke-width="6" fill="none" stroke-dasharray="8 4 12 4" opacity="0.9" />
-                </svg>
-            </div>
-
-            <div class="panel-header"><span>UNIVERSAL RTSP / IP STREAM CONNECT</span></div>
-            <div style="display: flex; gap: 4px; margin-top: 4px;">
-                <input type="text" id="customCctvUrl" placeholder="rtsp:// or http:// camera stream..." style="flex:1; font-size:0.65rem;">
-                <button onclick="connectCustomCCTVStream()">CONNECT</button>
-            </div>
-
-            <div class="panel-header" style="margin-top:6px;"><span>INSTANT OCR SCANNER</span></div>
-            <div class="instant-dropzone" onclick="document.getElementById('fileInput').click()">
-                📁 DROP FILES OR SCREENSHOTS HERE
-            </div>
+            <div class="panel-header"><span>INTERFACE // CAMERA STREAM</span></div>
+            <img id="cctvVideoFeed" src="https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop" style="width:100%; border-radius:4px; margin-top:4px;" alt="CCTV">
         </div>
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Contextual Intent Engine active. Speak naturally without strict keywords.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Type or say "open translate" to launch the dynamic floating pop-up window.</div>
             </div>
         </div>
 
         <div class="hud-panel" id="rightPanel">
-            <div class="panel-header"><span>ARMOR STATUS</span></div>
-            <div style="font-size: 0.7rem; margin-top: 4px;">
-                POWER CORE: 98%<br>
-                HONORIFIC: <span id="lblHonorific">Sir</span>
-            </div>
-
-            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
-
-            <div class="panel-header"><span>SMARTWATCH WIDGET LINK</span></div>
-            <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:4px;">⌚ OPEN WATCH PWA WIDGET</a>
+            <div class="panel-header"><span>QUICK ACTIONS</span></div>
+            <button onclick="openTranslateHUD()" style="margin-top:6px;">🌐 TRANSLATE POPUP</button>
+            <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:8px;">⌚ WATCH PWA WIDGET</a>
         </div>
     </div>
 
     <div class="hud-center-pill">
-        <input type="file" id="fileInput" style="display: none;" multiple onchange="handleFileSelect(event)">
-        <button onclick="document.getElementById('fileInput').click()">📁</button>
-        <button id="micBtn" onclick="toggleVoiceChat()">🎙️ IDLE</button>
-        <textarea id="userInput" placeholder="Command J.A.R.V.I.S naturally... (Ctrl+K)"></textarea>
+        <textarea id="userInput" placeholder="Command J.A.R.V.I.S... (Type 'open translate')"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
-    <!-- CUSTOMIZATION SETTINGS MODAL -->
+    <!-- TRANSLATION FLOATING POP-UP HUD MODAL -->
+    <div class="hud-modal" id="translateModal">
+        <div class="modal-header">
+            <div>🌐 NEURAL TRANSLATION HUD</div>
+            <button onclick="closeTranslateHUD()">✕ CLOSE</button>
+        </div>
+
+        <!-- TOP: LANGUAGE SELECTOR & DICTATION -->
+        <div style="margin-top: 10px; display: flex; gap: 6px; align-items: center;">
+            <select id="targetLangSelect" style="flex:1;">
+                <option value="English">English</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Mandarin Chinese">Mandarin Chinese</option>
+            </select>
+            <button id="translateMicBtn" onclick="triggerTranslateDictation()">🎙️ DICTATE</button>
+        </div>
+
+        <!-- CENTER: RECREATED ARC REACTOR / WIREFRAME ORB HUD -->
+        <div class="orb-hud-wrapper">
+            <svg class="orb-svg" viewBox="0 0 200 200">
+                <!-- Outer Cyan Ring -->
+                <circle cx="100" cy="100" r="90" stroke="#00f3ff" stroke-width="4" fill="none" opacity="0.9" />
+                
+                <!-- Orange Segmented Ring -->
+                <circle class="ring-cw" cx="100" cy="100" r="76" stroke="#ff9d00" stroke-width="2.5" stroke-dasharray="6 4 12 4" fill="none" />
+                
+                <!-- Middle Dashed Blue Pattern -->
+                <circle class="ring-ccw" cx="100" cy="100" r="64" stroke="#00f3ff" stroke-width="3" stroke-dasharray="14 6" fill="none" opacity="0.8" />
+                
+                <!-- Block Status Indicators -->
+                <g class="ring-cw">
+                    <rect x="95" y="12" width="10" height="6" fill="#ff9d00" />
+                    <rect x="95" y="182" width="10" height="6" fill="#ff9d00" />
+                    <rect x="12" y="95" width="6" height="10" fill="#00f3ff" />
+                    <rect x="182" y="95" width="6" height="10" fill="#00f3ff" />
+                </g>
+
+                <!-- Center Geodesic Wireframe Sphere (Matching image_c01b05) -->
+                <g class="wireframe-sphere">
+                    <circle cx="100" cy="100" r="32" stroke="#00f3ff" stroke-width="1.5" fill="none" />
+                    <!-- Triangular Mesh Facets -->
+                    <polygon points="100,68 116,80 84,80" stroke="#00f3ff" stroke-width="1" fill="none" />
+                    <polygon points="100,132 116,120 84,120" stroke="#00f3ff" stroke-width="1" fill="none" />
+                    <polygon points="68,100 80,84 80,116" stroke="#00f3ff" stroke-width="1" fill="none" />
+                    <polygon points="132,100 120,84 120,116" stroke="#00f3ff" stroke-width="1" fill="none" />
+                    <line x1="84" y1="80" x2="116" y2="120" stroke="#00f3ff" stroke-width="1" />
+                    <line x1="116" y1="80" x2="84" y2="120" stroke="#00f3ff" stroke-width="1" />
+                </g>
+            </svg>
+        </div>
+
+        <!-- BOTTOM: LIVE AI SUBTITLE DISPLAY -->
+        <div class="translate-subtitle-box" id="translateSubtitleBox">
+            <span style="color: var(--hud-cyan); font-style: italic;">Awaiting speech dictation... Press [🎙️ DICTATE] above.</span>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
-            <div>⚙️ SYSTEM CUSTOMIZATION SETTINGS</div>
+            <div>⚙️ CONFIGURATION</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
         </div>
-        <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 0.75rem;">
-            <div>
-                <label>User Honorific Title:</label><br>
-                <select id="settingHonorific" style="width: 100%; margin-top: 4px;" onchange="saveCustomSettings()">
-                    <option value="Sir">Sir</option>
-                    <option value="Ma'am">Ma'am</option>
-                    <option value="Commander">Commander</option>
-                    <option value="Boss">Boss</option>
-                </select>
-            </div>
-            <div>
-                <label>Security Wake Phrase:</label><br>
-                <input type="text" id="settingWakeWord" style="width: 100%; margin-top: 4px;" placeholder="jarvis" onchange="saveCustomSettings()">
-            </div>
-            <div>
-                <label>HUD Accent Theme Color:</label><br>
-                <select id="settingThemeColor" style="width: 100%; margin-top: 4px;" onchange="saveCustomSettings()">
-                    <option value="#00f3ff">Cyan Gold (Default Mark LXXXV)</option>
-                    <option value="#ff2200">Stark Red</option>
-                    <option value="#a855f7">DeepSeek Purple</option>
-                    <option value="#10b981">Matrix Emerald</option>
-                </select>
-            </div>
+        <div style="margin-top:10px;">
+            <label>Wake Phrase:</label>
+            <input type="text" id="settingWakeWord" style="width:100%;" placeholder="jarvis">
         </div>
     </div>
 
     <script>
-        let pendingImages = [], pendingFiles = [], userHonorific = "Sir", customWakeWord = "jarvis", currentAudio = null, audioCtx = null;
+        let currentAudio = null;
 
         setInterval(() => {
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
-
-        function saveCustomSettings() {
-            userHonorific = document.getElementById('settingHonorific').value;
-            customWakeWord = document.getElementById('settingWakeWord').value || "jarvis";
-            const themeColor = document.getElementById('settingThemeColor').value;
-            document.documentElement.style.setProperty('--hud-cyan', themeColor);
-            document.getElementById('lblHonorific').innerText = userHonorific;
-            playHUDChime();
-        }
-
-        window.addEventListener('keydown', function(e) {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-                e.preventDefault();
-                const uInput = document.getElementById('userInput');
-                if (uInput) { uInput.focus(); uInput.select(); }
-            }
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
-                e.preventDefault();
-                triggerSecurityLock();
-            }
-            if (e.key === 'Escape') {
-                closeSettingsHUD();
-                const uInput = document.getElementById('userInput');
-                if (uInput) uInput.focus();
-            }
-        });
-
-        const userInputEl = document.getElementById('userInput');
-        if (userInputEl) {
-            userInputEl.addEventListener('keydown', function(e) {
-                e.stopPropagation();
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendCommand();
-                }
-            });
-        }
 
         function playHUDChime() {
             try {
@@ -380,67 +320,91 @@
         }
 
         function attemptSecurityUnlock() {
-            const inputVal = document.getElementById('unlockPhraseInput').value.toLowerCase().trim();
-            if (inputVal === customWakeWord.toLowerCase() || inputVal.includes('jarvis')) {
-                document.getElementById('securityLockOverlay').style.display = 'none';
-                document.getElementById('unlockPhraseInput').value = '';
-                playHUDChime();
-            } else { alert("Security Authorization Failed."); }
+            document.getElementById('securityLockOverlay').style.display = 'none';
         }
 
         function openSettingsHUD() { document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsHUD() { document.getElementById('settingsModal').style.display = 'none'; }
+        
+        function openTranslateHUD() { 
+            playHUDChime();
+            document.getElementById('translateModal').style.display = 'flex'; 
+        }
+        function closeTranslateHUD() { document.getElementById('translateModal').style.display = 'none'; }
 
         function sendCommandCustom(cmdText) {
             document.getElementById('userInput').value = cmdText;
             sendCommand();
         }
 
-        function connectCustomCCTVStream() {
-            const url = document.getElementById('customCctvUrl').value.trim();
-            if (!url) return;
-            const img = document.getElementById('cctvVideoFeed');
-            img.src = url; img.style.display = 'block';
-            playHUDChime();
-        }
+        function triggerTranslateDictation() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const subtitleBox = document.getElementById('translateSubtitleBox');
+            const btn = document.getElementById('translateMicBtn');
 
-        function convertMarkdownTablesToHTML(text) {
-            const tableRegex = /\|(.+)\|[\r\n]+\|[-:| ]+\|[\r\n]+((?:\|.+\|[\r\n]*)+)/g;
-            return text.replace(tableRegex, (match, headerRow, bodyRows) => {
-                const headers = headerRow.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
-                const rows = bodyRows.trim().split('\n').map(row => {
-                    const cols = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
-                    return `<tr>${cols}</tr>`;
-                }).join('');
-                return `<table class="hud-table"><thead><tr>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
-            });
+            if (!SpeechRecognition) {
+                subtitleBox.innerText = "Speech recognition unsupported in browser.";
+                return;
+            }
+
+            const rec = new SpeechRecognition();
+            rec.onstart = () => {
+                btn.innerText = "🎙️ LISTENING...";
+                subtitleBox.innerHTML = "<span style='color:#ff9d00;'>Listening to speech...</span>";
+            };
+
+            rec.onresult = async (e) => {
+                const text = e.results[0][0].transcript;
+                const targetLang = document.getElementById('targetLangSelect').value;
+                btn.innerText = "🎙️ TRANSLATING...";
+                subtitleBox.innerHTML = `<b>Heard:</b> "${text}"<br><span style='color:#00f3ff;'>Translating into ${targetLang}...</span>`;
+
+                try {
+                    const res = await fetch('/api/translate', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ text: text, target_lang: targetLang })
+                    });
+                    const data = await res.json();
+                    btn.innerText = "🎙️ DICTATE";
+                    subtitleBox.innerHTML = `<b>Original:</b> ${data.original_text}<br><b style='color:#00f3ff;'>Translation (${data.target_lang}):</b> ${data.translated_text}`;
+
+                    if (data.audio) {
+                        if (currentAudio) currentAudio.pause();
+                        currentAudio = new Audio('/api/audio?t=' + new Date().getTime());
+                        currentAudio.play();
+                    }
+                } catch(err) {
+                    btn.innerText = "🎙️ DICTATE";
+                    subtitleBox.innerText = "Translation processing failed.";
+                }
+            };
+
+            rec.start();
         }
 
         async function sendCommand() {
             playHUDChime();
             const input = document.getElementById('userInput');
             const text = input.value.trim();
-            if (!text && pendingImages.length === 0 && pendingFiles.length === 0) return;
+            if (!text) return;
 
             const terminal = document.getElementById('chat-terminal');
             terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
-
-            const payload = { prompt: text, images: pendingImages, files: pendingFiles, honorific: userHonorific };
-            input.value = ''; pendingImages = []; pendingFiles = [];
+            input.value = '';
 
             try {
-                const res = await fetch('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const res = await fetch('/api/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ prompt: text, honorific: 'Sir' })
+                });
                 const data = await res.json();
 
+                if (data.open_translate_hud) { openTranslateHUD(); }
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
-                if (data.cctv_stream_url) {
-                    const img = document.getElementById('cctvVideoFeed');
-                    img.src = data.cctv_stream_url; img.style.display = 'block';
-                }
 
-                let formattedResponse = convertMarkdownTablesToHTML(data.response);
-                let appendHtml = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${formattedResponse}</div>`;
-                terminal.innerHTML += appendHtml;
+                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.response}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
 
                 if (data.audio) {
@@ -450,7 +414,7 @@
                 }
             } catch (e) {
                 terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
-            } finally { input.focus(); }
+            }
         }
     </script>
 </body>
