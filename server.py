@@ -135,7 +135,6 @@ def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
         clean = clean.replace(sym, word)
 
     if smooth_punctuation:
-        # Strip commas, full stops, and semicolons to force fluent, continuous vocal delivery
         clean = re.sub(r'[\.,;:\?!]', ' ', clean)
 
     clean = re.sub(r'[^\w\s]', '', clean)

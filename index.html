@@ -172,7 +172,7 @@
             box-shadow: inset 0 0 12px var(--hud-glow); min-height: 65px; word-break: break-word;
         }
 
-        /* NEON CYBER-MESH TRANSLATE ORB (Matching image_f783e3.jpg) */
+        /* NEON CYBER-MESH TRANSLATE ORB */
         .cyber-mesh-wrapper {
             position: relative; width: 100%; height: 230px;
             display: flex; align-items: center; justify-content: center;
@@ -244,7 +244,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Ultra-Fluent Uninterrupted Speech Synthesis Engine online. Punctuation pauses disabled for smooth speech flow. Open 🌐 TRANSLATE to view the cyber-mesh wireframe orb.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Expanded Customization Palette online. Select from 10 dynamic color themes in ⚙️ SETTINGS to customize your HUD accent.</div>
             </div>
         </div>
 
@@ -252,7 +252,7 @@
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 POWER CORE: 99%<br>
-                SPEECH DSP: ULTRA-FLUENT<br>
+                THEME PALETTE: 10 COLOR SCHEMES<br>
                 INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
@@ -286,7 +286,6 @@
             <button id="translateMicBtn" onclick="triggerTranslateDictation()">🎙️ DICTATE</button>
         </div>
 
-        <!-- RECREATED NEON CYBER-MESH SPHERE HUD (image_f783e3.jpg) -->
         <div class="cyber-mesh-wrapper">
             <canvas id="translateMeshCanvas" width="220" height="220"></canvas>
         </div>
@@ -296,13 +295,28 @@
         </div>
     </div>
 
-    <!-- EXPANDED CUSTOMIZATION SETTINGS MODAL -->
+    <!-- EXPANDED 10-THEME CUSTOMIZATION SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
             <div>⚙️ MASTER CONFIGURATION SETTINGS</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
         </div>
         <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
+            <div class="setting-row">
+                <label>HUD Accent Theme Color (10 Colors):</label>
+                <select id="settingThemeColor" onchange="saveCustomSettings()">
+                    <option value="#00f3ff">Mark LXXXV Cyan (Default)</option>
+                    <option value="#ff2200">Stark Crimson Red</option>
+                    <option value="#bd00ff">DeepSeek Neon Purple</option>
+                    <option value="#10b981">Matrix Emerald Green</option>
+                    <option value="#ffb700">Amber Gold</option>
+                    <option value="#ff6600">Cyber Orange</option>
+                    <option value="#e000ff">Neon Violet</option>
+                    <option value="#76ff03">Electric Lime</option>
+                    <option value="#0066ff">Deep Sea Navy Blue</option>
+                    <option value="#ffffff">Pure Arc White</option>
+                </select>
+            </div>
             <div class="setting-row">
                 <label>User Honorific Title:</label>
                 <select id="settingHonorific" onchange="saveCustomSettings()">
@@ -356,7 +370,7 @@
         }, 1000);
 
         // --- THREE.JS 3D HOLOGRAPHIC ARC REACTOR CORE ---
-        let scene, camera, renderer, particleSphere, wireCore;
+        let scene, camera, renderer, particleSphere, wireCore, coreMat;
 
         function init3DHologramCore() {
             const container = document.querySelector('.core-orb-widget');
@@ -370,7 +384,7 @@
             renderer.setSize(container.clientWidth, container.clientHeight);
 
             const coreGeo = new THREE.IcosahedronGeometry(36, 2);
-            const coreMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.8 });
+            coreMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.8 });
             wireCore = new THREE.Mesh(coreGeo, coreMat);
             scene.add(wireCore);
 
@@ -397,7 +411,7 @@
             animate3DCore();
         }
 
-        // --- NEON CYBER-MESH ORB CANVAS (Matching image_f783e3.jpg) ---
+        // --- NEON CYBER-MESH ORB CANVAS ---
         function renderCyberMeshTranslateOrb() {
             const canvas = document.getElementById('translateMeshCanvas');
             if (!canvas) return;
@@ -413,7 +427,6 @@
                 const centerY = canvas.height / 2;
                 const radius = 70;
 
-                // Ambient Purple/Cyan Glow
                 const grad = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, 95);
                 grad.addColorStop(0, 'rgba(0, 243, 255, 0.6)');
                 grad.addColorStop(0.5, 'rgba(189, 0, 255, 0.4)');
@@ -421,7 +434,6 @@
                 ctx.fillStyle = grad;
                 ctx.beginPath(); ctx.arc(centerX, centerY, 95, 0, Math.PI*2); ctx.fill();
 
-                // Cyber-Mesh Wireframe Lattice
                 ctx.strokeStyle = '#bd00ff';
                 ctx.lineWidth = 0.8;
 
@@ -440,7 +452,6 @@
                     ctx.stroke();
                 }
 
-                // Cyan Outer Dots
                 ctx.fillStyle = '#00f3ff';
                 for (let a = 0; a < Math.PI * 2; a += 0.25) {
                     const r = radius + 15 + Math.sin(a * 4 + angle) * 4;
@@ -508,6 +519,22 @@
             selectedVoicePitch = (pVal >= 0 ? "+" : "") + pVal + "Hz";
             smoothPunctuation = document.getElementById('settingSmoothPunct').value === "true";
             customPrefix = document.getElementById('settingCustomPrefix').value.trim();
+
+            const selectedThemeColor = document.getElementById('settingThemeColor').value;
+            document.documentElement.style.setProperty('--hud-cyan', selectedThemeColor);
+            
+            // Hex to RGBA conversion for glow effect
+            let hex = selectedThemeColor.replace('#', '');
+            if(hex.length === 6) {
+                let r = parseInt(hex.substring(0,2), 16);
+                let g = parseInt(hex.substring(2,4), 16);
+                let b = parseInt(hex.substring(4,6), 16);
+                document.documentElement.style.setProperty('--hud-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+            }
+
+            if (coreMat) {
+                coreMat.color.setHex(parseInt(hex, 16));
+            }
 
             const selectedFont = document.getElementById('settingHUDFont').value;
             document.documentElement.style.setProperty('--hud-font', selectedFont);
@@ -582,7 +609,8 @@
                     else ctx.lineTo(x, y);
                 }
                 ctx.closePath();
-                ctx.strokeStyle = '#00f3ff';
+                const activeThemeColor = getComputedStyle(document.documentElement).getPropertyValue('--hud-cyan').trim();
+                ctx.strokeStyle = activeThemeColor || '#00f3ff';
                 ctx.lineWidth = 2;
                 ctx.stroke();
             }
@@ -631,7 +659,7 @@
                     });
                     const data = await res.json();
                     btn.innerText = "🎙️ DICTATE";
-                    subtitleBox.innerHTML = `<b>Original:</b> ${data.original_text}<br><b style='color:#00f3ff;'>Translation (${data.target_lang}):</b> ${data.translated_text}`;
+                    subtitleBox.innerHTML = `<b>Original:</b> ${data.original_text}<br><b style='color:var(--hud-cyan);'>Translation (${data.target_lang}):</b> ${data.translated_text}`;
 
                     if (data.audio) { playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
                 } catch(err) {
@@ -677,7 +705,7 @@
                 } else if (data.cancel_cctv) {
                     cctvImg.style.opacity = '0';
                     setTimeout(() => { cctvImg.src = ""; }, 600);
-                    if (orbTag) { orbTag.innerText = "3D HOLOGRAM ACTIVE"; orbTag.style.color = "#00f3ff"; }
+                    if (orbTag) { orbTag.innerText = "3D HOLOGRAM ACTIVE"; orbTag.style.color = "var(--hud-cyan)"; }
                 }
 
                 if (data.open_translate_hud) { openTranslateHUD(); }
