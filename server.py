@@ -119,22 +119,26 @@ def search_general_knowledge(query):
     except Exception:
         return None
 
-def convert_symbols_to_words(text):
-    clean = re.sub(r'```[\s\S]*?```', ' Code block provided in terminal. ', text)
-    clean = re.sub(r'<svg[\s\S]*?<\/svg>', ' Schematic generated. ', clean)
+def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
+    clean = re.sub(r'```[\s\S]*?```', ' Code block provided in terminal ', text)
+    clean = re.sub(r'<svg[\s\S]*?<\/svg>', ' Schematic generated ', clean)
 
     symbol_map = {
         '@': ' at ', '#': ' hashtag ', '$': ' dollars ', '%': ' percent ',
         '&': ' and ', '*': ' times ', '+': ' plus ', '=': ' equals ',
         '<': ' less than ', '>': ' greater than ', '/': ' slash ', '\\': ' backslash ',
         '^': ' power of ', '~': ' approximately ', '|': ' pipe ', '_': ' underscore ',
-        '-': ' minus ', '°': ' degrees '
+        '-': ' ', '°': ' degrees '
     }
 
     for sym, word in symbol_map.items():
         clean = clean.replace(sym, word)
 
-    clean = re.sub(r'[^\w\s.,?!]', '', clean)
+    if smooth_punctuation:
+        # Strip commas, full stops, and semicolons to force fluent, continuous vocal delivery
+        clean = re.sub(r'[\.,;:\?!]', ' ', clean)
+
+    clean = re.sub(r'[^\w\s]', '', clean)
     clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
 
@@ -279,6 +283,7 @@ def translate_audio_or_text():
     target_lang = data.get('target_lang', 'English').strip()
     voice_pitch = data.get('voice_pitch', '-3Hz')
     voice_rate = data.get('voice_rate', '+2%')
+    smooth_punct = data.get('smooth_punct', True)
 
     if not text:
         return jsonify({'status': 'error', 'response': 'No speech text provided for translation.'})
@@ -307,7 +312,7 @@ def translate_audio_or_text():
 
     if not translated_text: translated_text = text
 
-    spoken_text = convert_symbols_to_words(translated_text)
+    spoken_text = convert_symbols_to_words_fluent(translated_text, smooth_punct)
     has_audio = False
     try:
         asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
@@ -338,6 +343,8 @@ def ask():
 
     voice_pitch = data.get('voice_pitch', '-3Hz')
     voice_rate = data.get('voice_rate', '+2%')
+    smooth_punct = data.get('smooth_punct', True)
+    custom_prefix = data.get('custom_prefix', '')
 
     if not user_prompt and not images and not files:
         return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
@@ -442,7 +449,11 @@ def ask():
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     if not clean_text.endswith(honorific + "."): clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
-    spoken_verbal_text = convert_symbols_to_words(clean_text)
+    
+    if custom_prefix:
+        clean_text = f"{custom_prefix} {clean_text}"
+
+    spoken_verbal_text = convert_symbols_to_words_fluent(clean_text, smooth_punct)
 
     has_audio = False
     if not is_dnd:

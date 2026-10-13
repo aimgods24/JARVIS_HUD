@@ -3,18 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JARVIS // MARK LXXXV DREAM HUD</title>
+    <title>JARVIS // MARK LXXXV MASTER CORE</title>
     <link rel="manifest" href="/manifest.json">
-    <!-- Three.js Library for 3D Holographic Rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
             --hud-cyan: #00f3ff;
             --hud-glow: rgba(0, 243, 255, 0.5);
             --hud-orange: #ff9d00;
+            --hud-purple: #bd00ff;
             --hud-bg: #010810;
             --hud-panel: rgba(1, 12, 24, 0.9);
             --hud-border: rgba(0, 243, 255, 0.35);
+            --hud-font: 'Consolas', 'Courier New', monospace;
         }
 
         * { box-sizing: border-box; }
@@ -22,7 +23,7 @@
         body {
             background-color: var(--hud-bg);
             color: var(--hud-cyan);
-            font-family: 'Consolas', 'Courier New', monospace;
+            font-family: var(--hud-font);
             margin: 0; padding: 6px;
             height: 100vh;
             display: flex; flex-direction: column;
@@ -92,9 +93,7 @@
             box-shadow: inset 0 0 15px var(--hud-glow);
         }
 
-        #webglCanvas {
-            position: absolute; width: 100%; height: 100%; z-index: 1;
-        }
+        #webglCanvas { position: absolute; width: 100%; height: 100%; z-index: 1; }
 
         #cctvVideoFeed {
             position: absolute; width: 160px; height: 160px;
@@ -121,14 +120,6 @@
         .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
         .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
-
-        .hud-table {
-            width: 100%; border-collapse: collapse; margin: 8px 0;
-            font-size: 0.75rem; color: #fff; background: rgba(0, 243, 255, 0.05);
-            border: 1px solid var(--hud-cyan);
-        }
-        .hud-table th, .hud-table td { border: 1px solid var(--hud-border); padding: 6px 8px; text-align: left; }
-        .hud-table th { background: rgba(0, 243, 255, 0.2); color: var(--hud-cyan); }
 
         .hud-action-badge {
             display: inline-block; margin-top: 4px; margin-right: 4px; padding: 4px 8px;
@@ -181,6 +172,19 @@
             box-shadow: inset 0 0 12px var(--hud-glow); min-height: 65px; word-break: break-word;
         }
 
+        /* NEON CYBER-MESH TRANSLATE ORB (Matching image_f783e3.jpg) */
+        .cyber-mesh-wrapper {
+            position: relative; width: 100%; height: 230px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 10px 0; background: radial-gradient(circle at 50% 50%, #15002b 0%, #030008 100%);
+            border: 1px solid var(--hud-purple); border-radius: 10px; overflow: hidden;
+            box-shadow: inset 0 0 25px rgba(189, 0, 255, 0.4);
+        }
+
+        #translateMeshCanvas {
+            position: absolute; width: 220px; height: 220px;
+        }
+
         #securityLockOverlay {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 3, 8, 0.98); z-index: 5000;
@@ -206,7 +210,7 @@
     </div>
 
     <div class="hud-top-bar">
-        <div><span class="status-pill"></span>JARVIS // DREAM HUD</div>
+        <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
         <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
@@ -240,7 +244,7 @@
 
         <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Dream Architecture initialized. Interactive 3D WebGL Holographic Arc Core online. Press [ESC] or [F9] at any time for instant voice barge-in interrupt.</div>
+                <div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Ultra-Fluent Uninterrupted Speech Synthesis Engine online. Punctuation pauses disabled for smooth speech flow. Open 🌐 TRANSLATE to view the cyber-mesh wireframe orb.</div>
             </div>
         </div>
 
@@ -248,7 +252,7 @@
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 POWER CORE: 99%<br>
-                3D ENGINE: THREE.JS WEBGL<br>
+                SPEECH DSP: ULTRA-FLUENT<br>
                 INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
@@ -263,7 +267,7 @@
         <button onclick="sendCommand()">SEND</button>
     </div>
 
-    <!-- TRANSLATION FLOATING POP-UP HUD MODAL -->
+    <!-- TRANSLATION FLOATING POP-UP HUD MODAL (Cyber-Mesh Orb) -->
     <div class="hud-modal" id="translateModal">
         <div class="modal-header">
             <div>🌐 NEURAL TRANSLATION HUD</div>
@@ -282,15 +286,20 @@
             <button id="translateMicBtn" onclick="triggerTranslateDictation()">🎙️ DICTATE</button>
         </div>
 
-        <div class="translate-subtitle-box" id="translateSubtitleBox" style="margin-top:10px;">
+        <!-- RECREATED NEON CYBER-MESH SPHERE HUD (image_f783e3.jpg) -->
+        <div class="cyber-mesh-wrapper">
+            <canvas id="translateMeshCanvas" width="220" height="220"></canvas>
+        </div>
+
+        <div class="translate-subtitle-box" id="translateSubtitleBox">
             <span style="color: var(--hud-cyan); font-style: italic;">Awaiting speech dictation... Press [🎙️ DICTATE] above.</span>
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
+    <!-- EXPANDED CUSTOMIZATION SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
-            <div>⚙️ MASTER CONFIGURATION</div>
+            <div>⚙️ MASTER CONFIGURATION SETTINGS</div>
             <button onclick="closeSettingsHUD()">✕ CLOSE</button>
         </div>
         <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
@@ -315,12 +324,30 @@
                 <label>Voice Pitch Adjustment (<span id="pitchValLabel">-3Hz</span>):</label>
                 <input type="range" id="settingVoicePitch" min="-10" max="10" value="-3" oninput="updateSettingLabels()" onchange="saveCustomSettings()">
             </div>
+            <div class="setting-row">
+                <label>Fluent Speech Punctuation Pause Removal:</label>
+                <select id="settingSmoothPunct" onchange="saveCustomSettings()">
+                    <option value="true">Enabled (Ultra-Fluent Speech)</option>
+                    <option value="false">Disabled (Standard Pauses)</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Custom Response Prefix:</label>
+                <input type="text" id="settingCustomPrefix" placeholder="e.g., Right away Sir," onchange="saveCustomSettings()">
+            </div>
+            <div class="setting-row">
+                <label>HUD Typography Font Style:</label>
+                <select id="settingHUDFont" onchange="saveCustomSettings()">
+                    <option value="'Consolas', monospace">Consolas Monospace</option>
+                    <option value="'Courier New', monospace">Courier Classic</option>
+                </select>
+            </div>
         </div>
     </div>
 
     <script>
         let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
-        let userHonorific = "Sir", customWakeWord = "jarvis", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz";
+        let userHonorific = "Sir", customWakeWord = "jarvis", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
 
         const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -342,13 +369,11 @@
             renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
             renderer.setSize(container.clientWidth, container.clientHeight);
 
-            // Wireframe Icosahedron Core
             const coreGeo = new THREE.IcosahedronGeometry(36, 2);
             const coreMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.8 });
             wireCore = new THREE.Mesh(coreGeo, coreMat);
             scene.add(wireCore);
 
-            // Surrounding Particle Field
             const particleGeo = new THREE.BufferGeometry();
             const particleCount = 400;
             const posArray = new Float32Array(particleCount * 3);
@@ -372,14 +397,68 @@
             animate3DCore();
         }
 
-        window.addEventListener('load', init3DHologramCore);
+        // --- NEON CYBER-MESH ORB CANVAS (Matching image_f783e3.jpg) ---
+        function renderCyberMeshTranslateOrb() {
+            const canvas = document.getElementById('translateMeshCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            let angle = 0;
 
-        // --- VOICE BARGE-IN & INSTANT INTERRUPT HANDLER ---
-        function stopVoicePlaybackImmediate() {
-            if (currentAudio) {
-                currentAudio.pause();
-                currentAudio.currentTime = 0;
+            function drawMesh() {
+                requestAnimationFrame(drawMesh);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                angle += 0.015;
+
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = 70;
+
+                // Ambient Purple/Cyan Glow
+                const grad = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, 95);
+                grad.addColorStop(0, 'rgba(0, 243, 255, 0.6)');
+                grad.addColorStop(0.5, 'rgba(189, 0, 255, 0.4)');
+                grad.addColorStop(1, 'rgba(3, 0, 8, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(centerX, centerY, 95, 0, Math.PI*2); ctx.fill();
+
+                // Cyber-Mesh Wireframe Lattice
+                ctx.strokeStyle = '#bd00ff';
+                ctx.lineWidth = 0.8;
+
+                for (let i = -radius; i <= radius; i += 10) {
+                    ctx.beginPath();
+                    for (let j = -radius; j <= radius; j += 4) {
+                        const dist = Math.sqrt(i*i + j*j);
+                        if (dist <= radius) {
+                            const wave = Math.sin(dist * 0.1 - angle) * 6;
+                            const x = centerX + i + Math.cos(angle + i*0.05)*4;
+                            const y = centerY + j + wave;
+                            if (j === -radius) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.stroke();
+                }
+
+                // Cyan Outer Dots
+                ctx.fillStyle = '#00f3ff';
+                for (let a = 0; a < Math.PI * 2; a += 0.25) {
+                    const r = radius + 15 + Math.sin(a * 4 + angle) * 4;
+                    const px = centerX + Math.cos(a) * r;
+                    const py = centerY + Math.sin(a) * r;
+                    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
+                }
             }
+            drawMesh();
+        }
+
+        window.addEventListener('load', () => {
+            init3DHologramCore();
+            renderCyberMeshTranslateOrb();
+        });
+
+        function stopVoicePlaybackImmediate() {
+            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
             if (animFrameId) cancelAnimationFrame(animFrameId);
             const canvas = document.getElementById('audioWaveCanvas');
             if (canvas) {
@@ -396,7 +475,6 @@
             }
         });
 
-        // --- DUAL DESKTOP / MOBILE KEYBOARD HANDLING ---
         const userInputEl = document.getElementById('userInput');
         if (userInputEl) {
             userInputEl.addEventListener('keydown', function(e) {
@@ -428,6 +506,11 @@
             const pVal = document.getElementById('settingVoicePitch').value;
             selectedVoiceRate = (rVal >= 0 ? "+" : "") + rVal + "%";
             selectedVoicePitch = (pVal >= 0 ? "+" : "") + pVal + "Hz";
+            smoothPunctuation = document.getElementById('settingSmoothPunct').value === "true";
+            customPrefix = document.getElementById('settingCustomPrefix').value.trim();
+
+            const selectedFont = document.getElementById('settingHUDFont').value;
+            document.documentElement.style.setProperty('--hud-font', selectedFont);
         }
 
         function triggerSecurityLock() { document.getElementById('securityLockOverlay').style.display = 'flex'; }
@@ -542,7 +625,8 @@
                             text: text, 
                             target_lang: targetLang,
                             voice_pitch: selectedVoicePitch,
-                            voice_rate: selectedVoiceRate
+                            voice_rate: selectedVoiceRate,
+                            smooth_punct: smoothPunctuation
                         })
                     });
                     const data = await res.json();
@@ -576,7 +660,9 @@
                         prompt: text, 
                         honorific: userHonorific,
                         voice_pitch: selectedVoicePitch,
-                        voice_rate: selectedVoiceRate
+                        voice_rate: selectedVoiceRate,
+                        smooth_punct: smoothPunctuation,
+                        custom_prefix: customPrefix
                     })
                 });
                 const data = await res.json();
