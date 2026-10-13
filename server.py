@@ -1,4 +1,4 @@
-vfrom flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory
+from flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory
 import edge_tts
 import asyncio
 import os
@@ -34,7 +34,6 @@ GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
 GLOBAL_NEWS_CACHE = []
-REMINDERS_STORE = []
 
 def fetch_latest_global_news():
     global GLOBAL_NEWS_CACHE
