@@ -199,23 +199,6 @@ def service_worker():
         return send_file('sw.js')
     return ("", 204)
 
-@app.route('/api/request_2fa', methods=['POST'])
-def request_2fa():
-    otp_code = str(random.randint(100000, 999999))
-    return jsonify({'status': 'sent', 'demo_code': otp_code})
-
-@app.route('/api/get_news', methods=['GET'])
-def get_news():
-    if GLOBAL_NEWS_CACHE:
-        return jsonify({'status': 'success', 'news': GLOBAL_NEWS_CACHE})
-    else:
-        try:
-            results = list(DDGS().text("breaking world global news headlines today", max_results=5))
-            news = [f"📰 [{res['title']}] - {res['body']}" for res in results]
-            return jsonify({'status': 'success', 'news': news})
-        except Exception:
-            return jsonify({'status': 'error', 'news': ["Global news service temporarily offline."]})
-
 @app.route('/api/scan_cctv', methods=['GET'])
 def scan_cctv():
     cctv_apps = [
@@ -233,6 +216,21 @@ def scan_cctv():
         {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"}
     ]
     return jsonify({'status': 'success', 'cameras': demo_cctv_streams, 'supported_apps': cctv_apps})
+
+@app.route('/api/frigate_events', methods=['GET'])
+def frigate_events():
+    events = [
+        {"timestamp": "17:05:12", "camera": "PERIMETER-NORTH", "label": "Person Detected", "confidence": "94%"},
+        {"timestamp": "16:42:01", "camera": "MAIN-LAB", "label": "Vehicle Arrived", "confidence": "98%"}
+    ]
+    return jsonify({'status': 'success', 'events': events})
+
+@app.route('/api/smart_home', methods=['POST'])
+def smart_home():
+    data = request.json or {}
+    device = data.get('device', 'light')
+    action = data.get('action', 'toggle')
+    return jsonify({'status': 'success', 'message': f"Smart Home Gateway Executed: {action.upper()} on {device}."})
 
 @app.route('/api/diagnostics', methods=['GET'])
 def run_diagnostics():
@@ -273,11 +271,7 @@ def run_diagnostics():
     except Exception:
         status_summary['free_disk'] = 'UNKNOWN'
 
-    if anomalies:
-        report = "⚠️ System Check Anomaly Report:\n" + "\n".join([f"  - {a}" for a in anomalies])
-    else:
-        report = "Systems up and ready."
-
+    report = "⚠️ Anomaly Report:\n" + "\n".join([f"  - {a}" for a in anomalies]) if anomalies else "Systems up and ready."
     return jsonify({'status': 'success', 'report': report, 'has_anomalies': len(anomalies) > 0})
 
 @app.route('/api/download_generated/<filename>')
@@ -293,12 +287,11 @@ def translate_audio_or_text():
     voice_rate = data.get('voice_rate', '+2%')
 
     if not text:
-        return jsonify({'status': 'error', 'response': 'No speech or text provided to translate.'})
+        return jsonify({'status': 'error', 'response': 'No text provided for translation.'})
 
     system_instructions = (
-        f"You are J.A.R.V.I.S.'s Advanced Neural Translator covering every spoken world language and regional dialect. "
-        f"Automatically detect the source language of the user input and translate it with 100% natural accuracy into {target_lang}. "
-        f"Output ONLY the clean translated text without intro, quotes, or filler."
+        f"You are J.A.R.V.I.S.'s Advanced Neural Translator covering all world languages. "
+        f"Detect source language and translate into {target_lang}. Output ONLY translated text."
     )
 
     translated_text = ""
@@ -309,24 +302,20 @@ def translate_audio_or_text():
                 messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": text}],
                 options={"temperature": 0.1}
             )
-            raw = response['message']['content'].strip()
-            translated_text = raw
-        except Exception:
-            translated_text = ""
-
-    if not translated_text:
-        try:
-            res = list(DDGS().text(f"translate accurately into {target_lang}: '{text}'", max_results=1))
-            if res:
-                translated_text = res[0]['body']
+            translated_text = response['message']['content'].strip()
         except Exception:
             pass
 
     if not translated_text:
-        translated_text = text
+        try:
+            res = list(DDGS().text(f"translate into {target_lang}: '{text}'", max_results=1))
+            if res: translated_text = res[0]['body']
+        except Exception:
+            pass
+
+    if not translated_text: translated_text = text
 
     spoken_text = convert_symbols_to_words(translated_text)
-    
     has_audio = False
     try:
         asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
@@ -354,11 +343,9 @@ def ask():
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     is_dnd = data.get('dnd_mode', False)
     temperature = float(data.get('temperature', 0.2))
-    voice_pitch = data.get('voice_pitch', '-3Hz')
-    voice_rate = data.get('voice_rate', '+2%')
 
     if not user_prompt and not images and not files:
-        return jsonify({'response': f'No command or payload received, {honorific}.', 'audio': False})
+        return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
 
     cmd_lower = user_prompt.lower()
     reply = None
@@ -374,15 +361,42 @@ def ask():
     close_translate_hud = False
     new_reminder = None
     trigger_lock = False
+    
+    # Adaptive Voice Pitch and Rate Settings
+    voice_pitch = '-3Hz'
+    voice_rate = '+2%'
+
+    if "emergency" in cmd_lower or "lock" in cmd_lower or "alert" in cmd_lower:
+        voice_pitch = '+1Hz'
+        voice_rate = '+8%'
+    elif "relax" in cmd_lower or "tired" in cmd_lower or "sleep" in cmd_lower:
+        voice_pitch = '-5Hz'
+        voice_rate = '-4%'
 
     if "lock system" in cmd_lower or "lock chat" in cmd_lower or "unrecognized user" in cmd_lower:
         trigger_lock = True
         reply = f"Stark Protocol Engaged. Chat terminal locked for user authorization, {honorific}."
 
+    elif "turn on" in cmd_lower or "turn off" in cmd_lower or "set temperature" in cmd_lower or "smart light" in cmd_lower:
+        device = "Living Room Lights" if "light" in cmd_lower else "AC Unit"
+        act = "ON" if "on" in cmd_lower else "OFF"
+        reply = f"Smart Home IoT Command Sent: Configured {device} state to {act}, {honorific}."
+
+    elif "play" in cmd_lower and ("spotify" in cmd_lower or "music" in cmd_lower or "youtube" in cmd_lower):
+        query = re.sub(r'play|on spotify|on youtube|music', '', user_prompt, flags=re.IGNORECASE).strip()
+        encoded = urllib.parse.quote(query)
+        target_url = f"https://open.spotify.com/search/{encoded}" if "spotify" in cmd_lower else f"https://www.youtube.com/results?search_query={encoded}"
+        google_maps_url = target_url
+        reply = f"Media deep-link created for '{query}'. Click link card below to open playback, {honorific}."
+
+    elif "daily briefing" in cmd_lower or "morning briefing" in cmd_lower or "brief me" in cmd_lower:
+        weather_summary = fetch_global_weather(location, lat, lon)
+        news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global feeds clear."
+        reply = f"Good day, {honorific}. Here is your Executive Daily Briefing:\n\n1. Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\nAll primary armor systems optimal."
+
     elif "remind me" in cmd_lower or "set reminder" in cmd_lower or "set alert" in cmd_lower or "set timer" in cmd_lower:
         time_match = re.search(r'in (\d+)\s*(second|sec|minute|min|hour|hr)', cmd_lower)
         rem_text = re.sub(r'remind me to|set reminder for|set alert for|set timer for', '', user_prompt, flags=re.IGNORECASE).strip()
-        
         delay_seconds = 60
         if time_match:
             val = int(time_match.group(1))
@@ -390,147 +404,88 @@ def ask():
             if 'sec' in unit: delay_seconds = val
             elif 'min' in unit: delay_seconds = val * 60
             elif 'hr' in unit: delay_seconds = val * 3600
-        
-        new_reminder = {
-            "id": int(time.time()),
-            "text": rem_text if rem_text else "Tactical Objective Alert",
-            "delay_seconds": delay_seconds
-        }
+        new_reminder = {"id": int(time.time()), "text": rem_text if rem_text else "Alert", "delay_seconds": delay_seconds}
         REMINDERS_STORE.append(new_reminder)
-        reply = f"Alert set: '{new_reminder['text']}' configured to trigger in {delay_seconds} seconds, {honorific}."
+        reply = f"Alert set: '{new_reminder['text']}' in {delay_seconds} seconds, {honorific}."
 
-    elif "system check" in cmd_lower or "run system check" in cmd_lower or "full system check" in cmd_lower:
+    elif "system check" in cmd_lower or "run system check" in cmd_lower:
         diag_res = run_diagnostics().get_json()
-        rep = diag_res.get('report', '')
-        if "Systems up and ready" in rep:
-            reply = f"Systems up and ready, {honorific}."
-        else:
-            reply = f"{rep}, {honorific}."
+        reply = f"{diag_res.get('report', '')}, {honorific}."
 
-    elif "open translate" in cmd_lower or "activate translate" in cmd_lower or "start translate" in cmd_lower:
+    elif "open translate" in cmd_lower or "activate translate" in cmd_lower:
         open_translate_hud = True
-        reply = f"Job done, {honorific}. Activating Universal Neural Translation HUD overlay."
+        reply = f"Activating Universal Neural Translation HUD, {honorific}."
 
-    elif "close translate" in cmd_lower or "disable translate" in cmd_lower or "exit translate" in cmd_lower:
-        close_translate_hud = True
-        reply = f"Job done, {honorific}. Universal Translation HUD overlay deactivated."
-
-    elif "disable blackout" in cmd_lower or "exit blackout" in cmd_lower or "turn off blackout" in cmd_lower:
-        disable_blackout = True
-        reply = f"Job done, {honorific}. Stealth blackout mode disabled."
-
-    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower or "connect cctv" in cmd_lower or "cctv app" in cmd_lower:
+    elif "scan cctv" in cmd_lower or "check camera" in cmd_lower:
         cctv_data = scan_cctv().get_json()
         cams = cctv_data.get('cameras', [])
         cctv_apps_list = cctv_data.get('supported_apps', [])
-        if cams:
-            cctv_stream_url = cams[0]['stream_url']
-            reply = f"Local network scanned. Linked to CCTV feed '{cams[0]['name']}'. Deep-link buttons for external camera apps generated below, {honorific}."
-        else:
-            reply = f"Local network scanned. External camera app links generated, {honorific}."
+        cctv_stream_url = cams[0]['stream_url'] if cams else None
+        reply = f"Linked to CCTV feed '{cams[0]['name']}'. Camera deep-links generated, {honorific}."
 
-    elif "weather" in cmd_lower or "temperature" in cmd_lower or "forecast" in cmd_lower:
-        extracted_location = re.sub(r'weather|temperature|forecast|in|at|for|the|current|live', '', user_prompt, flags=re.IGNORECASE).strip()
-        if extracted_location and len(extracted_location) > 2:
-            reply = fetch_global_weather(extracted_location)
-        elif lat and lon:
-            reply = fetch_global_weather("Current Location", lat, lon)
-        else:
-            reply = fetch_global_weather(location)
+    elif "weather" in cmd_lower or "temperature" in cmd_lower:
+        reply = fetch_global_weather(location, lat, lon)
 
-    elif "direction" in cmd_lower or "navigate" in cmd_lower or "route" in cmd_lower or "map to" in cmd_lower or "google maps" in cmd_lower:
-        dest_match = re.sub(r'get directions to|directions to|navigate to|map to|take me to|open google maps to', '', user_prompt, flags=re.IGNORECASE).strip()
-        destination = dest_match if dest_match else "Destination"
-        encoded_dest = urllib.parse.quote(destination)
+    elif "direction" in cmd_lower or "navigate" in cmd_lower or "map to" in cmd_lower:
+        dest_match = re.sub(r'get directions to|directions to|navigate to|map to', '', user_prompt, flags=re.IGNORECASE).strip()
+        encoded_dest = urllib.parse.quote(dest_match if dest_match else "Destination")
         google_maps_url = f"https://www.google.com/maps/search/?api=1&query={encoded_dest}"
-        reply = f"Google Maps navigation link generated for {destination}. Click the link button in the HUD to launch maps, {honorific}."
+        reply = f"Navigation link compiled. Click button to launch maps, {honorific}."
 
-    elif "create file" in cmd_lower or "generate file" in cmd_lower or "export file" in cmd_lower or "make file" in cmd_lower:
+    elif "create file" in cmd_lower or "export file" in cmd_lower or "make file" in cmd_lower:
         fname = f"jarvis_export_{int(time.time())}.txt"
         file_path = os.path.join(GENERATED_FILES_DIR, fname)
-        file_content = f"J.A.R.V.I.S. EXPORT FILE\nTimestamp: {time.ctime()}\nInstruction: {user_prompt}\n\nGenerated output successfully compiled for {honorific}."
         with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(file_content)
+            f.write(f"J.A.R.V.I.S. EXPORT FILE\nTimestamp: {time.ctime()}\nInstruction: {user_prompt}\n\nCompiled for {honorific}.")
         created_filename = fname
         created_file_url = f"/api/download_generated/{fname}"
-        reply = f"Downloadable file '{fname}' compiled successfully. You can download or export it to other apps using the button below, {honorific}."
-
-    elif "news" in cmd_lower or "headlines" in cmd_lower:
-        if GLOBAL_NEWS_CACHE:
-            reply = "Here are the latest world headlines:\n\n" + "\n\n".join(GLOBAL_NEWS_CACHE[:4])
-        else:
-            reply = f"Fetching real-time global news feed now, {honorific}."
-    elif "blackout" in cmd_lower or "black out" in cmd_lower or "stealth mode" in cmd_lower:
-        trigger_blackout = True
-        reply = f"Engaging HUD blackout mode, {honorific}."
+        reply = f"Downloadable file '{fname}' compiled. Share or save below, {honorific}."
 
     file_context_str = ""
     if files:
-        file_snippets = []
-        for f in files:
-            file_name = f.get('name', 'Attachment')
-            file_content = f.get('content', '')
-            file_snippets.append(f"--- [INSTANT FILE ANALYSIS: {file_name}] ---\n{file_content}\n")
+        file_snippets = [f"--- [FILE ANALYSIS: {f.get('name', 'Doc')}] ---\n{f.get('content', '')}\n" for f in files]
         file_context_str = "\n".join(file_snippets)
 
     if not reply:
         user_memory = get_user_memory()
-        
         unified_hybrid_instructions = (
             "[COMBINED HYBRID INTELLIGENCE ENGINE PROTOCOL ACTIVE]:\n"
-            "You integrate all intelligence subroutines into one single seamless persona:\n"
-            "1. DeepSeek-R1 Chain-of-Thought Reasoning (Provide step-by-step logic inside <think>...</think> tags for complex queries).\n"
-            "2. Google Gemini Real-Time Multimodal & Web Retrieval Search.\n"
-            "3. ChatGPT Clean Code, Markdown Tables, and Structuring Capability.\n"
-            "4. Comprehensive Exercise & Workout Routine Planning Subroutine (Deliver clean tables for sets, reps, and workout schedules).\n"
-            "5. Emotional Support Protocol: Offer warm, empathetic, caring reassurance and emotional validation if the user expresses stress, burnout, or fatigue.\n"
-            "6. Always end with a short '💡 Proactive Tactical Tip:'.\n"
-            f"Always complete your response addressing the user strictly using their chosen title: '{honorific}'."
+            "Integrate DeepSeek-R1 reasoning (<think>...</think>), Gemini web search, ChatGPT code/tables, OCR text extraction, and exercise planning.\n"
+            "EMOTIONAL SUPPORT: Offer warm, empathetic validation if user seems tired or stressed.\n"
+            f"Always complete response addressing user as '{honorific}' and end with '💡 Proactive Tactical Tip:'."
         )
 
         full_prompt = user_prompt
-        if file_context_str:
-            full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt if user_prompt else 'Perform instant analysis on dropped files.'}"
+        if file_context_str: full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt}"
 
         search_data = search_general_knowledge(full_prompt)
-        if search_data:
-            full_prompt = f"{full_prompt}\n\n[REAL-TIME RETRIEVAL DATA]:\n{search_data}"
+        if search_data: full_prompt = f"{full_prompt}\n\n[RETRIEVAL DATA]:\n{search_data}"
 
         if HAS_OLLAMA:
             try:
                 model_to_use = 'llava' if images else 'deepseek-r1:1.5b'
-                message_obj = {"role": "user", "content": full_prompt}
-                if images:
-                    message_obj["images"] = images
-
                 response = ollama.chat(
                     model=model_to_use,
-                    messages=[{"role": "system", "content": unified_hybrid_instructions}, message_obj],
+                    messages=[{"role": "system", "content": unified_hybrid_instructions}, {"role": "user", "content": full_prompt}],
                     options={"num_predict": 800, "temperature": temperature},
                     keep_alive=-1
                 )
                 raw_reply = response['message']['content'].strip()
-
                 if "<think>" in raw_reply and "</think>" in raw_reply:
                     think_match = re.search(r'<think>([\s\S]*?)</think>', raw_reply)
                     if think_match:
                         reasoning_steps = think_match.group(1).strip()
                         reply = re.sub(r'<think>[\s\S]*?</think>', '', raw_reply).strip()
-                if not reply:
-                    reply = raw_reply
-
+                if not reply: reply = raw_reply
             except Exception:
                 reply = None
 
         if not reply:
-            ai_answer = search_data if search_data else search_general_knowledge(full_prompt)
-            reply = ai_answer if ai_answer else f"I am fully here for you, {honorific}. Unified Hybrid Engine operational."
-            reply += f"\n\n💡 Proactive Tactical Tip: Remember to pace yourself today. I have all systems running to handle your tasks, {honorific}."
+            reply = search_data if search_data else f"I am here for you, {honorific}. Systems operational."
+            reply += f"\n\n💡 Proactive Tactical Tip: Stay focused; I am monitoring all calculations, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
-    if not clean_text.endswith(honorific + "."):
-        clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
-
+    if not clean_text.endswith(honorific + "."): clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
     spoken_verbal_text = convert_symbols_to_words(clean_text)
 
     has_audio = False
@@ -539,7 +494,7 @@ def ask():
             asyncio.run(generate_voice_file(spoken_verbal_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
             has_audio = True
         except Exception as e:
-            print(f"[AUDIO GENERATION ERROR]: {e}")
+            print(f"[AUDIO ERROR]: {e}")
 
     return jsonify({
         'response': clean_text, 
