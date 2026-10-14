@@ -1,7 +1,7 @@
 {
-  "name": "E.V.A.S. System Core",
+  "name": "E.V.A.S. Full Suite Core",
   "short_name": "E.V.A.S.",
-  "description": "Eventually Very Advanced System - Hybrid AI Neural Interface",
+  "description": "Eventually Very Advanced System - Tri-Engine Universal AI Workspace",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",

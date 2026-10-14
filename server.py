@@ -24,7 +24,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "2.6.0-HYBRID-AI"
+EVAS_BUILD_VERSION = "4.0.0-FULL-SUITE"
 GLOBAL_NEWS_CACHE = []
 
 def init_memory():
@@ -32,7 +32,8 @@ def init_memory():
         default_mem = {
             "user_preferences": {"honorific": "Sir", "location": "Bayan Lepas, Penang, Malaysia"},
             "facts": [],
-            "task_history": []
+            "task_history": [],
+            "projects": {}
         }
         with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
             json.dump(default_mem, f, indent=2)
@@ -44,7 +45,7 @@ def get_memory_data():
         with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception:
-        return {"user_preferences": {}, "facts": [], "task_history": []}
+        return {"user_preferences": {}, "facts": [], "task_history": [], "projects": {}}
 
 def save_memory_fact(fact_str):
     data = get_memory_data()
@@ -173,7 +174,7 @@ def parse_contextual_intent(prompt):
     if any(w in p for w in ["remember that", "save note", "keep in mind"]):
         return "SAVE_FACT"
         
-    return "GENERAL"
+    return "UNIVERSAL_EXECUTION"
 
 @app.route('/')
 def home():
@@ -395,7 +396,6 @@ def ask():
         pickup_lat = lat if lat else 5.2971
         pickup_lon = lon if lon else 100.2588
         
-        # Direct deep-link destination insertion to land straight on Grab's vehicle selection page
         grab_deep_link = f"grab://open?screen=transport&pickup_lat={pickup_lat}&pickup_lng={pickup_lon}&destination={dest_enc}&service_type={ride_type}&dropoff_address={dest_enc}&action=select_vehicle"
 
         grab_driver_info = {
@@ -542,14 +542,13 @@ def ask():
         saved_facts = mem_data.get('facts', [])
         facts_context = f"\n[PERSISTENT USER MEMORY]:\n" + "\n".join([f"• {f}" for f in saved_facts[-5:]]) if saved_facts else ""
 
-        # System Prompt combining Gemini + ChatGPT + DeepSeek Hybrid Architecture
         system_instructions = (
-            f"You are E.V.A.S. (Eventually Very Advanced System), powered by a Tri-Engine Hybrid AI Core "
-            f"(Gemini Multimodal Analysis + ChatGPT Response Synthesis + DeepSeek-R1 Logic & Reasoning). "
-            f"Address the user as '{honorific}'. Be authoritative, witty, precise, and executive-level. "
-            f"Always start with DeepSeek-R1 reasoning wrapped inside <think>...</think> tags. "
-            f"Structure responses using Markdown headers, tables, bullet points, and clean formatting. "
-            f"End responses with a '💡 Proactive Tactical Tip:'."
+            f"You are E.V.A.S. (Eventually Very Advanced System), operating as a Tri-Engine Universal AI Workspace "
+            f"(Gemini Vision & Live Web Search + ChatGPT Conversational Synthesis & Code Interpreter + DeepSeek-R1 Logic Reasoning). "
+            f"Address the user as '{honorific}'. Execute any valid task request given to you with precision. "
+            f"Always enclose internal step-by-step reasoning inside <think>...</think> tags. "
+            f"Structure responses clearly with Markdown headers, bullet points, tables, and code snippets where appropriate. "
+            f"Conclude every answer with a '💡 Proactive Tactical Tip:'."
         )
 
         full_prompt = user_prompt
@@ -579,11 +578,11 @@ def ask():
 
         if not reply:
             reasoning_steps = (
-                "1. DeepSeek-R1 Logic Engine: Evaluated user command structure and cross-referenced memory matrix.\n"
-                "2. Gemini Vision & Data Engine: Parsed local contextual parameters and environmental telemetry.\n"
-                "3. ChatGPT Executive Synthesis Engine: Formatted authoritative response payload."
+                "1. DeepSeek-R1 Logic Engine: Evaluated request structure and performed step-by-step reasoning.\n"
+                "2. Gemini Multimodal Engine: Cross-referenced search knowledge and contextual environmental inputs.\n"
+                "3. ChatGPT Executive Synthesis Engine: Formatted output for precision and visual clarity."
             )
-            reply = search_data if search_data else f"Hybrid AI core (Gemini + ChatGPT + DeepSeek) online and monitoring telemetry, {honorific}."
+            reply = search_data if search_data else f"Universal AI core (Gemini + ChatGPT + DeepSeek) online and executing request for {honorific}."
             reply += f"\n\n💡 Proactive Tactical Tip: Keep systems synchronized, {honorific}."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'evas-hybrid-v2.6';
+const CACHE_NAME = 'evas-full-suite-v4.0';
 const ASSETS_TO_CACHE = [
     '/',
     '/index.html',

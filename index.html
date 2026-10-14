@@ -259,7 +259,7 @@
     <div id="welcomeOverlay">
         <div class="welcome-card">
             <div style="font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;">
-                ⚡ E.V.A.S. (EVENTUALLY VERY ADVANCED SYSTEM) // HYBRID AI PROTOCOLS
+                ⚡ E.V.A.S. (EVENTUALLY VERY ADVANCED SYSTEM) // FULL SUITE WORKSPACE
             </div>
 
             <div id="typewriterText"></div>
@@ -324,11 +324,11 @@
         <div class="hud-panel" id="rightPanel">
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
-                HYBRID AI ENGINE: ONLINE<br>
+                FULL SUITE ENGINE: ONLINE<br>
+                • CHATGPT SUITE: ACTIVE<br>
                 • GEMINI MULTIMODAL: ACTIVE<br>
-                • CHATGPT SYNTHESIS: ACTIVE<br>
                 • DEEPSEEK REASONING: ACTIVE<br>
-                BUILD VERSION: <span id="appBuildVersionTag">2.6.0</span><br>
+                BUILD VERSION: <span id="appBuildVersionTag">4.0.0</span><br>
                 VOICE CHAT: <span id="voiceChatStatusTag" style="color:#ff9d00;">READY</span><br>
                 LAZADA TO-RECEIVE: 2 ORDERS<br>
                 INTERRUPT KEY: ESC / F9
@@ -341,7 +341,7 @@
     </div>
 
     <div class="hud-center-pill">
-        <textarea id="userInput" placeholder="Command E.V.A.S. (Gemini + ChatGPT + DeepSeek Hybrid)..."></textarea>
+        <textarea id="userInput" placeholder="Ask E.V.A.S. anything or give any task command..."></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
@@ -433,7 +433,7 @@
         let userHonorific = "Sir", customWakeWord = "evas", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
         let currentLat = 5.2971, currentLon = 100.2588;
         let deferredPwaPrompt = null;
-        let currentInstalledVersion = "2.6.0-HYBRID-AI";
+        let currentInstalledVersion = "4.0.0-FULL-SUITE";
         let isVoiceChatActive = false;
         let voiceChatRecognition = null;
 
@@ -443,7 +443,6 @@
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        // Native Web Push Notification Permission Request
         if ("Notification" in window && Notification.permission !== "granted") {
             Notification.requestPermission();
         }
@@ -457,7 +456,6 @@
             }
         }
 
-        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').then((reg) => {
@@ -522,7 +520,6 @@
             );
         }
 
-        // CONTINUOUS VOICE CHAT ENGINE
         function toggleContinuousVoiceChat() {
             const btn = document.getElementById('continuousVoiceBtn');
             const statusTag = document.getElementById('voiceChatStatusTag');
@@ -586,13 +583,13 @@
 
         const welcomeMessageScript = 
 `Greetings, Sir. I am E.V.A.S. (Eventually Very Advanced System).
-Tri-Engine Hybrid AI Core (Gemini + ChatGPT + DeepSeek R1) initialized.
+Full AI Workspace Capabilities Initialized (Gemini + ChatGPT Suite + DeepSeek R1).
 
---- E.V.A.S. TRI-ENGINE HYBRID CAPABILITIES ---
-1. TRI-ENGINE HYBRID AI: Merges DeepSeek-R1 logic reasoning, Gemini vision/data analysis, and ChatGPT expression synthesis into every task response.
-2. LAZADA 'TO RECEIVE' TRACKING: Directly monitors both undelivered orders from your screenshot (Neodymium Magnets & Xiaomi Watch S3 Cover Case) with live phone push notifications.
-3. DIRECT GRAB RIDE SELECTION PAGE: Say "book a Grab to [Destination]". E.V.A.S. pre-fills the destination into Grab and launches straight to the vehicle ride selection screen.
-4. HANDS-FREE VOICE CHAT: Click [🎙️ VOICE CHAT: OFF] on the top bar to toggle continuous hands-free voice mode.
+--- E.V.A.S. FULL AI SUITE FEATURES ---
+1. FULL CHATGPT CAPABILITIES: Multi-step research synthesis, code execution, structured documents, persistent memory, and project workflows.
+2. LAZADA 'TO RECEIVE' TRACKING: Live monitoring for undelivered orders with instant phone push notifications.
+3. DIRECT GRAB RIDE SELECTION PAGE: Automatically pre-fills your dropoff target and opens straight to vehicle options.
+4. CONTINUOUS VOICE CHAT: Hands-free listening and verbal speech engine.
 
 All core systems online. Awaiting your command, Sir.`;
 
@@ -728,7 +725,7 @@ All core systems online. Awaiting your command, Sir.`;
             }
 
             const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Hybrid AI Core (Gemini + ChatGPT + DeepSeek) active. Live Lazada phone push notifications enabled. Type or speak your command.</div>`;
+            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Universal AI Workspace online. Type or speak any request.</div>`;
         });
 
         function stopVoicePlaybackImmediate() {
@@ -992,7 +989,7 @@ All core systems online. Awaiting your command, Sir.`;
 
                 let renderedOutput = "";
                 if (data.reasoning_steps) {
-                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. TRI-ENGINE HYBRID REASONING (Gemini + ChatGPT + DeepSeek)</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
+                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. FULL SUITE REASONING (Gemini + ChatGPT + DeepSeek)</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
                 }
 
                 const parsedMarkdown = (typeof marked !== 'undefined' && typeof marked.parse === 'function') ? marked.parse(data.raw_markdown || data.response) : (data.raw_markdown || data.response);
