@@ -10,7 +10,6 @@ import time
 import requests
 import urllib.parse
 from bs4 import BeautifulSoup
-from googlesearch import search  # Direct Google Search without API Key
 
 try:
     import ollama
@@ -25,8 +24,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "6.5.0-GOOGLE-ENGINE"
-GLOBAL_NEWS_CACHE = []
+EVAS_BUILD_VERSION = "6.6.0-DIRECT-GOOGLE-ENGINE"
 
 # Persistent State Manager
 IS_STUDY_MODE_ACTIVE = False
@@ -58,28 +56,36 @@ def save_memory_fact(fact_str):
         with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
 
-def perform_direct_google_search(query, max_results=5):
-    """Searches Google directly without an API key and extracts snippet content."""
+def perform_direct_google_search(query):
+    """Directly queries Google search endpoints and extracts paragraph text without an API key."""
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
-    fetched_context = []
+    encoded_query = urllib.parse.quote(query)
+    google_url = f"https://www.google.com/search?q={encoded_query}&hl=en"
+    
+    extracted_data = []
     try:
-        # Get live Google search result URLs
-        urls = list(search(query, num_results=max_results, lang="en"))
-        for url in urls[:3]:
-            try:
-                res = requests.get(url, headers=headers, timeout=4)
-                if res.status_code == 200:
-                    soup = BeautifulSoup(res.text, "html.parser")
-                    paragraphs = soup.find_all("p")
-                    text_snippet = " ".join([p.get_text() for p in paragraphs[:3]]).strip()
-                    if text_snippet:
-                        fetched_context.append(f"🌐\n{text_snippet[:400]}...")
-            except Exception:
-                continue
-        if fetched_context:
-            return "\n\n".join(fetched_context)
+        response = requests.get(google_url, headers=headers, timeout=5)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Extract standard Google snippet containers
+            snippets = soup.find_all(['div', 'span'], class_=re.compile(r'(VwiC3b|yXMda|MUxGv|Hg231c)'))
+            for s in snippets:
+                txt = s.get_text().strip()
+                if len(txt) > 30 and txt not in extracted_data:
+                    extracted_data.append(txt)
+                    
+            if not extracted_data:
+                paragraphs = soup.find_all('p')
+                for p in paragraphs:
+                    txt = p.get_text().strip()
+                    if len(txt) > 30:
+                        extracted_data.append(txt)
+                        
+        if extracted_data:
+            return "\n\n".join(extracted_data[:4])
     except Exception as e:
         print(f"[GOOGLE SEARCH ENGINE WARNING]: {e}")
     return None
@@ -302,23 +308,23 @@ def ask():
     reasoning_steps = None
 
     if inferred_intent == "TOGGLE_STUDY_MODE_ON":
-        reply = f"🎓 **STUDY MODE ACTIVATED**. Google Search integration enabled for real-time information query."
+        reply = f"🎓 **STUDY MODE ACTIVATED**. Google Search integration enabled."
 
     elif inferred_intent == "TOGGLE_STUDY_MODE_OFF":
         reply = f"🎓 **STUDY MODE DISABLED**."
 
     elif inferred_intent == "STUDY_ASSISTANT":
-        # Pull live query results directly from Google Search
+        # Direct Google search retrieval
         google_context = perform_direct_google_search(user_prompt)
 
         teacher_prompt = (
-            "You are E.V.A.S. Study Companion. Use the retrieved live Google search data below to give an accurate, detailed explanation or notes. "
-            "Explain directly and clearly as a supportive classroom tutor in BBC Bitesize style."
+            "You are E.V.A.S. Study Companion. Use the retrieved Google search telemetry below to generate clear, patient classroom-style explanations or notes in BBC Bitesize format. "
+            "Never display raw HTML or code snippets."
         )
 
         if HAS_OLLAMA:
             try:
-                prompt_content = f"Question: {user_prompt}\n\nLive Google Search Context:\n{google_context if google_context else 'No live data found.'}"
+                prompt_content = f"Question: {user_prompt}\n\nGoogle Search Data:\n{google_context if google_context else 'No extra search context found.'}"
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
                     messages=[{"role": "system", "content": teacher_prompt}, {"role": "user", "content": prompt_content}],
@@ -334,7 +340,7 @@ def ask():
 
         if not reply:
             if google_context:
-                reply = f"### 🔍 GOOGLE SEARCH TELEMETRY RESULTS:\n\n{google_context}"
+                reply = f"### 🌐 GOOGLE SEARCH RESULTS:\n\n{google_context}"
             else:
                 reply = f"Processed request: {user_prompt}"
 
