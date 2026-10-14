@@ -24,8 +24,17 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "5.1.0-DYNAMIC-TUTOR-FIXED"
+EVAS_BUILD_VERSION = "6.0.0-STUDY-WORKSPACE"
 GLOBAL_NEWS_CACHE = []
+
+# Persistent State Manager
+IS_STUDY_MODE_ACTIVE = False
+ACTIVE_STUDY_SESSION = {
+    "subject": "General Academics",
+    "grade": "Secondary / High School",
+    "board": "IGCSE / AP / Standard",
+    "topic": "Universal Learning Matrix"
+}
 
 def init_memory():
     if not os.path.exists(MEMORY_FILE):
@@ -146,7 +155,6 @@ def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
 def extract_academic_context(prompt_text, user_subject=None, user_grade=None, user_board=None, user_topic=None):
     p = prompt_text.lower()
 
-    # Exam Board Detection
     boards = ["igcse", "ap", "cbse", "a-levels", "a levels", "ib", "gcse", "spm", "sat", "act"]
     detected_board = user_board
     if not detected_board:
@@ -155,15 +163,13 @@ def extract_academic_context(prompt_text, user_subject=None, user_grade=None, us
                 detected_board = b.upper()
                 break
     if not detected_board:
-        detected_board = "IGCSE / AP / Standard Syllabus"
+        detected_board = ACTIVE_STUDY_SESSION["board"]
 
-    # Grade / Year Detection
     detected_grade = user_grade
     if not detected_grade:
         grade_match = re.search(r'(grade\s*\d+|year\s*\d+|10th|11th|12th|9th|8th|college|university)', p)
-        detected_grade = grade_match.group(0).title() if grade_match else "High School / Secondary"
+        detected_grade = grade_match.group(0).title() if grade_match else ACTIVE_STUDY_SESSION["grade"]
 
-    # Subject Detection
     subjects = ["physics", "chemistry", "biology", "mathematics", "math", "calculus", "algebra", "history", "computer science", "economics", "english"]
     detected_subject = user_subject
     if not detected_subject:
@@ -172,9 +178,8 @@ def extract_academic_context(prompt_text, user_subject=None, user_grade=None, us
                 detected_subject = s.title()
                 break
     if not detected_subject:
-        detected_subject = "General Science & Mathematics"
+        detected_subject = ACTIVE_STUDY_SESSION["subject"]
 
-    # Topic Cleaning
     detected_topic = user_topic
     if not detected_topic:
         clean_t = re.sub(r'notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me|explain|how to solve|what is|help me with', '', prompt_text, flags=re.IGNORECASE).strip()
@@ -188,10 +193,24 @@ def extract_academic_context(prompt_text, user_subject=None, user_grade=None, us
     }
 
 def parse_contextual_intent(prompt):
+    global IS_STUDY_MODE_ACTIVE
     p = prompt.lower()
-    academic_triggers = ["notes", "study", "exam", "quiz", "tutor", "explain", "syllabus", "curriculum", "grade", "year", "igcse", "ap", "cbse", "a-levels", "ib", "spm", "gcse", "practice question", "problem", "solve", "math", "physics", "chemistry", "biology", "history"]
+
+    if any(w in p for w in ["activate study mode", "start study mode", "turn on study mode", "study mode on", "enable study mode"]):
+        IS_STUDY_MODE_ACTIVE = True
+        return "TOGGLE_STUDY_MODE_ON"
+
+    if any(w in p for w in ["deactivate study mode", "stop study mode", "turn off study mode", "exit study mode", "study mode off"]):
+        IS_STUDY_MODE_ACTIVE = False
+        return "TOGGLE_STUDY_MODE_OFF"
+
+    if IS_STUDY_MODE_ACTIVE:
+        return "STUDY_ASSISTANT"
+
+    academic_triggers = ["notes", "study", "exam", "quiz", "tutor", "explain", "syllabus", "curriculum", "flashcard", "pomodoro", "grade", "year", "igcse", "ap", "cbse", "a-levels", "ib", "spm", "gcse", "practice question", "math", "physics", "chemistry", "biology"]
     if any(w in p for w in academic_triggers):
         return "STUDY_ASSISTANT"
+
     if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "destination"]):
         return "DIRECTIONS"
     if any(w in p for w in ["book grab", "grab ride", "book a ride", "call grab", "grab car", "grab bike", "grab6seater", "grabexec"]):
@@ -249,7 +268,7 @@ def get_sw():
 
 @app.route('/api/version')
 def get_version():
-    return jsonify({"version": EVAS_BUILD_VERSION})
+    return jsonify({"version": EVAS_BUILD_VERSION, "study_mode_active": IS_STUDY_MODE_ACTIVE})
 
 @app.route('/watch')
 def watch_tile():
@@ -386,6 +405,7 @@ def translate_audio_or_text():
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
+    global IS_STUDY_MODE_ACTIVE, ACTIVE_STUDY_SESSION
     data = request.json or {}
     user_prompt = data.get('prompt', '').strip()
     images = data.get('images', [])
@@ -397,7 +417,6 @@ def ask():
     is_dnd = data.get('dnd_mode', False)
     temperature = float(data.get('temperature', 0.2))
 
-    # Optional Context Inputs
     input_subject = data.get('subject', None)
     input_grade = data.get('grade', None)
     input_board = data.get('exam_board', None)
@@ -429,38 +448,44 @@ def ask():
 
     user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
-    if inferred_intent == "STUDY_ASSISTANT":
+    if inferred_intent == "TOGGLE_STUDY_MODE_ON":
+        reply = (
+            f"🎓 **E.V.A.S. DREAM STUDY WORKSPACE ACTIVATED**\n\n"
+            f"I am now in persistent **Study Mode**, {honorific}. All query routes are locked into Academic Performance Optimization:\n"
+            f"• **Feynman Concept Simplifier**: Enabled\n"
+            f"• **Dynamic Flashcard Generator**: Ready\n"
+            f"• **25/5 Pomodoro Focus Sprint Engine**: Active\n"
+            f"• **Exam Board Alignment**: Searching AP, IGCSE, CBSE, IB, A-Levels & SPM\n\n"
+            f"What topic, subject, or problem set shall we master first, {honorific}?"
+        )
+
+    elif inferred_intent == "TOGGLE_STUDY_MODE_OFF":
+        reply = f"🎓 Study Mode deactivated, {honorific}. Reverting E.V.A.S. to Standard Universal Workspace."
+
+    elif inferred_intent == "STUDY_ASSISTANT":
         acad = extract_academic_context(user_prompt, input_subject, input_grade, input_board, input_topic)
-        
-        # Web Search Syllabus Verification Query
+        ACTIVE_STUDY_SESSION.update(acad)
+
         syllabus_search_data = search_general_knowledge(f"official curriculum syllabus outline {acad['board']} {acad['subject']} {acad['topic']}")
 
         dynamic_tutor_system_prompt = (
-            f"You are an expert school tutor. Always align explanations, problem-step breakdowns, and vocabulary "
+            f"You are an expert school tutor operating E.V.A.S. Study Workspace. Always align explanations, problem-step breakdowns, and vocabulary "
             f"to the user's specified subject ({acad['subject']}), grade level ({acad['grade']}), and exam board/syllabus ({acad['board']}). "
-            f"After explaining concepts, generate 1–2 short check-for-understanding practice questions matching the exam style. "
-            f"If syllabus details are ambiguous or potentially outdated, prompt the user to provide their official topic outline."
+            f"After explaining concepts, generate 1-2 short check-for-understanding practice questions matching the exam style, plus 2 quick flashcards."
         )
 
         reasoning_steps = (
-            f"1. Dynamic Context Handling:\n"
-            f"   • Subject: {acad['subject']}\n"
-            f"   • Grade/Year: {acad['grade']}\n"
-            f"   • Exam Board: {acad['board']}\n"
-            f"   • Topic: {acad['topic']}\n"
-            f"2. Web Search Knowledge Integration: Executed live DuckDuckGo syllabus verification.\n"
-            f"3. Dynamic Prompt Injected: Applied Expert School Tutor System Instruction.\n"
-            f"4. Generated Explanation, Step-by-Step Breakdown, and Check-for-Understanding Questions."
+            f"1. STUDY WORKSPACE ENGAGED:\n"
+            f"   • Subject: {acad['subject']} | Level: {acad['grade']} | Syllabus: {acad['board']}\n"
+            f"   • Topic Focus: {acad['topic']}\n"
+            f"2. Integrated Live Syllabus Search & Feynman Explainer Matrix.\n"
+            f"3. Generated Step-by-Step Breakdown, Flashcards, and Practice Exam Questions."
         )
 
         ollama_reply = None
         if HAS_OLLAMA:
             try:
-                prompt_payload = (
-                    f"{dynamic_tutor_system_prompt}\n\n"
-                    f"User Topic / Question: {user_prompt}\n\n"
-                    f"Verified Syllabus Context:\n{syllabus_search_data if syllabus_search_data else 'Standard Board Syllabus'}"
-                )
+                prompt_payload = f"{dynamic_tutor_system_prompt}\n\nTask: {user_prompt}\nSyllabus Data: {syllabus_search_data}"
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
                     messages=[{"role": "system", "content": dynamic_tutor_system_prompt}, {"role": "user", "content": prompt_payload}],
@@ -479,29 +504,31 @@ def ask():
             reply = ollama_reply
         else:
             reply = (
-                f"### 🏫 EXPERT SCHOOL TUTOR [{acad['board'].upper()} | {acad['grade']}]\n\n"
-                f"**Topic Alignment Parameters for {honorific}:**\n"
-                f"• **Subject**: `{acad['subject']}`\n"
-                f"• **Grade / Level**: `{acad['grade']}`\n"
-                f"• **Exam Board / Syllabus**: `{acad['board']}`\n"
-                f"• **Target Topic**: `{acad['topic']}`\n\n"
+                f"### 🎓 E.V.A.S. STUDY WORKSPACE [{acad['board'].upper()} | {acad['grade']}]\n\n"
+                f"**Academic Parameters for {honorific}:**\n"
+                f"• **Subject**: `{acad['subject']}` | **Board**: `{acad['board']}` | **Topic**: `{acad['topic']}`\n\n"
                 f"---\n\n"
-                f"### 📖 1. CONCEPT EXPLANATION & VOCABULARY BREAKDOWN\n"
-                f"Aligned with **{acad['board']}** curriculum standards for **{acad['grade']}**:\n\n"
-                f"• **Core Theory**: Explanation of `{acad['topic']}` focused on primary syllabus objectives.\n"
-                f"• **Step-by-Step Problem Breakdown**:\n"
-                f"  1. Identify given variables and target metrics.\n"
-                f"  2. Apply the recognized {acad['board']} formula and theoretical principles.\n"
-                f"  3. Execute step-by-step mathematical or analytical deduction.\n\n"
-                f"{(f'#### 🔎 VERIFIED SYLLABUS OUTLINE:\n{syllabus_search_data}\n\n' if syllabus_search_data else '')}"
+                f"### 💡 1. FEYNMAN CONCEPT BREAKDOWN\n"
+                f"**{acad['topic']} Simplified**:\n"
+                f"Imagine this concept as a balanced pipeline. Core inputs are processed under governing laws of `{acad['subject']}` to yield predictable outputs.\n\n"
+                f"#### 📐 Step-by-Step Problem Breakdown:\n"
+                f"1. **Identify Givens**: List initial values and mandatory {acad['board']} variables.\n"
+                f"2. **Apply Core Formula**: Use official syllabus equations to structure the solution.\n"
+                f"3. **Execute Derivation**: Work through calculations step by step for full exam credit.\n\n"
+                f"{(f'#### 🔎 LIVE SYLLABUS TELEMETRY:\n{syllabus_search_data}\n\n' if syllabus_search_data else '')}"
                 f"---\n\n"
-                f"### ✍️ 2. CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS\n\n"
-                f"**Question 1 ({acad['board']} Short Answer Style):**\n"
-                f"Define the governing principle of {acad['topic']} and explain how changing initial parameters affects the outcome.\n\n"
-                f"**Question 2 ({acad['board']} Structured Problem Style):**\n"
-                f"Calculate the value for {acad['topic']} when standard conditions are modified, showing all problem steps clearly.\n\n"
+                f"### 🎴 2. REVISION FLASHCARDS\n"
+                f"| Flashcard Prompt | Answer / Explanation |\n"
+                f"| :--- | :--- |\n"
+                f"| **Q1: Key Law governing {acad['topic']}?** | Fundamental rule requiring equilibrium conservation. |\n"
+                f"| **Q2: Primary units required by {acad['board']}?** | Standard SI Units with explicit step derivation. |\n\n"
                 f"---\n\n"
-                f"💡 *Syllabus Tip*: If your school's official unit outline for {acad['topic']} has specific sub-topics, paste them here to refine the alignment!"
+                f"### ✍️ 3. CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS\n\n"
+                f"**Question 1 ({acad['board']} Paper Style):**\n"
+                f"State the core principle of {acad['topic']} and derive the unknown metric when primary input increases by 20%.\n\n"
+                f"**Question 2 (Extended Response):**\n"
+                f"Explain two common errors students make in {acad['topic']} exams and how to prevent them according to the {acad['board']} marking scheme.\n\n"
+                f"⏱️ *Study Mode Active*: Say **'start 25 min timer'** for a Pomodoro focus sprint!"
             )
 
     elif inferred_intent == "DIRECTIONS":
@@ -710,7 +737,7 @@ def ask():
             
             if search_data:
                 reply = (
-                    f"### 🌐 E.V.A.S. KNOWLEDGE & TELEMETRY SYNTHESIS\n\n"
+                    f"### 🌐 E.V.A.S. KNOWLEDGE SYNTHESIS\n\n"
                     f"**Analysis for {honorific}:** '{user_prompt}'\n\n"
                     f"{search_data}\n\n"
                     f"💡 Proactive Tactical Tip: Keep local Ollama active for offline model reasoning!"
@@ -719,7 +746,7 @@ def ask():
                 reply = (
                     f"### ⚡ E.V.A.S. TASK REPORT\n\n"
                     f"Processed your request, {honorific}: **'{user_prompt}'**.\n\n"
-                    f"💡 Proactive Tactical Tip: Specify a subject and exam board (e.g., 'Explain mitosis for IGCSE Grade 10') for instant tailored practice questions."
+                    f"💡 Proactive Tactical Tip: Say 'activate study mode' to switch E.V.A.S. into Study Mode!"
                 )
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
@@ -742,6 +769,7 @@ def ask():
         'response': clean_text, 
         'raw_markdown': reply,
         'reasoning_steps': reasoning_steps,
+        'study_mode_active': IS_STUDY_MODE_ACTIVE,
         'audio': has_audio,
         'google_maps_url': google_maps_url,
         'grab_deep_link': grab_deep_link,

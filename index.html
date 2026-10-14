@@ -168,6 +168,13 @@
             animation: pulseVoice 1.2s infinite;
         }
 
+        .study-mode-active-btn {
+            background: #bd00ff !important;
+            color: #ffffff !important;
+            border-color: #bd00ff !important;
+            box-shadow: 0 0 15px #bd00ff !important;
+        }
+
         @keyframes pulseVoice {
             0% { transform: scale(1); }
             50% { transform: scale(1.05); }
@@ -281,10 +288,15 @@
         </div>
     </div>
 
+    <!-- TOP NAVIGATION BAR WITH STUDY MODE BAR -->
     <div class="hud-top-bar">
         <div><span class="status-pill"></span>E.V.A.S. // CORE MASTER</div>
         <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
+        
+        <!-- STUDY MODE BAR BUTTON -->
+        <button id="studyModeBtn" onclick="toggleStudyModeUI()" style="border-color:#bd00ff; color:#bd00ff;">🎓 STUDY MODE: OFF</button>
+        
         <button id="pwaInstallBtn" style="display:none; border-color:#00f3ff; color:#00f3ff;" onclick="installEVASApp()">📲 INSTALL APP</button>
         <button id="continuousVoiceBtn" onclick="toggleContinuousVoiceChat()">🎙️ VOICE CHAT: OFF</button>
         <button onclick="showWelcomeScreenManual()">📖 TACTICAL GUIDE</button>
@@ -328,7 +340,8 @@
                 • CHATGPT SUITE: ACTIVE<br>
                 • GEMINI MULTIMODAL: ACTIVE<br>
                 • DEEPSEEK REASONING: ACTIVE<br>
-                BUILD VERSION: <span id="appBuildVersionTag">4.0.0</span><br>
+                BUILD VERSION: <span id="appBuildVersionTag">6.0.0</span><br>
+                STUDY MODE: <span id="studyModeTelemetryTag" style="color:#ff9d00; font-weight:bold;">STANDBY</span><br>
                 VOICE CHAT: <span id="voiceChatStatusTag" style="color:#ff9d00;">READY</span><br>
                 LAZADA TO-RECEIVE: 2 ORDERS<br>
                 INTERRUPT KEY: ESC / F9
@@ -341,7 +354,7 @@
     </div>
 
     <div class="hud-center-pill">
-        <textarea id="userInput" placeholder="Ask E.V.A.S. anything or give any task command..."></textarea>
+        <textarea id="userInput" placeholder="Ask E.V.A.S. anything or activate study mode..."></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
@@ -433,8 +446,9 @@
         let userHonorific = "Sir", customWakeWord = "evas", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
         let currentLat = 5.2971, currentLon = 100.2588;
         let deferredPwaPrompt = null;
-        let currentInstalledVersion = "4.0.0-FULL-SUITE";
+        let currentInstalledVersion = "6.0.0-STUDY-WORKSPACE";
         let isVoiceChatActive = false;
+        let isStudyModeActiveUI = false;
         let voiceChatRecognition = null;
 
         const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
@@ -520,6 +534,30 @@
             );
         }
 
+        function toggleStudyModeUI() {
+            if (isStudyModeActiveUI) {
+                sendCommandCustom("deactivate study mode");
+            } else {
+                sendCommandCustom("activate study mode");
+            }
+        }
+
+        function updateStudyModeBadgeState(isActive) {
+            isStudyModeActiveUI = isActive;
+            const btn = document.getElementById('studyModeBtn');
+            const tag = document.getElementById('studyModeTelemetryTag');
+
+            if (isActive) {
+                btn.classList.add('study-mode-active-btn');
+                btn.innerText = "🎓 STUDY MODE: LIVE";
+                if (tag) { tag.innerText = "ACTIVE"; tag.style.color = "#bd00ff"; }
+            } else {
+                btn.classList.remove('study-mode-active-btn');
+                btn.innerText = "🎓 STUDY MODE: OFF";
+                if (tag) { tag.innerText = "STANDBY"; tag.style.color = "#ff9d00"; }
+            }
+        }
+
         function toggleContinuousVoiceChat() {
             const btn = document.getElementById('continuousVoiceBtn');
             const statusTag = document.getElementById('voiceChatStatusTag');
@@ -586,10 +624,11 @@
 Full AI Workspace Capabilities Initialized (Gemini + ChatGPT Suite + DeepSeek R1).
 
 --- E.V.A.S. FULL AI SUITE FEATURES ---
-1. FULL CHATGPT CAPABILITIES: Multi-step research synthesis, code execution, structured documents, persistent memory, and project workflows.
-2. LAZADA 'TO RECEIVE' TRACKING: Live monitoring for undelivered orders with instant phone push notifications.
-3. DIRECT GRAB RIDE SELECTION PAGE: Automatically pre-fills your dropoff target and opens straight to vehicle options.
-4. CONTINUOUS VOICE CHAT: Hands-free listening and verbal speech engine.
+1. DREAM STUDY WORKSPACE MODE: Feynman concept explainer, flashcard matrix, syllabus search, and exam-style questions.
+2. FULL CHATGPT CAPABILITIES: Multi-step research synthesis, code execution, structured documents, and persistent memory.
+3. LAZADA 'TO RECEIVE' TRACKING: Live monitoring for undelivered orders with instant phone push notifications.
+4. DIRECT GRAB RIDE SELECTION PAGE: Pre-fills your dropoff target and opens straight to vehicle options.
+5. CONTINUOUS VOICE CHAT: Hands-free listening and verbal speech engine.
 
 All core systems online. Awaiting your command, Sir.`;
 
@@ -725,7 +764,7 @@ All core systems online. Awaiting your command, Sir.`;
             }
 
             const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Universal AI Workspace online. Type or speak any request.</div>`;
+            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Universal AI Workspace online. Type or speak any request, or press [🎓 STUDY MODE].</div>`;
         });
 
         function stopVoicePlaybackImmediate() {
@@ -959,6 +998,10 @@ All core systems online. Awaiting your command, Sir.`;
                     })
                 });
                 const data = await res.json();
+
+                if (typeof data.study_mode_active !== 'undefined') {
+                    updateStudyModeBadgeState(data.study_mode_active);
+                }
 
                 const cctvImg = document.getElementById('cctvVideoFeed');
                 const orbTag = document.getElementById('orbStatusTag');
