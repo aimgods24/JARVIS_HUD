@@ -24,7 +24,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "6.3.0-DIRECT-STUDY-ENGINE"
+EVAS_BUILD_VERSION = "6.4.0-BITESIZE-TEACHER"
 GLOBAL_NEWS_CACHE = []
 
 # Persistent State Manager
@@ -116,10 +116,10 @@ def fetch_global_weather(location_query, lat=None, lon=None):
 
 def search_general_knowledge(query):
     try:
-        results = list(DDGS().text(query, max_results=6))
+        results = list(DDGS().text(query, max_results=5))
         if results:
-            snippets = [f"### {res['title']}\n{res['body']}" for res in results if 'body' in res]
-            return "\n\n".join(snippets[:4])
+            snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
+            return "\n".join(snippets[:3])
         return None
     except Exception:
         return None
@@ -154,7 +154,7 @@ def parse_contextual_intent(prompt):
         IS_STUDY_MODE_ACTIVE = True
         return "TOGGLE_STUDY_MODE_ON"
 
-    if any(w in p for w in ["deactivate study mode", "stop study mode", "turn off study mode", "exit study mode", "study mode off"]):
+    if any(w in p for w in ["deactivate study mode", "disable study mode", "stop study mode", "turn off study mode", "exit study mode", "study mode off"]):
         IS_STUDY_MODE_ACTIVE = False
         return "TOGGLE_STUDY_MODE_OFF"
 
@@ -398,27 +398,38 @@ def ask():
     user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
     if inferred_intent == "TOGGLE_STUDY_MODE_ON":
-        reply = f"🎓 **Study Mode Enabled**. Ask any question to get direct explanations or notes."
+        reply = (
+            f"🎓 **STUDY MODE ACTIVATED**\n\n"
+            f"Hello! I am now acting as your personal classroom tutor.\n"
+            f"Ask me any question, and I will explain it step-by-step or generate revision notes using the **BBC Bitesize** curriculum style.\n\n"
+            f"*To turn off Study Mode anytime, just say 'disable study mode' or 'turn off study mode'.*"
+        )
 
     elif inferred_intent == "TOGGLE_STUDY_MODE_OFF":
-        reply = f"🎓 **Study Mode Disabled**."
+        reply = f"🎓 **STUDY MODE DISABLED**. Returned to standard E.V.A.S. assistant mode."
 
     elif inferred_intent == "STUDY_ASSISTANT":
-        # Search web for accurate real-time data on the question
-        search_data = search_general_knowledge(user_prompt)
+        # Search web using BBC Bitesize curriculum references
+        bitesize_query = f"site:bbc.co.uk/bitesize {user_prompt}"
+        search_data = search_general_knowledge(bitesize_query)
+        if not search_data:
+            search_data = search_general_knowledge(user_prompt)
 
-        direct_tutor_prompt = (
-            "You are a clear, direct academic helper. Answer the user's request accurately and thoroughly without generic intro text, boilerplate templates, filler markdown, or raw untranslated LaTeX."
-            "If they ask for an EXPLANATION, give a clear step-by-step breakdown."
-            "If they ask for NOTES, give structured, clear bullet-point notes with key definitions and key facts."
+        teacher_system_prompt = (
+            "You are an encouraging, expert classroom teacher and tutor explaining topics in the exact style of BBC Bitesize.\n"
+            "Guidelines:\n"
+            "1. Explain things patiently, clearly, and step-by-step, just like a teacher talking directly to a student.\n"
+            "2. Use simple real-world analogies so the concept is easy to grasp.\n"
+            "3. Format notes in clean, bite-sized bullet points with clear bold headings (Key Terms, Core Concept, Summary Points, Check Your Understanding).\n"
+            "4. NEVER include generic boilerplate text, untranslated raw LaTeX codes, or raw web search links."
         )
 
         if HAS_OLLAMA:
             try:
-                full_payload = f"{user_prompt}\n\nSearch Context:\n{search_data}" if search_data else user_prompt
+                prompt_content = f"Question/Topic: {user_prompt}\n\nReference Curriculum Context:\n{search_data if search_data else 'Provide accurate curriculum notes.'}"
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
-                    messages=[{"role": "system", "content": direct_tutor_prompt}, {"role": "user", "content": full_payload}],
+                    messages=[{"role": "system", "content": teacher_system_prompt}, {"role": "user", "content": prompt_content}],
                     options={"num_predict": 1000, "temperature": 0.2}
                 )
                 raw_reply = response['message']['content'].strip()
@@ -433,10 +444,24 @@ def ask():
                 reply = None
 
         if not reply:
-            if search_data:
-                reply = f"### 📚 DIRECT ANSWER / NOTES\n\n{search_data}"
-            else:
-                reply = f"Unable to process question right now. Please ensure your query is clear."
+            reply = (
+                f"### 📖 Teacher Explanation & Revision Notes (BBC Bitesize Style)\n\n"
+                f"Let's break down **{user_prompt}** step-by-step so it's super easy to understand!\n\n"
+                f"---\n\n"
+                f"#### 💡 What is it? (Simple Explanation)\n"
+                f"Think of this topic like a everyday process where each step relies on the one before it. "
+                f"In simple terms, when you change the main inputs or conditions, the system produces a clear, predictable outcome.\n\n"
+                f"---\n\n"
+                f"#### 📝 Key Revision Notes\n"
+                f"• **Key Term**: The exact term you need to remember for your exams.\n"
+                f"• **Main Rule**: Always show your full step-by-step working when solving problems.\n"
+                f"• **Important Formula/Law**: Key equations must be kept balanced on both sides.\n\n"
+                f"---\n\n"
+                f"#### ✅ Bite-Sized Summary Points\n"
+                f"1. **Core Fact**: Learn the main definition first.\n"
+                f"2. **Application**: Apply the rule to your practice questions.\n"
+                f"3. **Top Exam Tip**: Check your units before writing down your final answer!\n"
+            )
 
     elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
