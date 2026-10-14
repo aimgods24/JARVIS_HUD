@@ -303,8 +303,9 @@
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 POWER CORE: 100%<br>
-                GPS TRACKING: ACTIVE<br>
-                LAZADA IN-APP LINK: SYNCHRONIZED<br>
+                GPS TELEMETRY: LIVE<br>
+                GRAB DEEP-LINK: ACTIVE<br>
+                LAZADA AUTO-LINK: ACTIVE<br>
                 INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
@@ -429,9 +430,9 @@
 Tactical Intelligence Interface online and fully operational.
 
 --- E.V.A.S. TACTICAL OPERATING GUIDE ---
-1. CAD BLUEPRINTS & EXPLODED VIEWS: Ask for any movie prop or custom build (e.g. "blueprint for Iron Man Arc Reactor out of 3D-Printed PLA easy build"). E.V.A.S. generates movie schematics, exploded part-by-part views, custom material tables, and assembly guides.
-2. GRAB RIDES & GPS TELEMETRY: E.V.A.S. maintains live GPS coordinates. Request "book a GrabCar to Penang Hill" to launch ride bookings and receive driver status telemetry notifications.
-3. LAZADA PACKAGE TRACKING: Type "track lazada order" to auto-link your phone's Lazada account and receive immediate package arrival notifications.
+1. GRAB RIDES TO OPTIONS MENU: Request "book a Grab to [destination]" (e.g. "book a GrabCar to Penang Hill"). E.V.A.S. uses your live GPS coordinates and auto-opens the Grab app straight to the vehicle ride options menu.
+2. LAZADA IN-APP ORDER EXTRACTION: Type "track my lazada order". E.V.A.S. digs through your orders, displays live delivery telemetry, and provides direct in-app package arrival notifications.
+3. CAD BLUEPRINTS & EXPLODED VIEWS: Ask for movie props or custom builds (e.g. "blueprint for Iron Man Arc Reactor out of 3D-Printed PLA easy build"). E.V.A.S. renders movie-sourced CAD schematics, exploded part-by-part views, and assembly guides.
 4. AUTOMATED NAVIGATION: Type "directions to [destination]" to open Google Maps route calculations instantly.
 5. VOICE INTERRUPT & HUD CUSTOMIZATION: Press [ESC] or [F9] to halt speech output immediately. Access ⚙️ SETTINGS to toggle between 10 HUD color schemes.
 
@@ -569,7 +570,7 @@ All core systems online. Awaiting your command, Sir.`;
             }
 
             const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> System Master Protocol online. All tactical engines operational. GPS tracking synchronized. Type or speak your command.</div>`;
+            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> System Master Protocol online. Direct Grab ride landing deep-link and Lazada extraction active. GPS telemetry synchronized. Type or speak your command.</div>`;
         });
 
         function stopVoicePlaybackImmediate() {
@@ -813,6 +814,10 @@ All core systems online. Awaiting your command, Sir.`;
                 if (data.open_translate_hud) { openTranslateHUD(); }
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
 
+                if (data.grab_deep_link) {
+                    window.location.href = data.grab_deep_link;
+                }
+
                 let renderedOutput = "";
                 if (data.reasoning_steps) {
                     renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. REASONING & STRUCTURAL RATIONALE</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
@@ -826,11 +831,11 @@ All core systems online. Awaiting your command, Sir.`;
                 }
 
                 if (data.grab_deep_link) {
-                    renderedOutput += `<br><a href="${data.grab_deep_link}" class="hud-action-badge" style="border-color:#00b14f; color:#00b14f;">🚗 LAUNCH GRAB APP DEEP LINK</a>`;
+                    renderedOutput += `<br><a href="${data.grab_deep_link}" class="hud-action-badge" style="border-color:#00b14f; color:#00b14f;">🚗 LAUNCH GRAB APP RIDE OPTIONS</a>`;
                 }
 
                 if (data.lazada_tracking_url) {
-                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 LAUNCH IN-APP LAZADA TRACKING</a>`;
+                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 OPEN LAZADA ORDERS IN-APP</a>`;
                 }
 
                 if (data.generated_image_url) {

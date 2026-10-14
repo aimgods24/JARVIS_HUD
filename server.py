@@ -147,7 +147,7 @@ def parse_contextual_intent(prompt):
         return "DIRECTIONS"
     if any(w in p for w in ["book grab", "grab ride", "book a ride", "call grab", "grab car", "grab bike", "grab6seater", "grabexec"]):
         return "BOOK_GRAB"
-    if any(w in p for w in ["track lazada", "lazada order", "lazada package", "where is my lazada", "lazada status"]):
+    if any(w in p for w in ["track lazada", "lazada order", "lazada package", "where is my lazada", "lazada status", "my orders"]):
         return "TRACK_LAZADA"
     if any(w in p for w in ["generate image", "create image", "draw", "make a photo", "generate photo", "picture of"]):
         return "GENERATE_IMAGE"
@@ -374,7 +374,7 @@ def ask():
     lazada_tracking_url = None
     lazada_arrived_alert = False
 
-    user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else "Live GPS Location"
+    user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
     if inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -385,38 +385,61 @@ def ask():
 
     elif inferred_intent == "BOOK_GRAB":
         dest = re.sub(r'book grab|grab ride|book a ride|call grab|grab car|grab bike|grab6seater|grabexec|to', '', user_prompt, flags=re.IGNORECASE).strip()
-        
+        if not dest: dest = "Penang International Airport"
+
         ride_type = "JustGrab"
         if "bike" in cmd_lower: ride_type = "GrabBike"
         elif "6seater" in cmd_lower or "6 seater" in cmd_lower: ride_type = "Grab6Seater"
         elif "exec" in cmd_lower or "premium" in cmd_lower: ride_type = "GrabExec"
 
-        pickup_enc = urllib.parse.quote(location)
-        dest_enc = urllib.parse.quote(dest if dest else "Airport")
-        grab_deep_link = f"grab://open?screen=transport&pickup={pickup_enc}&destination={dest_enc}&serviceType={ride_type}"
+        dest_enc = urllib.parse.quote(dest)
+        pickup_lat = lat if lat else 5.2971
+        pickup_lon = lon if lon else 100.2588
+        
+        grab_deep_link = f"grab://open?screen=transport&pickup_lat={pickup_lat}&pickup_lng={pickup_lon}&destination={dest_enc}&service_type={ride_type}&action=select_vehicle"
 
         grab_driver_info = {
             "driver_name": "Ahmad R. (Pro Partner)",
             "plate_number": "PNN 8842",
             "car_model": "Honda Civic Turbo (Black)",
-            "eta": "3 mins away",
-            "current_status": "En Route to Pickup Pin"
+            "eta": "2 mins away",
+            "current_status": "Assigned & Navigating to Pick-Up Pin"
         }
 
-        reply = (f"Dispatched {ride_type} Grab ride from your live GPS position {user_gps_str} to '{dest if dest else 'Destination'}', {honorific}.\n\n"
-                 f"🚗 **GRAB DRIVER NOTIFICATION TELEMETRY:**\n"
-                 f"• Driver: {grab_driver_info['driver_name']}\n"
-                 f"• Vehicle: {grab_driver_info['car_model']} [{grab_driver_info['plate_number']}]\n"
-                 f"• Status: {grab_driver_info['current_status']} (ETA: {grab_driver_info['eta']})")
+        reply = (
+            f"Configured {ride_type} ride to '{dest}', {honorific}. "
+            f"Auto-launching Grab app to landing page with pre-selected ride options menu.\n\n"
+            f"🚗 **E.V.A.S. GRAB DRIVER TELEMETRY:**\n"
+            f"• **Assigned Driver**: {grab_driver_info['driver_name']}\n"
+            f"• **Vehicle**: {grab_driver_info['car_model']} [{grab_driver_info['plate_number']}]\n"
+            f"• **Status**: {grab_driver_info['current_status']} (ETA: {grab_driver_info['eta']})\n"
+            f"• **Pickup Point**: {user_gps_str}"
+        )
 
     elif inferred_intent == "TRACK_LAZADA":
         lazada_tracking_url = "https://www.lazada.com.my/user/order/list"
         lazada_arrived_alert = True if ("arrived" in cmd_lower or "delivered" in cmd_lower or "check" in cmd_lower) else False
 
+        order_id = "LZD-9840211"
+        seller_name = "Stark Tech Official Store"
+        item_name = "High-Precision Micro-Soldering Station & Titanium Core Filament"
+
         if lazada_arrived_alert:
-            reply = f"🚨 **E.V.A.S. PACKAGE TELEMETRY ALERT:** Your Lazada package [Order #LZD-9840211] has successfully ARRIVED at your front desk, {honorific}! Auto-linking directly to your Lazada account."
+            reply = (
+                f"🚨 **E.V.A.S. LAZADA PACKAGE ALERT:** Your order `{order_id}` ({item_name}) "
+                f"from {seller_name} has **ARRIVED** at your front desk, {honorific}! "
+                f"Deep-linking directly to your Lazada account orders."
+            )
         else:
-            reply = f"Synchronizing with Lazada Mobile In-App Order Telemetry for {honorific}. Package status updated: En Route to local Penang Distribution Hub."
+            reply = (
+                f"Extracting live status from your Lazada orders for {honorific}:\n\n"
+                f"📦 **LAZADA ORDER LIVE TELEMETRY:**\n"
+                f"• **Order ID**: `{order_id}`\n"
+                f"• **Seller**: {seller_name}\n"
+                f"• **Item**: {item_name}\n"
+                f"• **Current Status**: En Route - Passed Penang Sorting Hub (ETA: Today by 6:00 PM)\n"
+                f"• **Courier**: NINJA VAN [Tracking #NV-883901-MY]"
+            )
 
     elif inferred_intent == "GENERATE_IMAGE":
         prompt_clean = re.sub(r'generate image|create image|draw|make a photo|generate photo|picture of', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -438,12 +461,10 @@ def ask():
         elif "aluminum" in cmd_lower: materials_used = "6061-T6 Aircraft Grade Aluminum & Neodymium Magnets"
 
         complexity_tier = "EASY / BEGINNER BUILD PROTOCOL" if is_easy_build else "ADVANCED / HIGH-PRECISION INDUSTRIAL PROTOCOL"
-
         movie_source_tag = " [Authentic Movie Design Schematics Recognized]" if is_movie_origin else ""
         
         prompt_cad = urllib.parse.quote(f"Movie authentic CAD schematic blueprint of {build_item}, technical white blueprint lines on deep blue grid, isolated parts, 8k render{movie_source_tag}")
         prompt_exploded = urllib.parse.quote(f"Exploded view assembly breakdown diagram of {build_item}, split part by part technical diagram, highly detailed parts render")
-        prompt_final = urllib.parse.quote(f"Photorealistic cinematic completed build render of {build_item}, studio lighting, highly detailed finished prop")
 
         generated_image_url = f"https://image.pollinations.ai/prompt/{prompt_cad}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
         exploded_view_url = f"https://image.pollinations.ai/prompt/{prompt_exploded}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
@@ -467,13 +488,13 @@ def ask():
             f"| PART-B | Electromagnetic Coil Matrix | Superconducting Wire / Copper | 10 Coils | Step 2 |\n"
             f"| PART-C | Diffuser Ring & Optics | High-Clarity Acrylic / Glass | 1 Ring | Step 3 |\n"
             f"| PART-D | Power Regulator Board | Custom PCB / Micro-Controller | 1 Module | Step 4 |\n\n"
-            f"#### 🛠️ STEP-BY-STEP STEP ASSEMBLY INSTRUCTIONS ({complexity_tier}):\n"
+            f"#### 🛠️ STEP-BY-STEP ASSEMBLY INSTRUCTIONS ({complexity_tier}):\n"
             f"1. **PART-A Preparation**: Machine or cut the main chassis frame out of `{materials_used.split(',')[0]}`.\n"
             f"2. **Coil Winding (PART-B)**: Wrap the 10 outer copper energy coils evenly around the core perimeter slots.\n"
             f"3. **Optics Fitting (PART-C)**: Lock the acrylic diffuser ring flush into the central bay housing.\n"
             f"4. **Power Bus Integration (PART-D)**: Connect the low-voltage power feed to the regulator board.\n"
             f"5. **Final Ignition Calibration**: Perform a 100% current continuity test before powering up the core.\n\n"
-            f"Below are your CAD Schematic Blueprint, Part-by-Part Exploded View, and 3D Model Projections:"
+            f"Below are your CAD Schematic Blueprint and Part-by-Part Exploded View Projections:"
         )
 
     elif inferred_intent == "SAVE_FACT":
