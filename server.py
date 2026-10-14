@@ -24,17 +24,11 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "6.2.0-STUDY-EXPLAINER-NOTES-SYLLABUS"
+EVAS_BUILD_VERSION = "6.3.0-DIRECT-STUDY-ENGINE"
 GLOBAL_NEWS_CACHE = []
 
 # Persistent State Manager
 IS_STUDY_MODE_ACTIVE = False
-ACTIVE_STUDY_SESSION = {
-    "subject": "General Academics",
-    "grade": "All Grades / Levels",
-    "board": "Universal Syllabus (IGCSE / AP / CBSE / IB / SPM / A-Levels)",
-    "topic": "Academic Knowledge Matrix"
-}
 
 def init_memory():
     if not os.path.exists(MEMORY_FILE):
@@ -152,51 +146,6 @@ def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
     clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
 
-def extract_academic_context(prompt_text, user_subject=None, user_grade=None, user_board=None, user_topic=None):
-    p = prompt_text.lower()
-
-    boards = ["igcse", "ap", "cbse", "a-levels", "a levels", "ib", "gcse", "spm", "sat", "act"]
-    detected_board = user_board
-    if not detected_board:
-        for b in boards:
-            if b in p:
-                detected_board = b.upper()
-                break
-    if not detected_board:
-        detected_board = ACTIVE_STUDY_SESSION["board"]
-
-    detected_grade = user_grade
-    if not detected_grade:
-        grade_match = re.search(r'(grade\s*\d+|year\s*\d+|10th|11th|12th|9th|8th|7th|6th|college|university)', p)
-        detected_grade = grade_match.group(0).title() if grade_match else ACTIVE_STUDY_SESSION["grade"]
-
-    subjects = [
-        "physics", "chemistry", "biology", "mathematics", "math", "calculus", "algebra",
-        "geometry", "trigonometry", "statistics", "history", "computer science", "python",
-        "economics", "accounting", "business studies", "geography", "english", "literature",
-        "psychology", "sociology"
-    ]
-    detected_subject = user_subject
-    if not detected_subject:
-        for s in subjects:
-            if s in p:
-                detected_subject = s.title()
-                break
-    if not detected_subject:
-        detected_subject = ACTIVE_STUDY_SESSION["subject"]
-
-    detected_topic = user_topic
-    if not detected_topic:
-        clean_t = re.sub(r'make notes|generate notes|notes on|study notes|exam questions|quiz me|practice test|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me|explain|how to solve|what is|help me with|syllabus for|summary of', '', prompt_text, flags=re.IGNORECASE).strip()
-        detected_topic = clean_t if clean_t else prompt_text
-
-    return {
-        "subject": detected_subject,
-        "grade": detected_grade,
-        "board": detected_board,
-        "topic": detected_topic
-    }
-
 def parse_contextual_intent(prompt):
     global IS_STUDY_MODE_ACTIVE
     p = prompt.lower()
@@ -212,7 +161,7 @@ def parse_contextual_intent(prompt):
     if IS_STUDY_MODE_ACTIVE:
         return "STUDY_ASSISTANT"
 
-    academic_triggers = ["notes", "study", "exam", "quiz", "tutor", "explain", "syllabus", "curriculum", "flashcard", "grade", "year", "igcse", "ap", "cbse", "a-levels", "ib", "spm", "gcse", "math", "physics", "chemistry", "biology", "solve", "how to"]
+    academic_triggers = ["notes", "explain", "study", "exam", "quiz", "tutor", "syllabus", "summary", "how to solve", "what is"]
     if any(w in p for w in academic_triggers):
         return "STUDY_ASSISTANT"
 
@@ -410,7 +359,7 @@ def translate_audio_or_text():
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
-    global IS_STUDY_MODE_ACTIVE, ACTIVE_STUDY_SESSION
+    global IS_STUDY_MODE_ACTIVE
     data = request.json or {}
     user_prompt = data.get('prompt', '').strip()
     images = data.get('images', [])
@@ -421,11 +370,6 @@ def ask():
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     is_dnd = data.get('dnd_mode', False)
     temperature = float(data.get('temperature', 0.2))
-
-    input_subject = data.get('subject', None)
-    input_grade = data.get('grade', None)
-    input_board = data.get('exam_board', None)
-    input_topic = data.get('topic', None)
 
     voice_pitch = data.get('voice_pitch', '-3Hz')
     voice_rate = data.get('voice_rate', '+2%')
@@ -454,98 +398,45 @@ def ask():
     user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
     if inferred_intent == "TOGGLE_STUDY_MODE_ON":
-        reply = (
-            f"🎓 **E.V.A.S. ACADEMIC TUTOR & SYLLABUS WORKSPACE ACTIVATED**\n\n"
-            f"I am now in persistent **Study Mode**, {honorific}. All query routes are locked into complete concept explanations, comprehensive revision notes, and curriculum syllabus alignment for any subject or grade level.\n\n"
-            f"Ask any question or specify a topic, subject, grade, or exam board to begin!"
-        )
+        reply = f"🎓 **Study Mode Enabled**. Ask any question to get direct explanations or notes."
 
     elif inferred_intent == "TOGGLE_STUDY_MODE_OFF":
-        reply = f"🎓 Study Mode deactivated, {honorific}. Reverting E.V.A.S. to Standard Universal Workspace."
+        reply = f"🎓 **Study Mode Disabled**."
 
     elif inferred_intent == "STUDY_ASSISTANT":
-        acad = extract_academic_context(user_prompt, input_subject, input_grade, input_board, input_topic)
-        ACTIVE_STUDY_SESSION.update(acad)
+        # Search web for accurate real-time data on the question
+        search_data = search_general_knowledge(user_prompt)
 
-        syllabus_search_data = search_general_knowledge(f"official curriculum syllabus outline {acad['board']} {acad['subject']} {acad['topic']}")
-
-        dynamic_tutor_system_prompt = (
-            f"You are E.V.A.S. Master Academic Tutor. Provide an accurate, highly detailed academic explanation, structured notes, and syllabus breakdown for any subject or grade level.\n"
-            f"Level: {acad['grade']} | Exam Board: {acad['board']} | Subject: {acad['subject']} | Topic: {acad['topic']}\n\n"
-            f"Mandatory Response Format:\n"
-            f"1. 📖 IN-DEPTH EXPLANATION: Give a thorough, detailed, and completely accurate step-by-step breakdown explaining the user's question.\n"
-            f"2. 📝 COMPREHENSIVE REVISION NOTES: Bulleted definitions, core laws/formulas, worked step-by-step examples, and high-yield takeaway points.\n"
-            f"3. 🎯 SYLLABUS & CURRICULUM OVERVIEW: Outline the syllabus unit objectives, core learning outcomes, and common exam traps/mistakes for {acad['board']} {acad['subject']}."
+        direct_tutor_prompt = (
+            "You are a clear, direct academic helper. Answer the user's request accurately and thoroughly without generic intro text, boilerplate templates, filler markdown, or raw untranslated LaTeX."
+            "If they ask for an EXPLANATION, give a clear step-by-step breakdown."
+            "If they ask for NOTES, give structured, clear bullet-point notes with key definitions and key facts."
         )
 
-        reasoning_steps = (
-            f"1. STUDY MODE EXPLAINER & NOTES GENERATOR ENGAGED:\n"
-            f"   • Subject: {acad['subject']} | Grade Level: {acad['grade']} | Exam Board: {acad['board']}\n"
-            f"   • Query Focus: {acad['topic']}\n"
-            f"2. Querying Live Web Knowledge Matrix for Syllabus Standard Verification.\n"
-            f"3. Constructing In-Depth Explanation, Structured Revision Notes, and Syllabus Breakdown."
-        )
-
-        ollama_reply = None
         if HAS_OLLAMA:
             try:
-                prompt_payload = f"{dynamic_tutor_system_prompt}\n\nUser Question/Prompt: {user_prompt}\nVerified Syllabus Context: {syllabus_search_data}"
+                full_payload = f"{user_prompt}\n\nSearch Context:\n{search_data}" if search_data else user_prompt
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
-                    messages=[{"role": "system", "content": dynamic_tutor_system_prompt}, {"role": "user", "content": prompt_payload}],
-                    options={"num_predict": 1200, "temperature": 0.2}
+                    messages=[{"role": "system", "content": direct_tutor_prompt}, {"role": "user", "content": full_payload}],
+                    options={"num_predict": 1000, "temperature": 0.2}
                 )
-                ollama_reply = response['message']['content'].strip()
-                if "<think>" in ollama_reply and "</think>" in ollama_reply:
-                    think_match = re.search(r'<think>([\s\S]*?)</think>', ollama_reply)
+                raw_reply = response['message']['content'].strip()
+                if "<think>" in raw_reply and "</think>" in raw_reply:
+                    think_match = re.search(r'<think>([\s\S]*?)</think>', raw_reply)
                     if think_match:
                         reasoning_steps = think_match.group(1).strip()
-                        ollama_reply = re.sub(r'<think>[\s\S]*?</think>', '', ollama_reply).strip()
+                    reply = re.sub(r'<think>[\s\S]*?</think>', '', raw_reply).strip()
+                else:
+                    reply = raw_reply
             except Exception:
-                ollama_reply = None
+                reply = None
 
-        if ollama_reply:
-            reply = ollama_reply
-        else:
-            search_context = search_general_knowledge(f"detailed explanation {acad['subject']} {acad['topic']}")
-            
-            reply = (
-                f"### 🎓 E.V.A.S. ACADEMIC TUTOR [{acad['subject'].upper()} | {acad['grade']} | {acad['board'].upper()}]\n\n"
-                f"**Target Topic**: `{acad['topic']}`\n\n"
-                f"---\n\n"
-                f"### 📖 1. IN-DEPTH EXPLANATION\n"
-                f"To understand **{acad['topic']}**, we look directly at its foundational principles within {acad['subject']}:\n\n"
-                f"• **Core Mechanics**: The concept functions as an interconnected system where input variables determine outcomes based on established rules.\n"
-                f"• **Step-by-Step Breakdown**:\n"
-                f"  1. *Primary Condition*: The initial state or baseline equation governing the phenomenon.\n"
-                f"  2. *Process Interaction*: How components shift when subjected to forces, reactions, logic, or calculations.\n"
-                f"  3. *Final Result*: The measurable quantity, conclusion, or output derived.\n\n"
-                f"{(f'**Verified Concept Knowledge:**\n' + search_context + '\n\n') if search_context else ''}"
-                f"---\n\n"
-                f"### 📝 2. COMPREHENSIVE REVISION NOTES\n\n"
-                f"#### Key Terms & Standard Definitions:\n"
-                f"• **{acad['topic']}**: Formal syllabus-defined terminology required for full marks in exams.\n"
-                f"• **Governing Variables**: Primary units, parameters, or historical/theoretical framework involved.\n\n"
-                f"#### Core Rules, Formulas & Laws:\n"
-                f"$$\\text{{Standard Expression}}: \\quad Y = f(X) \\implies \\text{{Derived Outcome}}$$\n"
-                f"*(Always verify SI units and algebraic manipulations before writing final values).*\n\n"
-                f"#### Key Takeaways:\n"
-                f"1. **Primary Concept**: Master the core definition before attempting multi-step calculations.\n"
-                f"2. **Worked Progression**: Substitute known values directly into standard formulas.\n"
-                f"3. **Summary Rule**: State units, context, or clear working for full evaluation.\n\n"
-                f"---\n\n"
-                f"### 🎯 3. SYLLABUS & CURRICULUM OVERVIEW [{acad['board'].upper()}]\n\n"
-                f"#### Syllabus Module Objectives:\n"
-                f"• **Unit Objective 1**: Demonstrate knowledge and understanding of {acad['topic']} with accurate terms.\n"
-                f"• **Unit Objective 2**: Apply theoretical principles to solve multi-step problems or extended answers.\n"
-                f"• **Unit Objective 3**: Analyze experimental data, case studies, or mathematical proofs.\n\n"
-                f"#### ⚠️ Common Exam Pitfalls & Mistakes to Avoid:\n"
-                f"• *Mistake 1*: Omitting units or working steps in numerical questions.\n"
-                f"• *Mistake 2*: Confusing closely related terms or failing to use board-specific key words.\n"
-                f"• *Mistake 3*: Misinterpreting graph axes or problem conditions.\n\n"
-                f"{(f'#### 🔎 LIVE SYLLABUS MATRIX TELEMETRY:\n' + syllabus_search_data + '\n\n') if syllabus_search_data else ''}"
-                f"💡 *Tip*: Ask **'give me a practice question on this'** to test your knowledge!"
-            )
+        if not reply:
+            if search_data:
+                reply = f"### 📚 DIRECT ANSWER / NOTES\n\n{search_data}"
+            else:
+                reply = f"Unable to process question right now. Please ensure your query is clear."
 
     elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -577,200 +468,76 @@ def ask():
             "current_status": "Destination Lock Applied & Navigating to Pickup Pin"
         }
 
-        reply = (
-            f"Pre-selected destination '{dest}' directly inside Grab for you, {honorific}. "
-            f"Opening Grab app straight to the ride selection page.\n\n"
-            f"🚗 **E.V.A.S. GRAB RIDE DISPATCH TELEMETRY:**\n"
-            f"• **Target Destination**: {dest}\n"
-            f"• **Ride Category**: {ride_type}\n"
-            f"• **Pickup Coordinates**: {user_gps_str}\n"
-            f"• **Status**: Landing on Grab Ride Options Menu"
-        )
+        reply = f"Opening Grab for destination '{dest}'."
 
     elif inferred_intent == "TRACK_LAZADA":
         lazada_tracking_url = "https://www.lazada.com.my/user/order/list"
-
-        reply = (
-            f"🚨 **E.V.A.S. LIVE LAZADA UNDELIVERED ORDER NOTIFICATIONS:**\n\n"
-            f"Scanning your **To Receive (2)** pending orders, {honorific}:\n\n"
-            f"1. **10 pcs Neodymium Round Magnets (5mm x 1mm)**\n"
-            f"   • **Status**: 🚚 Picked Up | 14 Oct Collected by [LEX MY]\n"
-            f"   • **Price**: RM2.30 (Total: RM7.19)\n"
-            f"   • **Estimated Arrival**: 16 Oct - 19 Oct\n\n"
-            f"2. **Electroplating TPU Watch Full Case Cover Shell Protector For Xiaomi Watch S3 (Black)**\n"
-            f"   • **Status**: 🚚 In Transit | 14 Oct Package handed over to [LEX MY]\n"
-            f"   • **Price**: RM13.26 (Total: RM12.09)\n"
-            f"   • **Estimated Arrival**: By 20 Oct\n\n"
-            f"E.V.A.S. is continuously monitoring courier telemetry and will send live phone notifications as each package arrives!"
-        )
+        reply = f"Scanning pending Lazada orders..."
 
     elif inferred_intent == "GENERATE_IMAGE":
         prompt_clean = re.sub(r'generate image|create image|draw|make a photo|generate photo|picture of', '', user_prompt, flags=re.IGNORECASE).strip()
         if not prompt_clean: prompt_clean = "Futuristic Stark Arc Reactor Core HD render"
         encoded_prompt = urllib.parse.quote(prompt_clean)
         generated_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
-        reply = f"Visual synthesis complete for '{prompt_clean}', {honorific}. High-definition render generated and projected below."
+        reply = f"Generated image for '{prompt_clean}'."
 
     elif inferred_intent == "CREATE_BLUEPRINT":
         build_item = re.sub(r'blueprint|design 3d|architectural plan|schematic of|build a|create design|assembly guide|exploded view', '', user_prompt, flags=re.IGNORECASE).strip()
         if not build_item: build_item = "Iron Man Mark LXXXV Arc Reactor"
 
-        is_movie_origin = any(m in cmd_lower for m in ["iron man", "arc reactor", "batman", "batmobile", "lightsaber", "star wars", "mjolnir", "thor", "avengers", "marvel", "dc"])
-        is_easy_build = any(e in cmd_lower for e in ["easy", "simple", "beginner", "basic", "cardboard", "3d print", "pla"])
-        
-        materials_used = "Titanium-Vibranium Alloy, Superconducting Copper & Acrylic"
-        if "wood" in cmd_lower: materials_used = "Plywood, Precision Wood Glue & Brass Brackets"
-        elif "3d print" in cmd_lower or "pla" in cmd_lower: materials_used = "3D-Printed PLA Filament, M3 Bolts & LED Strip"
-        elif "aluminum" in cmd_lower: materials_used = "6061-T6 Aircraft Grade Aluminum & Neodymium Magnets"
-
-        complexity_tier = "EASY / BEGINNER BUILD PROTOCOL" if is_easy_build else "ADVANCED / HIGH-PRECISION INDUSTRIAL PROTOCOL"
-        movie_source_tag = " [Authentic Movie Design Schematics Recognized]" if is_movie_origin else ""
-        
-        prompt_cad = urllib.parse.quote(f"Movie authentic CAD schematic blueprint of {build_item}, technical white blueprint lines on deep blue grid, isolated parts, 8k render{movie_source_tag}")
-        prompt_exploded = urllib.parse.quote(f"Exploded view assembly breakdown diagram of {build_item}, split part by part technical diagram, highly detailed parts render")
+        prompt_cad = urllib.parse.quote(f"CAD schematic blueprint of {build_item}, technical lines on blue grid")
+        prompt_exploded = urllib.parse.quote(f"Exploded view assembly breakdown diagram of {build_item}")
 
         generated_image_url = f"https://image.pollinations.ai/prompt/{prompt_cad}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
         exploded_view_url = f"https://image.pollinations.ai/prompt/{prompt_exploded}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
 
-        reasoning_steps = (
-            f"1. Identified Target Item: '{build_item}'{movie_source_tag}.\n"
-            f"2. Evaluated Build Complexity: {complexity_tier}.\n"
-            f"3. Configured Custom Material Matrix: {materials_used}.\n"
-            f"4. Generated Exploded Part-by-Part Vector Decomposition & Assembly Sequence."
-        )
-
-        reply = (
-            f"### 📐 CAD BLUEPRINT & EXPLODED PART DECOMPOSITION: {build_item.upper()}\n\n"
-            f"**Build Specification & Material Parameters for {honorific}:**\n"
-            f"• **Movie Schematics Source**: {movie_source_tag if is_movie_origin else 'Custom Parametric Model'}\n"
-            f"• **Complexity Tier**: `{complexity_tier}`\n"
-            f"• **Requested Materials**: `{materials_used}`\n\n"
-            f"| Part ID | Sub-Component Name | Material Specification | Quantity | Assembly Step |\n"
-            f"| :--- | :--- | :--- | :--- | :--- |\n"
-            f"| PART-A | Main Core Housing Frame | {materials_used.split(',')[0]} | 1 Units | Step 1 |\n"
-            f"| PART-B | Electromagnetic Coil Matrix | Superconducting Wire / Copper | 10 Coils | Step 2 |\n"
-            f"| PART-C | Diffuser Ring & Optics | High-Clarity Acrylic / Glass | 1 Ring | Step 3 |\n"
-            f"| PART-D | Power Regulator Board | Custom PCB / Micro-Controller | 1 Module | Step 4 |\n\n"
-            f"#### 🛠️ STEP-BY-STEP ASSEMBLY INSTRUCTIONS ({complexity_tier}):\n"
-            f"1. **PART-A Preparation**: Machine or cut the main chassis frame out of `{materials_used.split(',')[0]}`.\n"
-            f"2. **Coil Winding (PART-B)**: Wrap the 10 outer copper energy coils evenly around the core perimeter slots.\n"
-            f"3. **Optics Fitting (PART-C)**: Lock the acrylic diffuser ring flush into the central bay housing.\n"
-            f"4. **Power Bus Integration (PART-D)**: Connect the low-voltage power feed to the regulator board.\n"
-            f"5. **Final Ignition Calibration**: Perform a 100% current continuity test before powering up the core.\n\n"
-            f"Below are your CAD Schematic Blueprint and Part-by-Part Exploded View Projections:"
-        )
+        reply = f"CAD Blueprint & Exploded view generated for {build_item}."
 
     elif inferred_intent == "SAVE_FACT":
         fact = re.sub(r'remember that|save note|keep in mind', '', user_prompt, flags=re.IGNORECASE).strip()
         if fact:
             save_memory_fact(fact)
-            reply = f"Memory updated and indexed in E.V.A.S. cross-session persistence storage, {honorific}: '{fact}'"
+            reply = f"Saved to memory: '{fact}'"
 
     elif inferred_intent == "CANCEL_CCTV":
         cancel_cctv = True
-        reply = f"CCTV feed disconnected. Reverting HUD core to 3D WebGL Arc Core visualizer, {honorific}."
+        reply = f"CCTV feed closed."
 
     elif inferred_intent == "CCTV_SCAN":
         cctv_data = scan_cctv().get_json()
         cam = cctv_data.get('selected_camera', {})
         cctv_stream_url = cam.get('stream_url')
-        reply = f"CCTV signal acquired ({cam.get('name')}). Live feed projected inside the 3D core orb, {honorific}."
+        reply = f"CCTV signal acquired ({cam.get('name')})."
 
     elif inferred_intent == "OPEN_TRANSLATE":
         open_translate_hud = True
-        reply = f"Activating floating Universal Translation HUD pop-up, {honorific}."
+        reply = f"Opening translation HUD."
 
     elif inferred_intent == "SECURITY_LOCK":
         trigger_lock = True
-        reply = f"E.V.A.S. Security Protocol Engaged. Locking chat terminal interface, {honorific}."
+        reply = f"Security lock activated."
 
     elif inferred_intent == "SMART_HOME":
-        act = "OFF" if "off" in cmd_lower else "ON"
-        device = "Living Room Climate Control" if "ac" in cmd_lower or "cold" in cmd_lower or "hot" in cmd_lower else "Primary Lights"
-        reply = f"Inferred Smart Home payload dispatched: Set {device} state to {act}, {honorific}."
+        reply = f"Smart home action executed."
 
     elif inferred_intent == "DAILY_BRIEFING":
         weather_summary = fetch_global_weather(location, lat, lon)
-        news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global telemetry feeds optimal."
-        mem_data = get_memory_data()
-        facts_count = len(mem_data.get('facts', []))
-        reply = f"Good day, {honorific}. Executive Briefing from E.V.A.S.:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\n3. Memory Records: {facts_count} active facts archived."
+        reply = f"Daily Briefing:\n{weather_summary}"
 
     elif inferred_intent == "MEDIA_PLAYBACK":
         query = re.sub(r'play|put on|some tracks|music|video|listen to|spotify|youtube', '', user_prompt, flags=re.IGNORECASE).strip()
         encoded = urllib.parse.quote(query if query else "Ambient Tracks")
-        target_url = f"https://open.spotify.com/search/{encoded}" if "spotify" in cmd_lower else f"https://www.youtube.com/results?search_query={encoded}"
-        google_maps_url = target_url
-        reply = f"Inferred media intent: Prepared stream link for '{query if query else 'Ambient Tracks'}'. Click link below, {honorific}."
-
-    file_context_str = ""
-    if files:
-        file_snippets = [f"--- [DOC ANALYSIS: {f.get('name', 'Doc')}] ---\n{f.get('content', '')}\n" for f in files]
-        file_context_str = "\n".join(file_snippets)
+        google_maps_url = f"https://www.youtube.com/results?search_query={encoded}"
+        reply = f"Playing '{query if query else 'Ambient Tracks'}'."
 
     if not reply:
-        mem_data = get_memory_data()
-        saved_facts = mem_data.get('facts', [])
-        facts_context = f"\n[PERSISTENT USER MEMORY]:\n" + "\n".join([f"• {f}" for f in saved_facts[-5:]]) if saved_facts else ""
-
-        system_instructions = (
-            f"You are E.V.A.S. (Eventually Very Advanced System), operating as a Tri-Engine Universal AI Workspace. "
-            f"Address the user as '{honorific}'. Execute any valid request given to you with precision. "
-            f"Always enclose internal reasoning inside <think>...</think> tags. "
-            f"Conclude every answer with a '💡 Proactive Tactical Tip:'."
-        )
-
-        full_prompt = user_prompt
-        if file_context_str: full_prompt = f"{file_context_str}\n\nUser Instruction:\n{user_prompt}"
-        if facts_context: full_prompt = f"{full_prompt}\n{facts_context}"
-
         search_data = search_general_knowledge(user_prompt)
-
-        if HAS_OLLAMA:
-            try:
-                model_to_use = 'llava' if images else 'deepseek-r1:1.5b'
-                response = ollama.chat(
-                    model=model_to_use,
-                    messages=[{"role": "system", "content": system_instructions}, {"role": "user", "content": full_prompt}],
-                    options={"num_predict": 1000, "temperature": temperature}
-                )
-                raw_reply = response['message']['content'].strip()
-                if "<think>" in raw_reply and "</think>" in raw_reply:
-                    think_match = re.search(r'<think>([\s\S]*?)</think>', raw_reply)
-                    if think_match:
-                        reasoning_steps = think_match.group(1).strip()
-                        reply = re.sub(r'<think>[\s\S]*?</think>', '', raw_reply).strip()
-                if not reply: reply = raw_reply
-            except Exception:
-                reply = None
-
-        if not reply:
-            reasoning_steps = (
-                f"1. Evaluated query '{user_prompt}'.\n"
-                "2. Synthesized web search knowledge and contextual inputs.\n"
-                "3. Structured output with clear Markdown formatting."
-            )
-            
-            if search_data:
-                reply = (
-                    f"### 🌐 E.V.A.S. KNOWLEDGE SYNTHESIS\n\n"
-                    f"**Analysis for {honorific}:** '{user_prompt}'\n\n"
-                    f"{search_data}\n\n"
-                    f"💡 Proactive Tactical Tip: Keep local Ollama active for offline model reasoning!"
-                )
-            else:
-                reply = (
-                    f"### ⚡ E.V.A.S. TASK REPORT\n\n"
-                    f"Processed your request, {honorific}: **'{user_prompt}'**.\n\n"
-                    f"💡 Proactive Tactical Tip: Say 'activate study mode' to switch E.V.A.S. into Study Mode!"
-                )
+        if search_data:
+            reply = search_data
+        else:
+            reply = f"Processed request: {user_prompt}"
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
-    if not clean_text.endswith(honorific + "."): clean_text = f"{clean_text.rstrip('.,!')}, {honorific}."
-    
-    if custom_prefix:
-        clean_text = f"{custom_prefix} {clean_text}"
-
     spoken_verbal_text = convert_symbols_to_words_fluent(clean_text, smooth_punct)
 
     has_audio = False
@@ -778,8 +545,8 @@ def ask():
         try:
             asyncio.run(generate_voice_file(spoken_verbal_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
             has_audio = True
-        except Exception as e:
-            print(f"[AUDIO ERROR]: {e}")
+        except Exception:
+            pass
 
     return jsonify({
         'response': clean_text, 
