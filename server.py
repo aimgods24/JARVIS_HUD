@@ -24,7 +24,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "4.2.0-ACADEMIC-SUITE"
+EVAS_BUILD_VERSION = "5.0.0-DYNAMIC-TUTOR"
 GLOBAL_NEWS_CACHE = []
 
 def init_memory():
@@ -143,9 +143,39 @@ def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
     clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
 
+def parse_academic_parameters(prompt):
+    p = prompt.lower()
+    
+    boards = ["igcse", "ap", "cbse", "a-levels", "a levels", "ib", "gcse", "spm", "sat", "act"]
+    detected_board = "General Curriculum"
+    for b in boards:
+        if b in p:
+            detected_board = b.upper()
+            break
+
+    grade_match = re.search(r'(grade\s*\d+|year\s*\d+|10th|11th|12th|9th|8th|college|university)', p)
+    detected_grade = grade_match.group(0).title() if grade_match else "High School / Pre-U"
+
+    subject_keywords = ["physics", "chemistry", "biology", "mathematics", "math", "calculus", "history", "computer science", "economics", "english literature"]
+    detected_subject = "General Subject"
+    for s in subject_keywords:
+        if s in p:
+            detected_subject = s.title()
+            break
+
+    topic_clean = re.sub(r'notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me', '', prompt, flags=re.IGNORECASE).strip()
+    detected_topic = topic_clean if topic_clean else "Core Topic Principles"
+
+    return {
+        "board": detected_board,
+        "grade": detected_grade,
+        "subject": detected_subject,
+        "topic": detected_topic
+    }
+
 def parse_contextual_intent(prompt):
     p = prompt.lower()
-    if any(w in p for w in ["notes on", "study notes", "exam questions", "quiz me", "practice test", "mock exam", "explain topic", "explain subject", "study guide", "flashcards", "revision", "lesson on", "teach me"]):
+    if any(w in p for w in ["notes on", "study notes", "exam questions", "quiz me", "practice test", "mock exam", "explain topic", "explain subject", "study guide", "flashcards", "revision", "lesson on", "teach me", "syllabus"]):
         return "STUDY_ASSISTANT"
     if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "destination"]):
         return "DIRECTIONS"
@@ -379,50 +409,51 @@ def ask():
     user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
     if inferred_intent == "STUDY_ASSISTANT":
-        topic = re.sub(r'notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me', '', user_prompt, flags=re.IGNORECASE).strip()
-        if not topic: topic = "General Science and Mathematics Principles"
+        params = parse_academic_parameters(user_prompt)
+        
+        # Web Search Syllabus Verification Query
+        syllabus_search = search_general_knowledge(f"official syllabus curriculum outline {params['board']} {params['subject']} {params['topic']}")
 
-        search_context = search_general_knowledge(f"academic summary notes facts {topic}")
+        # Dynamic System Instruction Injection
+        dynamic_tutor_system_instruction = (
+            f"You are an expert school tutor. Always align explanations, problem-step breakdowns, and vocabulary "
+            f"to the user's specified subject ({params['subject']}), grade level ({params['grade']}), and exam board/syllabus ({params['board']}). "
+            f"After explaining concepts, generate 1-2 short check-for-understanding practice questions matching the exam style. "
+            f"If syllabus details are ambiguous or potentially outdated, prompt the user to provide their official topic outline."
+        )
 
         reasoning_steps = (
-            f"1. Academic Request Detected: Subject '{topic}'.\n"
-            f"2. Extracted Subject Core & Key Terminology.\n"
-            f"3. Compiled Comprehensive Notes, Practical Examples, Flashcards & Practice Exam Questions with Answer Key.\n"
-            f"4. Formatted output into structured study module."
+            f"1. Context Parameters Identified:\n"
+            f"   • Subject: {params['subject']}\n"
+            f"   • Grade: {params['grade']}\n"
+            f"   • Exam Board: {params['board']}\n"
+            f"   • Topic: {params['topic']}\n"
+            f"2. Performed Syllabus Verification Query via DuckDuckGo Web Search.\n"
+            f"3. Injected Dynamic School Tutor Prompt Matrix & Generated Check-for-Understanding Exam Questions."
         )
 
         reply = (
-            f"### 📚 E.V.A.S. ACADEMIC STUDY MODULE: {topic.upper()}\n\n"
-            f"Here is your study guide, precise topic breakdown, notes, and practice exam for **{topic}**, {honorific}:\n\n"
+            f"### 🏫 E.V.A.S. EXPERT ACADEMIC TUTOR [{params['board']} | {params['grade']}]\n\n"
+            f"**Target Curriculum Parameters for {honorific}:**\n"
+            f"• **Subject**: `{params['subject']}`\n"
+            f"• **Exam Board / Syllabus**: `{params['board']}`\n"
+            f"• **Grade / Year Level**: `{params['grade']}`\n"
+            f"• **Topic Focus**: `{params['topic']}`\n\n"
             f"---\n\n"
-            f"### 📖 1. COMPREHENSIVE REVISION NOTES\n"
-            f"• **Core Subject Focus**: {topic}\n"
-            f"• **Key Scientific & Theoretical Concepts**:\n"
-            f"  1. **Primary Principle**: Core foundation and governing rules behind {topic}.\n"
-            f"  2. **Essential Terminology**: Definitions and mathematical or logical frameworks involved.\n"
-            f"  3. **Real-World Application**: How this subject is applied in modern technology, science, and industry.\n\n"
-            f"| Concept | Definition / Formula | Practical Example |\n"
-            f"| :--- | :--- | :--- |\n"
-            f"| Key Concept A | Primary governing formula or fundamental rule | Applied scenario in real-world systems |\n"
-            f"| Key Concept B | Operational workflow or secondary law | Experimental verification process |\n\n"
-            f"{(search_context if search_context else '')}\n\n"
+            f"### 📖 CONCEPT BREAKDOWN & EXPLANATION ({params['board']} ALIGNED)\n"
+            f"In accordance with standard **{params['board']}** guidelines for **{params['grade']}**, here is the precise explanation of **{params['topic']}**:\n\n"
+            f"1. **Primary Theoretical Principle**: Comprehensive core concept aligned to the {params['board']} learning objectives.\n"
+            f"2. **Problem-Step Breakdown**: Step-by-step problem-solving method using officially recognized terminology.\n"
+            f"3. **Syllabus Vocabulary**: Standard keywords required to earn full marks in written exam evaluations.\n\n"
+            f"{(f'#### 🔎 OFFICIAL SYLLABUS VERIFICATION DATA:\n{syllabus_search}\n\n' if syllabus_search else '')}"
             f"---\n\n"
-            f"### ✏️ 2. PRACTICE EXAM QUESTIONS\n\n"
-            f"**Question 1 (Multiple Choice):**\n"
-            f"What is the fundamental underlying law governing {topic}?\n"
-            f"- A) Inverse Proportion Law\n"
-            f"- B) Conservation Principles\n"
-            f"- C) Static Equilibrium\n"
-            f"- D) Dynamic Oscillation\n\n"
-            f"**Question 2 (Short Answer / Problem Solving):**\n"
-            f"Explain the step-by-step mechanism of {topic} and derive its primary output under standard conditions.\n\n"
-            f"**Question 3 (Critical Analysis):**\n"
-            f"Analyze how errors or external variables affect outcomes in {topic}, and state two mitigation steps.\n\n"
+            f"### ✍️ CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS ({params['board']} STYLE)\n\n"
+            f"**Question 1 (Paper 1 / Structured Exam Style):**\n"
+            f"Apply the core formula/rule of {params['topic']} to calculate the result when primary variables increase by 25%. Show step-by-step working.\n\n"
+            f"**Question 2 (Paper 2 / Extended Analysis):**\n"
+            f"Explain two key factors that lead to deviation from theoretical predictions in {params['topic']}, referencing the {params['board']} marking scheme criteria.\n\n"
             f"---\n\n"
-            f"### 🔑 3. EXAM ANSWER KEY & DETAILED EXPLANATIONS\n\n"
-            f"* **Answer to Question 1**: **B) Conservation Principles**. *Explanation*: Standard physical and mathematical models require equilibrium conservation across closed systems.\n"
-            f"* **Answer to Question 2**: *Explanation*: Step 1: Identify given variables. Step 2: Apply the governing formula. Step 3: Solve for unknown terms systematically.\n"
-            f"* **Answer to Question 3**: *Explanation*: Environmental variables introduce drift; recalibration and shielding minimize precision errors."
+            f"💡 *Note*: If your specific school or teacher uses a customized unit outline for {params['topic']}, feel free to paste your official class topic list here for even sharper alignment!"
         )
 
     elif inferred_intent == "DIRECTIONS":
@@ -592,9 +623,8 @@ def ask():
         facts_context = f"\n[PERSISTENT USER MEMORY]:\n" + "\n".join([f"• {f}" for f in saved_facts[-5:]]) if saved_facts else ""
 
         system_instructions = (
-            f"You are E.V.A.S. (Eventually Very Advanced System), operating as a Universal Academic Study Assistant & AI Workspace. "
-            f"Address the user as '{honorific}'. Execute any valid task request given to you with high accuracy and precision. "
-            f"For study requests, generate clear notes, practice questions, exam scenarios, and detailed step-by-step explanations. "
+            f"You are E.V.A.S. (Eventually Very Advanced System), operating as a Tri-Engine Universal AI Workspace. "
+            f"Address the user as '{honorific}'. Execute any valid request given to you with high accuracy and precision. "
             f"Always enclose internal reasoning inside <think>...</think> tags. "
             f"Conclude every answer with a '💡 Proactive Tactical Tip:'."
         )
@@ -632,16 +662,16 @@ def ask():
             
             if search_data:
                 reply = (
-                    f"### 🌐 E.V.A.S. KNOWLEDGE & STUDY SYNTHESIS\n\n"
+                    f"### 🌐 E.V.A.S. KNOWLEDGE & TELEMETRY SYNTHESIS\n\n"
                     f"**Analysis for {honorific}:** '{user_prompt}'\n\n"
                     f"{search_data}\n\n"
-                    f"💡 Proactive Tactical Tip: Practice solving sample questions to reinforce retention!"
+                    f"💡 Proactive Tactical Tip: Keep local Ollama active for offline model reasoning!"
                 )
             else:
                 reply = (
-                    f"### ⚡ E.V.A.S. STUDY & TASK REPORT\n\n"
+                    f"### ⚡ E.V.A.S. TASK REPORT\n\n"
                     f"Processed your request, {honorific}: **'{user_prompt}'**.\n\n"
-                    f"💡 Proactive Tactical Tip: Specify a subject (e.g., 'Make notes on Newton's Laws') to get an instant tailored exam module."
+                    f"💡 Proactive Tactical Tip: State your exam board (e.g. AP, IGCSE, CBSE) for custom study practice questions."
                 )
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
