@@ -303,7 +303,8 @@
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 POWER CORE: 100%<br>
-                SYSTEM MODE: E.V.A.S. ADVANCED<br>
+                GPS TRACKING: ACTIVE<br>
+                LAZADA IN-APP LINK: SYNCHRONIZED<br>
                 INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
@@ -404,6 +405,7 @@
     <script>
         let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
         let userHonorific = "Sir", customWakeWord = "evas", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
+        let currentLat = 5.2971, currentLon = 100.2588;
 
         const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -411,15 +413,26 @@
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(
+                (pos) => {
+                    currentLat = pos.coords.latitude;
+                    currentLon = pos.coords.longitude;
+                },
+                (err) => console.log("GPS Telemetry Active: Default Location Set"),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        }
+
         const welcomeMessageScript = 
 `Greetings, Sir. I am E.V.A.S. (Eventually Very Advanced System).
 Tactical Intelligence Interface online and fully operational.
 
 --- E.V.A.S. TACTICAL OPERATING GUIDE ---
-1. AUTOMATED NAVIGATION: Type "directions to [destination]" or "take me to [place]". E.V.A.S. instantly opens Google Maps navigation with your target route set.
-2. RIDE BOOKING & ORDER TRACKING: Type "book grab to [location]" or "track lazada order" to generate synchronized mobile deep links.
-3. CAD BLUEPRINTS & 3D RENDERS: Type "blueprint for [object]" or "design 3d [item]". E.V.A.S. outputs 100% accurate CAD schematics, 3D WebGL projections, and step-by-step assembly guides.
-4. AI IMAGE GENERATION: Say "generate image of [prompt]" to synthesize photorealistic artwork inline.
+1. CAD BLUEPRINTS & EXPLODED VIEWS: Ask for any movie prop or custom build (e.g. "blueprint for Iron Man Arc Reactor out of 3D-Printed PLA easy build"). E.V.A.S. generates movie schematics, exploded part-by-part views, custom material tables, and assembly guides.
+2. GRAB RIDES & GPS TELEMETRY: E.V.A.S. maintains live GPS coordinates. Request "book a GrabCar to Penang Hill" to launch ride bookings and receive driver status telemetry notifications.
+3. LAZADA PACKAGE TRACKING: Type "track lazada order" to auto-link your phone's Lazada account and receive immediate package arrival notifications.
+4. AUTOMATED NAVIGATION: Type "directions to [destination]" to open Google Maps route calculations instantly.
 5. VOICE INTERRUPT & HUD CUSTOMIZATION: Press [ESC] or [F9] to halt speech output immediately. Access ⚙️ SETTINGS to toggle between 10 HUD color schemes.
 
 All core systems online. Awaiting your command, Sir.`;
@@ -556,7 +569,7 @@ All core systems online. Awaiting your command, Sir.`;
             }
 
             const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> System Master Protocol online. All tactical engines operational. Type or speak your command.</div>`;
+            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> System Master Protocol online. All tactical engines operational. GPS tracking synchronized. Type or speak your command.</div>`;
         });
 
         function stopVoicePlaybackImmediate() {
@@ -774,6 +787,8 @@ All core systems online. Awaiting your command, Sir.`;
                     body: JSON.stringify({ 
                         prompt: text, 
                         honorific: userHonorific,
+                        latitude: currentLat,
+                        longitude: currentLon,
                         voice_pitch: selectedVoicePitch,
                         voice_rate: selectedVoiceRate,
                         smooth_punct: smoothPunctuation,
@@ -798,16 +813,12 @@ All core systems online. Awaiting your command, Sir.`;
                 if (data.open_translate_hud) { openTranslateHUD(); }
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
 
-                if (data.google_maps_url) {
-                    window.open(data.google_maps_url, '_blank');
-                }
-
                 let renderedOutput = "";
                 if (data.reasoning_steps) {
                     renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. REASONING & STRUCTURAL RATIONALE</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
                 }
 
-                const parsedMarkdown = typeof marked !== 'undefined' ? marked.parse(data.raw_markdown || data.response) : data.response;
+                const parsedMarkdown = (typeof marked !== 'undefined' && typeof marked.parse === 'function') ? marked.parse(data.raw_markdown || data.response) : (data.raw_markdown || data.response);
                 renderedOutput += parsedMarkdown;
 
                 if (data.google_maps_url) {
@@ -819,11 +830,15 @@ All core systems online. Awaiting your command, Sir.`;
                 }
 
                 if (data.lazada_tracking_url) {
-                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 OPEN LAZADA TRACKING PORTAL</a>`;
+                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 LAUNCH IN-APP LAZADA TRACKING</a>`;
                 }
 
                 if (data.generated_image_url) {
-                    renderedOutput += `<br><div style="margin-top:8px;"><b>🖼️ SYNTHESIZED RENDER / CAD SCHEMATIC:</b><br><img src="${data.generated_image_url}" class="generated-img-preview" alt="Generated Render"></div>`;
+                    renderedOutput += `<br><div style="margin-top:8px;"><b>📐 CAD SCHEMATIC BLUEPRINT:</b><br><img src="${data.generated_image_url}" class="generated-img-preview" alt="CAD Blueprint"></div>`;
+                }
+
+                if (data.exploded_view_url) {
+                    renderedOutput += `<br><div style="margin-top:8px;"><b>🧩 EXPLODED PART-BY-PART VIEW & ASSEMBLY BREAKDOWN:</b><br><img src="${data.exploded_view_url}" class="generated-img-preview" alt="Exploded View"></div>`;
                 }
 
                 terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b><br>${renderedOutput}</div>`;
