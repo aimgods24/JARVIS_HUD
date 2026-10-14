@@ -24,7 +24,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "6.0.0-STUDY-WORKSPACE"
+EVAS_BUILD_VERSION = "6.1.0-STUDY-NOTES-EXPLAINER"
 GLOBAL_NEWS_CACHE = []
 
 # Persistent State Manager
@@ -182,7 +182,7 @@ def extract_academic_context(prompt_text, user_subject=None, user_grade=None, us
 
     detected_topic = user_topic
     if not detected_topic:
-        clean_t = re.sub(r'notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me|explain|how to solve|what is|help me with', '', prompt_text, flags=re.IGNORECASE).strip()
+        clean_t = re.sub(r'make notes|generate notes|notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me|explain|how to solve|what is|help me with', '', prompt_text, flags=re.IGNORECASE).strip()
         detected_topic = clean_t if clean_t else prompt_text
 
     return {
@@ -452,11 +452,12 @@ def ask():
         reply = (
             f"🎓 **E.V.A.S. DREAM STUDY WORKSPACE ACTIVATED**\n\n"
             f"I am now in persistent **Study Mode**, {honorific}. All query routes are locked into Academic Performance Optimization:\n"
-            f"• **Feynman Concept Simplifier**: Enabled\n"
-            f"• **Dynamic Flashcard Generator**: Ready\n"
-            f"• **25/5 Pomodoro Focus Sprint Engine**: Active\n"
-            f"• **Exam Board Alignment**: Searching AP, IGCSE, CBSE, IB, A-Levels & SPM\n\n"
-            f"What topic, subject, or problem set shall we master first, {honorific}?"
+            f"• **Feynman Concept Explainer Engine**: Active\n"
+            f"• **Automated Notes Creator**: Active\n"
+            f"• **Dynamic Revision Flashcard Generator**: Ready\n"
+            f"• **25/5 Pomodoro Focus Sprint Engine**: Ready\n"
+            f"• **Exam Board Alignment**: AP, IGCSE, CBSE, IB, A-Levels & SPM\n\n"
+            f"What topic, subject, or problem set shall we tackle, {honorific}?"
         )
 
     elif inferred_intent == "TOGGLE_STUDY_MODE_OFF":
@@ -469,23 +470,27 @@ def ask():
         syllabus_search_data = search_general_knowledge(f"official curriculum syllabus outline {acad['board']} {acad['subject']} {acad['topic']}")
 
         dynamic_tutor_system_prompt = (
-            f"You are an expert school tutor operating E.V.A.S. Study Workspace. Always align explanations, problem-step breakdowns, and vocabulary "
-            f"to the user's specified subject ({acad['subject']}), grade level ({acad['grade']}), and exam board/syllabus ({acad['board']}). "
-            f"After explaining concepts, generate 1-2 short check-for-understanding practice questions matching the exam style, plus 2 quick flashcards."
+            f"You are an expert school tutor and revision note creator running E.V.A.S. Study Workspace. "
+            f"Target Audience: Grade/Level ({acad['grade']}), Exam Board ({acad['board']}), Subject ({acad['subject']}). "
+            f"Structure your entire response with:\n"
+            f"1. 💡 FEYNMAN CONCEPT EXPLAINER: Explain '{acad['topic']}' clearly using a simple real-world analogy suited for {acad['grade']}.\n"
+            f"2. 📝 STRUCTURED REVISION NOTES: Provide key definitions, core formulas/principles, and 3 high-yield summary bullet points.\n"
+            f"3. 🎴 DYNAMIC FLASHCARDS: Markdown table with 2 revision flashcards.\n"
+            f"4. ✍️ EXAM PRACTICE QUESTIONS: 2 practice questions matching {acad['board']} marking schemes."
         )
 
         reasoning_steps = (
             f"1. STUDY WORKSPACE ENGAGED:\n"
             f"   • Subject: {acad['subject']} | Level: {acad['grade']} | Syllabus: {acad['board']}\n"
             f"   • Topic Focus: {acad['topic']}\n"
-            f"2. Integrated Live Syllabus Search & Feynman Explainer Matrix.\n"
-            f"3. Generated Step-by-Step Breakdown, Flashcards, and Practice Exam Questions."
+            f"2. Executed Concept Explainer & Structured Notes Creator Pipeline.\n"
+            f"3. Synthesized Syllabus Telemetry & Exam Board Marking Scheme Requirements."
         )
 
         ollama_reply = None
         if HAS_OLLAMA:
             try:
-                prompt_payload = f"{dynamic_tutor_system_prompt}\n\nTask: {user_prompt}\nSyllabus Data: {syllabus_search_data}"
+                prompt_payload = f"{dynamic_tutor_system_prompt}\n\nUser Request: {user_prompt}\nSyllabus Data: {syllabus_search_data}"
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
                     messages=[{"role": "system", "content": dynamic_tutor_system_prompt}, {"role": "user", "content": prompt_payload}],
@@ -508,27 +513,35 @@ def ask():
                 f"**Academic Parameters for {honorific}:**\n"
                 f"• **Subject**: `{acad['subject']}` | **Board**: `{acad['board']}` | **Topic**: `{acad['topic']}`\n\n"
                 f"---\n\n"
-                f"### 💡 1. FEYNMAN CONCEPT BREAKDOWN\n"
-                f"**{acad['topic']} Simplified**:\n"
-                f"Imagine this concept as a balanced pipeline. Core inputs are processed under governing laws of `{acad['subject']}` to yield predictable outputs.\n\n"
-                f"#### 📐 Step-by-Step Problem Breakdown:\n"
-                f"1. **Identify Givens**: List initial values and mandatory {acad['board']} variables.\n"
-                f"2. **Apply Core Formula**: Use official syllabus equations to structure the solution.\n"
-                f"3. **Execute Derivation**: Work through calculations step by step for full exam credit.\n\n"
+                f"### 💡 1. FEYNMAN CONCEPT EXPLAINER\n"
+                f"**Understanding `{acad['topic']}` Made Simple**:\n"
+                f"Imagine this concept like a structured water pipeline. Pressure forces water through pipes, while narrow sections resist the flow. In `{acad['subject']}`, inputs interact through governing rules to create predictable outputs.\n\n"
+                f"---\n\n"
+                f"### 📝 2. AUTOMATED REVISION NOTES: {acad['topic'].upper()}\n\n"
+                f"#### Key Terms & Definitions:\n"
+                f"• **Primary Definition**: The exact, syllabus-defined rule for `{acad['topic']}` as mandated by `{acad['board']}`.\n"
+                f"• **Governing Principle**: Core relation determining how variables change relative to system energy or inputs.\n\n"
+                f"#### Essential Formulas / Laws:\n"
+                f"$$\\text{{Core Relationship}}: \\quad X = \\frac{{Y \\cdot Z}}{{k}}$$\n"
+                f"*(Always specify standard SI units in final answers to avoid losing working marks on {acad['board']} exams).*\n\n"
+                f"#### Core Summary Points:\n"
+                f"1. **Primary Rule**: System remains in equilibrium unless unbalanced external factors apply.\n"
+                f"2. **Calculations**: Derive missing values using standard step-by-step substitution.\n"
+                f"3. **Exam Pitfall**: Common mistake is forgetting to convert units prior to formula calculation.\n\n"
                 f"{(f'#### 🔎 LIVE SYLLABUS TELEMETRY:\n{syllabus_search_data}\n\n' if syllabus_search_data else '')}"
                 f"---\n\n"
-                f"### 🎴 2. REVISION FLASHCARDS\n"
+                f"### 🎴 3. REVISION FLASHCARDS\n"
                 f"| Flashcard Prompt | Answer / Explanation |\n"
                 f"| :--- | :--- |\n"
-                f"| **Q1: Key Law governing {acad['topic']}?** | Fundamental rule requiring equilibrium conservation. |\n"
-                f"| **Q2: Primary units required by {acad['board']}?** | Standard SI Units with explicit step derivation. |\n\n"
+                f"| **Q1: What is the fundamental definition of {acad['topic']}?** | Formal state defined by official {acad['board']} syllabus parameters. |\n"
+                f"| **Q2: Which SI unit is required for final derivations?** | Standard metric values with full step progression shown. |\n\n"
                 f"---\n\n"
-                f"### ✍️ 3. CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS\n\n"
+                f"### ✍️ 4. CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS\n\n"
                 f"**Question 1 ({acad['board']} Paper Style):**\n"
-                f"State the core principle of {acad['topic']} and derive the unknown metric when primary input increases by 20%.\n\n"
+                f"State the primary law governing {acad['topic']} and calculate the resulting change when system input increases by 25%.\n\n"
                 f"**Question 2 (Extended Response):**\n"
-                f"Explain two common errors students make in {acad['topic']} exams and how to prevent them according to the {acad['board']} marking scheme.\n\n"
-                f"⏱️ *Study Mode Active*: Say **'start 25 min timer'** for a Pomodoro focus sprint!"
+                f"Describe two common mistakes students make when answering questions on {acad['topic']} and explain how to avoid them according to the marking scheme.\n\n"
+                f"⏱️ *Study Mode Active*: Say **'start 25 min timer'** to initiate a focus sprint!"
             )
 
     elif inferred_intent == "DIRECTIONS":
