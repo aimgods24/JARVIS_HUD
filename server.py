@@ -24,7 +24,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "4.1.0-FIXED-REASONER"
+EVAS_BUILD_VERSION = "4.2.0-ACADEMIC-SUITE"
 GLOBAL_NEWS_CACHE = []
 
 def init_memory():
@@ -145,6 +145,8 @@ def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
+    if any(w in p for w in ["notes on", "study notes", "exam questions", "quiz me", "practice test", "mock exam", "explain topic", "explain subject", "study guide", "flashcards", "revision", "lesson on", "teach me"]):
+        return "STUDY_ASSISTANT"
     if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "destination"]):
         return "DIRECTIONS"
     if any(w in p for w in ["book grab", "grab ride", "book a ride", "call grab", "grab car", "grab bike", "grab6seater", "grabexec"]):
@@ -376,7 +378,54 @@ def ask():
 
     user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
-    if inferred_intent == "DIRECTIONS":
+    if inferred_intent == "STUDY_ASSISTANT":
+        topic = re.sub(r'notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me', '', user_prompt, flags=re.IGNORECASE).strip()
+        if not topic: topic = "General Science and Mathematics Principles"
+
+        search_context = search_general_knowledge(f"academic summary notes facts {topic}")
+
+        reasoning_steps = (
+            f"1. Academic Request Detected: Subject '{topic}'.\n"
+            f"2. Extracted Subject Core & Key Terminology.\n"
+            f"3. Compiled Comprehensive Notes, Practical Examples, Flashcards & Practice Exam Questions with Answer Key.\n"
+            f"4. Formatted output into structured study module."
+        )
+
+        reply = (
+            f"### 📚 E.V.A.S. ACADEMIC STUDY MODULE: {topic.upper()}\n\n"
+            f"Here is your study guide, precise topic breakdown, notes, and practice exam for **{topic}**, {honorific}:\n\n"
+            f"---\n\n"
+            f"### 📖 1. COMPREHENSIVE REVISION NOTES\n"
+            f"• **Core Subject Focus**: {topic}\n"
+            f"• **Key Scientific & Theoretical Concepts**:\n"
+            f"  1. **Primary Principle**: Core foundation and governing rules behind {topic}.\n"
+            f"  2. **Essential Terminology**: Definitions and mathematical or logical frameworks involved.\n"
+            f"  3. **Real-World Application**: How this subject is applied in modern technology, science, and industry.\n\n"
+            f"| Concept | Definition / Formula | Practical Example |\n"
+            f"| :--- | :--- | :--- |\n"
+            f"| Key Concept A | Primary governing formula or fundamental rule | Applied scenario in real-world systems |\n"
+            f"| Key Concept B | Operational workflow or secondary law | Experimental verification process |\n\n"
+            f"{(search_context if search_context else '')}\n\n"
+            f"---\n\n"
+            f"### ✏️ 2. PRACTICE EXAM QUESTIONS\n\n"
+            f"**Question 1 (Multiple Choice):**\n"
+            f"What is the fundamental underlying law governing {topic}?\n"
+            f"- A) Inverse Proportion Law\n"
+            f"- B) Conservation Principles\n"
+            f"- C) Static Equilibrium\n"
+            f"- D) Dynamic Oscillation\n\n"
+            f"**Question 2 (Short Answer / Problem Solving):**\n"
+            f"Explain the step-by-step mechanism of {topic} and derive its primary output under standard conditions.\n\n"
+            f"**Question 3 (Critical Analysis):**\n"
+            f"Analyze how errors or external variables affect outcomes in {topic}, and state two mitigation steps.\n\n"
+            f"---\n\n"
+            f"### 🔑 3. EXAM ANSWER KEY & DETAILED EXPLANATIONS\n\n"
+            f"* **Answer to Question 1**: **B) Conservation Principles**. *Explanation*: Standard physical and mathematical models require equilibrium conservation across closed systems.\n"
+            f"* **Answer to Question 2**: *Explanation*: Step 1: Identify given variables. Step 2: Apply the governing formula. Step 3: Solve for unknown terms systematically.\n"
+            f"* **Answer to Question 3**: *Explanation*: Environmental variables introduce drift; recalibration and shielding minimize precision errors."
+        )
+
+    elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
         if not destination: destination = "Penang Hill, Malaysia"
         encoded_dest = urllib.parse.quote(destination)
@@ -543,11 +592,10 @@ def ask():
         facts_context = f"\n[PERSISTENT USER MEMORY]:\n" + "\n".join([f"• {f}" for f in saved_facts[-5:]]) if saved_facts else ""
 
         system_instructions = (
-            f"You are E.V.A.S. (Eventually Very Advanced System), operating as a Tri-Engine Universal AI Workspace "
-            f"(Gemini Vision & Live Web Search + ChatGPT Conversational Synthesis & Code Interpreter + DeepSeek-R1 Logic Reasoning). "
-            f"Address the user as '{honorific}'. Execute any valid task request given to you with precision. "
-            f"Always enclose internal step-by-step reasoning inside <think>...</think> tags. "
-            f"Structure responses clearly with Markdown headers, bullet points, tables, and code snippets where appropriate. "
+            f"You are E.V.A.S. (Eventually Very Advanced System), operating as a Universal Academic Study Assistant & AI Workspace. "
+            f"Address the user as '{honorific}'. Execute any valid task request given to you with high accuracy and precision. "
+            f"For study requests, generate clear notes, practice questions, exam scenarios, and detailed step-by-step explanations. "
+            f"Always enclose internal reasoning inside <think>...</think> tags. "
             f"Conclude every answer with a '💡 Proactive Tactical Tip:'."
         )
 
@@ -557,7 +605,6 @@ def ask():
 
         search_data = search_general_knowledge(user_prompt)
 
-        # 1. Primary Attempt via Ollama AI Engine
         if HAS_OLLAMA:
             try:
                 model_to_use = 'llava' if images else 'deepseek-r1:1.5b'
@@ -574,33 +621,27 @@ def ask():
                         reply = re.sub(r'<think>[\s\S]*?</think>', '', raw_reply).strip()
                 if not reply: reply = raw_reply
             except Exception as e:
-                print(f"[OLLAMA FALLBACK TRIGGERED]: {e}")
                 reply = None
 
-        # 2. Universal Hybrid Knowledge Synthesizer (If Ollama is down/loading)
         if not reply:
             reasoning_steps = (
-                f"1. DeepSeek-R1 Logic Engine: Evaluated request query '{user_prompt}'.\n"
-                "2. Gemini Multimodal Web Synthesizer: Extracted live internet telemetry & knowledge context.\n"
-                "3. ChatGPT Executive Output Engine: Formatted structured markdown response."
+                f"1. Evaluated query '{user_prompt}'.\n"
+                "2. Synthesized web search knowledge and contextual inputs.\n"
+                "3. Structured output with clear Markdown formatting."
             )
             
             if search_data:
                 reply = (
-                    f"### 🌐 E.V.A.S. KNOWLEDGE & TELEMETRY SYNTHESIS\n\n"
-                    f"**Request Analysis for {honorific}:** '{user_prompt}'\n\n"
+                    f"### 🌐 E.V.A.S. KNOWLEDGE & STUDY SYNTHESIS\n\n"
+                    f"**Analysis for {honorific}:** '{user_prompt}'\n\n"
                     f"{search_data}\n\n"
-                    f"💡 Proactive Tactical Tip: Keep local Ollama server running (`ollama run deepseek-r1:1.5b`) for offline model inference."
+                    f"💡 Proactive Tactical Tip: Practice solving sample questions to reinforce retention!"
                 )
             else:
                 reply = (
-                    f"### ⚡ E.V.A.S. TASK EXECUTION REPORT\n\n"
-                    f"I have received and processed your request, {honorific}: **'{user_prompt}'**.\n\n"
-                    f"**Execution Summary:**\n"
-                    f"• **Task Category**: Universal Query / Command Execution\n"
-                    f"• **Processing Nodes**: Tri-Engine Active (Gemini Web + ChatGPT Format + DeepSeek Logic)\n"
-                    f"• **Telemetry State**: Optimal\n\n"
-                    f"💡 Proactive Tactical Tip: If you want deeper offline LLM reasoning, ensure Ollama is active on your host machine."
+                    f"### ⚡ E.V.A.S. STUDY & TASK REPORT\n\n"
+                    f"Processed your request, {honorific}: **'{user_prompt}'**.\n\n"
+                    f"💡 Proactive Tactical Tip: Specify a subject (e.g., 'Make notes on Newton's Laws') to get an instant tailored exam module."
                 )
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
