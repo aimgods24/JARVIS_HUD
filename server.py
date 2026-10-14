@@ -24,6 +24,9 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
+# Build version identifier for zero-downtime update polling
+EVAS_BUILD_VERSION = "2.4.0-HOTFIX"
+
 GLOBAL_NEWS_CACHE = []
 
 def init_memory():
@@ -188,6 +191,20 @@ def home():
     response.headers['Expires'] = '0'
     return response
 
+@app.route('/manifest.json')
+def get_manifest():
+    return send_from_directory('.', 'manifest.json', mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def get_sw():
+    response = make_response(send_from_directory('.', 'sw.js', mimetype='application/javascript'))
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    return response
+
+@app.route('/api/version')
+def get_version():
+    return jsonify({"version": EVAS_BUILD_VERSION})
+
 @app.route('/watch')
 def watch_tile():
     watch_html = """
@@ -236,22 +253,6 @@ def watch_tile():
     </html>
     """
     return render_template_string(watch_html)
-
-@app.route('/manifest.json')
-def manifest():
-    return jsonify({
-        "name": "E.V.A.S. Core HUD",
-        "short_name": "E.V.A.S.",
-        "start_url": "/watch",
-        "display": "standalone",
-        "background_color": "#000000",
-        "theme_color": "#00f3ff",
-        "icons": [{"src": "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=192&auto=format&fit=crop", "sizes": "192x192", "type": "image/png"}]
-    })
-
-@app.route('/sw.js')
-def service_worker():
-    return ("self.addEventListener('fetch', function(e) {});", 200, {'Content-Type': 'application/javascript'})
 
 @app.route('/api/scan_cctv', methods=['POST', 'GET'])
 def scan_cctv():
