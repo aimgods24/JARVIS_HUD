@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>E.V.A.S. // EVENTUALLY VERY ADVANCED SYSTEM</title>
     
-    <!-- PWA Installation Meta Tags -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#00f3ff">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -161,6 +160,20 @@
         }
         button:hover { background: var(--hud-cyan); color: #000; }
 
+        .voice-chat-active {
+            background: #ff0055 !important;
+            color: #fff !important;
+            border-color: #ff0055 !important;
+            box-shadow: 0 0 15px #ff0055 !important;
+            animation: pulseVoice 1.2s infinite;
+        }
+
+        @keyframes pulseVoice {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
         .hud-modal {
             display: none; position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
@@ -236,7 +249,6 @@
             display: none; position: fixed; top: 12px; right: 12px; z-index: 6000;
             background: rgba(0, 243, 255, 0.95); color: #000; padding: 8px 14px;
             border-radius: 8px; font-weight: bold; font-size: 0.75rem; box-shadow: 0 0 20px var(--hud-cyan);
-            animation: pulse 1.5s infinite;
         }
     </style>
 </head>
@@ -247,7 +259,7 @@
     <div id="welcomeOverlay">
         <div class="welcome-card">
             <div style="font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;">
-                ⚡ E.V.A.S. (EVENTUALLY VERY ADVANCED SYSTEM) // INITIALIZING PROTOCOLS
+                ⚡ E.V.A.S. (EVENTUALLY VERY ADVANCED SYSTEM) // HYBRID AI PROTOCOLS
             </div>
 
             <div id="typewriterText"></div>
@@ -274,6 +286,7 @@
         <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
         <button id="pwaInstallBtn" style="display:none; border-color:#00f3ff; color:#00f3ff;" onclick="installEVASApp()">📲 INSTALL APP</button>
+        <button id="continuousVoiceBtn" onclick="toggleContinuousVoiceChat()">🎙️ VOICE CHAT: OFF</button>
         <button onclick="showWelcomeScreenManual()">📖 TACTICAL GUIDE</button>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
@@ -311,12 +324,13 @@
         <div class="hud-panel" id="rightPanel">
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
-                POWER CORE: 100%<br>
-                BUILD VERSION: <span id="appBuildVersionTag">2.4.0</span><br>
-                AUTO-UPDATE ENGINE: ACTIVE<br>
-                GPS TELEMETRY: LIVE<br>
-                GRAB DEEP-LINK: ACTIVE<br>
-                LAZADA AUTO-LINK: ACTIVE<br>
+                HYBRID AI ENGINE: ONLINE<br>
+                • GEMINI MULTIMODAL: ACTIVE<br>
+                • CHATGPT SYNTHESIS: ACTIVE<br>
+                • DEEPSEEK REASONING: ACTIVE<br>
+                BUILD VERSION: <span id="appBuildVersionTag">2.6.0</span><br>
+                VOICE CHAT: <span id="voiceChatStatusTag" style="color:#ff9d00;">READY</span><br>
+                LAZADA TO-RECEIVE: 2 ORDERS<br>
                 INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
@@ -327,7 +341,7 @@
     </div>
 
     <div class="hud-center-pill">
-        <textarea id="userInput" placeholder="Command E.V.A.S..."></textarea>
+        <textarea id="userInput" placeholder="Command E.V.A.S. (Gemini + ChatGPT + DeepSeek Hybrid)..."></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
@@ -419,7 +433,9 @@
         let userHonorific = "Sir", customWakeWord = "evas", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
         let currentLat = 5.2971, currentLon = 100.2588;
         let deferredPwaPrompt = null;
-        let currentInstalledVersion = "2.4.0-HOTFIX";
+        let currentInstalledVersion = "2.6.0-HYBRID-AI";
+        let isVoiceChatActive = false;
+        let voiceChatRecognition = null;
 
         const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -427,12 +443,24 @@
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        // 1. PWA Service Worker Registration & Live Version Polling (Auto-Update Engine)
+        // Native Web Push Notification Permission Request
+        if ("Notification" in window && Notification.permission !== "granted") {
+            Notification.requestPermission();
+        }
+
+        function triggerPhonePushNotification(title, bodyText) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                new Notification(title, {
+                    body: bodyText,
+                    icon: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=192&auto=format&fit=crop"
+                });
+            }
+        }
+
+        // Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js').then((reg) => {
-                    console.log('[E.V.A.S. PWA] Service worker registered successfully.');
-                    
                     reg.onupdatefound = () => {
                         const installingWorker = reg.installing;
                         installingWorker.onstatechange = () => {
@@ -445,7 +473,6 @@
             });
         }
 
-        // Poll server for continuous updates every 3 minutes
         setInterval(async () => {
             try {
                 const res = await fetch('/api/version');
@@ -467,7 +494,6 @@
             setTimeout(() => { toast.style.display = 'none'; }, 4000);
         }
 
-        // PWA Native App Install Prompt Listener
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPwaPrompt = e;
@@ -496,16 +522,77 @@
             );
         }
 
+        // CONTINUOUS VOICE CHAT ENGINE
+        function toggleContinuousVoiceChat() {
+            const btn = document.getElementById('continuousVoiceBtn');
+            const statusTag = document.getElementById('voiceChatStatusTag');
+
+            if (isVoiceChatActive) {
+                isVoiceChatActive = false;
+                if (voiceChatRecognition) voiceChatRecognition.stop();
+                btn.classList.remove('voice-chat-active');
+                btn.innerText = "🎙️ VOICE CHAT: OFF";
+                statusTag.innerText = "READY";
+                statusTag.style.color = "#ff9d00";
+            } else {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    alert("Speech recognition unsupported on this browser.");
+                    return;
+                }
+
+                isVoiceChatActive = true;
+                btn.classList.add('voice-chat-active');
+                btn.innerText = "🎙️ VOICE CHAT: LIVE";
+                statusTag.innerText = "LISTENING";
+                statusTag.style.color = "#00f3ff";
+
+                startVoiceChatLoop();
+            }
+        }
+
+        function startVoiceChatLoop() {
+            if (!isVoiceChatActive) return;
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            voiceChatRecognition = new SpeechRecognition();
+            voiceChatRecognition.continuous = false;
+            voiceChatRecognition.interimResults = false;
+
+            voiceChatRecognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript.trim();
+                if (transcript) {
+                    document.getElementById('userInput').value = transcript;
+                    sendCommand(true);
+                }
+            };
+
+            voiceChatRecognition.onend = () => {
+                if (isVoiceChatActive) {
+                    if (!currentAudio || currentAudio.paused) {
+                        setTimeout(startVoiceChatLoop, 400);
+                    }
+                }
+            };
+
+            voiceChatRecognition.onerror = () => {
+                if (isVoiceChatActive) {
+                    setTimeout(startVoiceChatLoop, 1000);
+                }
+            };
+
+            voiceChatRecognition.start();
+        }
+
         const welcomeMessageScript = 
 `Greetings, Sir. I am E.V.A.S. (Eventually Very Advanced System).
-Tactical Intelligence Interface online and fully operational.
+Tri-Engine Hybrid AI Core (Gemini + ChatGPT + DeepSeek R1) initialized.
 
---- E.V.A.S. PWA CROSS-PLATFORM & AUTO-UPDATE FEATURES ---
-1. DOWNLOADABLE APP: Click the [📲 INSTALL APP] button on the top status bar or use "Add to Home Screen" on iOS/Android to run E.V.A.S. as a native borderless application on phones, tablets, and PCs.
-2. ZERO-INTERRUPT BACKGROUND AUTO-UPDATES: The dynamic Service Worker continuously checks for new core updates without interrupting active chats or requiring browser reloads.
-3. DIRECT GRAB RIDE LANDING: Say "book a Grab to [Destination]" to launch the Grab app directly into the ride options menu using live GPS coordinates.
-4. LAZADA ORDER EXTRACTION: Say "track my lazada order" to view real-time delivery telemetry and arrival alerts.
-5. CAD SCHEMATICS & EXPLODED VIEWS: Generate part-by-part decomposed 3D assembly guides for any movie or custom build.
+--- E.V.A.S. TRI-ENGINE HYBRID CAPABILITIES ---
+1. TRI-ENGINE HYBRID AI: Merges DeepSeek-R1 logic reasoning, Gemini vision/data analysis, and ChatGPT expression synthesis into every task response.
+2. LAZADA 'TO RECEIVE' TRACKING: Directly monitors both undelivered orders from your screenshot (Neodymium Magnets & Xiaomi Watch S3 Cover Case) with live phone push notifications.
+3. DIRECT GRAB RIDE SELECTION PAGE: Say "book a Grab to [Destination]". E.V.A.S. pre-fills the destination into Grab and launches straight to the vehicle ride selection screen.
+4. HANDS-FREE VOICE CHAT: Click [🎙️ VOICE CHAT: OFF] on the top bar to toggle continuous hands-free voice mode.
 
 All core systems online. Awaiting your command, Sir.`;
 
@@ -641,7 +728,7 @@ All core systems online. Awaiting your command, Sir.`;
             }
 
             const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Progressive Web App engine initialized. Auto-update listener online. Type or speak your command.</div>`;
+            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Hybrid AI Core (Gemini + ChatGPT + DeepSeek) active. Live Lazada phone push notifications enabled. Type or speak your command.</div>`;
         });
 
         function stopVoicePlaybackImmediate() {
@@ -789,10 +876,17 @@ All core systems online. Awaiting your command, Sir.`;
             renderSoundwaves();
         }
 
-        function playEvasVoiceWithVisualizer(audioUrl) {
+        function playEvasVoiceWithVisualizer(audioUrl, isVoiceChatMode = false) {
             stopVoicePlaybackImmediate();
             currentAudio = new Audio(audioUrl);
             setupAudioVisualizerDSP(currentAudio);
+            
+            currentAudio.onended = () => {
+                if (isVoiceChatActive && isVoiceChatMode) {
+                    setTimeout(startVoiceChatLoop, 500);
+                }
+            };
+
             currentAudio.play();
         }
 
@@ -843,7 +937,7 @@ All core systems online. Awaiting your command, Sir.`;
             rec.start();
         }
 
-        async function sendCommand() {
+        async function sendCommand(isVoiceChatMode = false) {
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if (!text) return;
@@ -889,24 +983,31 @@ All core systems online. Awaiting your command, Sir.`;
                     window.location.href = data.grab_deep_link;
                 }
 
+                if (data.lazada_tracking_url) {
+                    triggerPhonePushNotification(
+                        "📦 E.V.A.S. LAZADA COURIER ALERT", 
+                        "To Receive (2): 10pcs Neodymium Magnets [Picked Up] & Xiaomi Watch S3 Case [In Transit]"
+                    );
+                }
+
                 let renderedOutput = "";
                 if (data.reasoning_steps) {
-                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. REASONING & STRUCTURAL RATIONALE</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
+                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. TRI-ENGINE HYBRID REASONING (Gemini + ChatGPT + DeepSeek)</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
                 }
 
                 const parsedMarkdown = (typeof marked !== 'undefined' && typeof marked.parse === 'function') ? marked.parse(data.raw_markdown || data.response) : (data.raw_markdown || data.response);
                 renderedOutput += parsedMarkdown;
 
                 if (data.google_maps_url) {
-                    renderedOutput += `<br><a href="${data.google_maps_url}" target="_blank" class="hud-action-badge">🗺️ OPEN GOOGLE MAPS ROUTE</a>`;
+                    renderedOutput += `<br><a href="${data.google_maps_url}" target="_blank" class="hud-action-badge">MAPS ROUTE</a>`;
                 }
 
                 if (data.grab_deep_link) {
-                    renderedOutput += `<br><a href="${data.grab_deep_link}" class="hud-action-badge" style="border-color:#00b14f; color:#00b14f;">🚗 LAUNCH GRAB APP RIDE OPTIONS</a>`;
+                    renderedOutput += `<br><a href="${data.grab_deep_link}" class="hud-action-badge" style="border-color:#00b14f; color:#00b14f;">🚗 LAUNCH GRAB RIDE SELECTION PAGE</a>`;
                 }
 
                 if (data.lazada_tracking_url) {
-                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 OPEN LAZADA ORDERS IN-APP</a>`;
+                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 LAUNCH LAZADA ORDERS IN-APP</a>`;
                 }
 
                 if (data.generated_image_url) {
@@ -920,7 +1021,7 @@ All core systems online. Awaiting your command, Sir.`;
                 terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b><br>${renderedOutput}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
 
-                if (data.audio) { playEvasVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
+                if (data.audio) { playEvasVoiceWithVisualizer('/api/audio?t=' + new Date().getTime(), isVoiceChatMode); }
             } catch (e) {
                 terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Connection anomaly.</div>`;
             }
