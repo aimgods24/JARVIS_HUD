@@ -7,8 +7,8 @@ import threading
 import time
 import requests
 import urllib.parse
+from duckduckgo_search import DDGS
 
-# Safe imports for external dependencies
 try:
     from bs4 import BeautifulSoup
     HAS_BS4 = True
@@ -35,7 +35,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "8.0.0-MASSIVE-UPGRADE"
+EVAS_BUILD_VERSION = "8.1.0-FAILSAFE-ENGINE"
 
 def init_memory():
     if not os.path.exists(MEMORY_FILE):
@@ -64,17 +64,19 @@ def save_memory_fact(fact_str):
         with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
 
-def perform_direct_google_search(query):
-    """Directly queries Google Search without needing API keys."""
+def perform_live_web_search(query):
+    """Dual-engine web search: Google Scraper with DuckDuckGo fallback."""
+    extracted_data = []
+
+    # Attempt 1: Direct Google Scraper
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
     encoded_query = urllib.parse.quote(query)
     google_url = f"https://www.google.com/search?q={encoded_query}&hl=en"
     
-    extracted_data = []
     try:
-        response = requests.get(google_url, headers=headers, timeout=5)
+        response = requests.get(google_url, headers=headers, timeout=4)
         if response.status_code == 200 and HAS_BS4:
             soup = BeautifulSoup(response.text, "html.parser")
             snippets = soup.find_all(['div', 'span'], class_=re.compile(r'(VwiC3b|yXMda|MUxGv|Hg231c)'))
@@ -82,18 +84,22 @@ def perform_direct_google_search(query):
                 txt = s.get_text().strip()
                 if len(txt) > 30 and txt not in extracted_data:
                     extracted_data.append(txt)
-                    
-            if not extracted_data:
-                paragraphs = soup.find_all('p')
-                for p in paragraphs:
-                    txt = p.get_text().strip()
-                    if len(txt) > 30:
-                        extracted_data.append(txt)
-                        
-        if extracted_data:
-            return "\n\n".join(extracted_data[:4])
-    except Exception as e:
-        print(f"[GOOGLE SEARCH LOG]: {e}")
+    except Exception:
+        pass
+
+    # Attempt 2: DuckDuckGo Fallback (if Google blocked or returned empty)
+    if not extracted_data:
+        try:
+            ddg_results = list(DDGS().text(query, max_results=5))
+            if ddg_results:
+                for res in ddg_results:
+                    if 'body' in res and res['body']:
+                        extracted_data.append(f"**{res.get('title', 'Result')}**\n{res['body']}")
+        except Exception as e:
+            print(f"[SEARCH FALLBACK LOG]: {e}")
+
+    if extracted_data:
+        return "\n\n".join(extracted_data[:4])
     return None
 
 def fetch_global_weather(location_query, lat=None, lon=None):
@@ -142,7 +148,7 @@ def fetch_global_weather(location_query, lat=None, lon=None):
 def parse_contextual_intent(prompt):
     p = prompt.lower()
 
-    if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "go to", "maps to", "destination"]):
+    if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "maps to", "take me to", "how to go to", "go to", "destination"]):
         return "DIRECTIONS"
     if any(w in p for w in ["book grab", "grab ride", "book a ride", "call grab", "grab car", "grab bike", "grab6seater", "grabexec"]):
         return "BOOK_GRAB"
@@ -152,12 +158,6 @@ def parse_contextual_intent(prompt):
         return "GENERATE_IMAGE"
     if any(w in p for w in ["blueprint", "design 3d", "architectural plan", "schematic of", "build a", "create design", "assembly guide", "exploded view"]):
         return "CREATE_BLUEPRINT"
-    if any(w in p for w in ["cancel cctv", "disconnect camera", "close camera", "stop feed", "turn off camera", "close cctv", "hide cctv", "stop cctv"]):
-        return "CANCEL_CCTV"
-    if any(w in p for w in ["connect to cctv", "scan cctv", "check camera", "show camera", "cctv feed", "front door camera", "security feed", "perimeter camera", "view feed", "switch camera"]):
-        return "CCTV_SCAN"
-    if any(w in p for w in ["open translate", "activate translate", "launch translate", "translate mode", "translator"]):
-        return "OPEN_TRANSLATE"
     if any(w in p for w in ["weather", "temperature", "forecast", "how hot", "how cold"]):
         return "WEATHER"
     if any(w in p for w in ["remember that", "save note", "keep in mind"]):
@@ -214,14 +214,10 @@ def ask():
     lazada_tracking_url = None
 
     if inferred_intent == "DIRECTIONS":
-        # Extract target destination
         destination = re.sub(r'directions to|route to|navigate to|map to|maps to|take me to|how to go to|go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
-        if not destination: 
-            destination = "Penang Hill, Malaysia"
-            
+        if not destination: destination = "Penang Hill, Malaysia"
         encoded_dest = urllib.parse.quote(destination)
         
-        # Build direct Google Maps 'Go Now' Navigation URL with destination pre-filled
         if lat is not None and lon is not None:
             google_maps_url = f"https://www.google.com/maps/dir/?api=1&origin={lat},{lon}&destination={encoded_dest}&travelmode=driving"
         else:
@@ -270,16 +266,17 @@ def ask():
             save_memory_fact(fact)
             reply = f"Saved to persistent memory, {honorific}: '{fact}'"
 
+    # Search & LLM Generation logic
     if not reply:
-        google_context = perform_direct_google_search(user_prompt)
+        live_search_data = perform_live_web_search(user_prompt)
 
         system_prompt = (
-            f"You are E.V.A.S. (Eventually Very Advanced System). Answer the user accurately and directly. Address them as '{honorific}'."
+            f"You are E.V.A.S. (Eventually Very Advanced System). Answer the user accurately, directly, and comprehensively based on the live search data provided. Address them as '{honorific}'."
         )
 
         if HAS_OLLAMA:
             try:
-                prompt_content = f"User Request: {user_prompt}\n\nSearch Context:\n{google_context if google_context else 'None'}"
+                prompt_content = f"User Request: {user_prompt}\n\nLive Search Telemetry:\n{live_search_data if live_search_data else 'None'}"
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
                     messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt_content}],
@@ -293,11 +290,12 @@ def ask():
             except Exception:
                 reply = None
 
+        # Fallback when LLM is unavailable (e.g., Render Cloud hosting)
         if not reply:
-            if google_context:
-                reply = f"### 🌐 LIVE GOOGLE SEARCH RESULTS:\n\n{google_context}"
+            if live_search_data:
+                reply = f"### 📰 LIVE TELEMETRY REPORT:\n\n{live_search_data}"
             else:
-                reply = f"Processed request, {honorific}: **'{user_prompt}'**."
+                reply = f"E.V.A.S. Core online. Request received, {honorific}: **'{user_prompt}'**."
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
 
