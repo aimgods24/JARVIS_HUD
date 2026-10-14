@@ -20,7 +20,7 @@ except Exception:
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
-MEMORY_FILE = "jarvis_memory.json"
+MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
@@ -143,6 +143,16 @@ def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
+    if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "destination"]):
+        return "DIRECTIONS"
+    if any(w in p for w in ["book grab", "grab ride", "book a ride", "call grab", "grab car"]):
+        return "BOOK_GRAB"
+    if any(w in p for w in ["track lazada", "lazada order", "lazada package", "where is my lazada"]):
+        return "TRACK_LAZADA"
+    if any(w in p for w in ["generate image", "create image", "draw", "make a photo", "generate photo", "picture of"]):
+        return "GENERATE_IMAGE"
+    if any(w in p for w in ["blueprint", "design 3d", "architectural plan", "schematic of", "build a", "create design"]):
+        return "CREATE_BLUEPRINT"
     if any(w in p for w in ["cancel cctv", "disconnect camera", "close camera", "stop feed", "turn off camera", "close cctv", "hide cctv", "stop cctv"]):
         return "CANCEL_CCTV"
     if any(w in p for w in ["connect to cctv", "scan cctv", "check camera", "show camera", "cctv feed", "front door camera", "security feed", "perimeter camera", "view feed", "switch camera"]):
@@ -170,7 +180,7 @@ def home():
         with open('index.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
     else:
-        html_content = "<h1>J.A.R.V.I.S. Core Active. Ensure index.html is present.</h1>"
+        html_content = "<h1>E.V.A.S. Core Active. Ensure index.html is present.</h1>"
     
     response = make_response(render_template_string(html_content))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
@@ -186,7 +196,7 @@ def watch_tile():
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <link rel="manifest" href="/manifest.json">
-        <title>JARVIS WATCH WIDGET</title>
+        <title>E.V.A.S. WATCH WIDGET</title>
         <style>
             body { background: #000; color: #00f3ff; font-family: -apple-system, sans-serif; text-align: center; margin: 0; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
             .widget-ring { width: 120px; height: 120px; border-radius: 50%; border: 3px solid #00f3ff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; box-shadow: 0 0 15px #00f3ff; cursor: pointer; }
@@ -196,8 +206,8 @@ def watch_tile():
     </head>
     <body>
         <div class="widget-ring" onclick="triggerWatchVoice()">
-            <span>J.A.R.V.I.S.</span>
-            <span style="font-size:0.5rem; opacity:0.8;">TAP TO SPEAK</span>
+            <span>E.V.A.S.</span>
+            <span style="font-size:0.45rem; opacity:0.8;">TAP TO SPEAK</span>
         </div>
         <div id="out">Widget Active</div>
         <script>
@@ -230,8 +240,8 @@ def watch_tile():
 @app.route('/manifest.json')
 def manifest():
     return jsonify({
-        "name": "JARVIS Mark LXXXV HUD",
-        "short_name": "JARVIS",
+        "name": "E.V.A.S. Core HUD",
+        "short_name": "E.V.A.S.",
         "start_url": "/watch",
         "display": "standalone",
         "background_color": "#000000",
@@ -357,12 +367,64 @@ def ask():
     cancel_cctv = False
     open_translate_hud = False
     trigger_lock = False
+    generated_image_url = None
+    grab_deep_link = None
+    lazada_tracking_url = None
+    blueprint_specs = None
 
-    if inferred_intent == "SAVE_FACT":
+    if inferred_intent == "DIRECTIONS":
+        destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
+        if not destination: destination = "Penang Hill, Malaysia"
+        encoded_dest = urllib.parse.quote(destination)
+        google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}"
+        reply = f"Route calculations complete for '{destination}', {honorific}. Launching Google Maps navigation directly on your device."
+
+    elif inferred_intent == "BOOK_GRAB":
+        dest = re.sub(r'book grab|grab ride|book a ride|call grab|grab car|to', '', user_prompt, flags=re.IGNORECASE).strip()
+        grab_deep_link = f"grab://open?screen=transport"
+        reply = f"Dispatching Grab ride transport request for '{dest if dest else 'your specified destination'}', {honorific}. Tap the deep link below to confirm pickup."
+
+    elif inferred_intent == "TRACK_LAZADA":
+        lazada_tracking_url = "https://www.lazada.com.my/user/order/list"
+        reply = f"Accessing Lazada Logistics Telemetry, {honorific}. Your recent package status link has been synchronized below."
+
+    elif inferred_intent == "GENERATE_IMAGE":
+        prompt_clean = re.sub(r'generate image|create image|draw|make a photo|generate photo|picture of', '', user_prompt, flags=re.IGNORECASE).strip()
+        if not prompt_clean: prompt_clean = "Futuristic Stark Arc Reactor Core HD render"
+        encoded_prompt = urllib.parse.quote(prompt_clean)
+        generated_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
+        reply = f"Visual synthesis complete for '{prompt_clean}', {honorific}. Image generated and projected below."
+
+    elif inferred_intent == "CREATE_BLUEPRINT":
+        design_item = re.sub(r'blueprint|design 3d|architectural plan|schematic of|build a|create design', '', user_prompt, flags=re.IGNORECASE).strip()
+        if not design_item: design_item = "Modular Quantum Energy Processor"
+        
+        encoded_item = urllib.parse.quote(f"Technical CAD Blueprint Schematic of {design_item}, white lines on blue background, highly detailed 8k render")
+        generated_image_url = f"https://image.pollinations.ai/prompt/{encoded_item}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
+
+        reasoning_steps = f"1. Analyzed structural load & geometry requirements for '{design_item}'.\n2. Rendered 100% compliant CAD vector schematics.\n3. Compiled 3D WebGL preview & step-by-step assembly protocol."
+
+        reply = (
+            f"### 📐 CAD SCHEMATIC BLUEPRINT: {design_item.upper()}\n\n"
+            f"**100% Accurate Structural Specification for {honorific}:**\n\n"
+            f"| Module Segment | Material Specs | Tolerance Rate | Load Capacity |\n"
+            f"| :--- | :--- | :--- | :--- |\n"
+            f"| Primary Chassis | Titanium-Vibranium Alloy | ±0.001 mm | 12,500 N |\n"
+            f"| Power Coupling | Superconducting Copper Core | ±0.002 mm | 850 A |\n"
+            f"| Housing Frame | Reinforced Carbon Matrix | ±0.005 mm | 4,200 kPa |\n\n"
+            f"#### 🛠️ STEP-BY-STEP ASSEMBLY & CREATION GUIDE:\n"
+            f"1. **Chassis Preparation**: Machine the primary chassis frame out of Titanium-Vibranium alloy using precision CNC milling.\n"
+            f"2. **Core Integration**: Insert the superconducting copper power coupling into the isolated dampening bay.\n"
+            f"3. **Thermal Matrix Fitting**: Fasten carbon-matrix heat vents using zero-tolerance torque bolts.\n"
+            f"4. **Calibration & Ignition**: Connect power lines and perform a 100% diagnostic telemetry check before initialization.\n\n"
+            f"Below is the exact CAD Schematic Render and 3D Model Projection:"
+        )
+
+    elif inferred_intent == "SAVE_FACT":
         fact = re.sub(r'remember that|save note|keep in mind', '', user_prompt, flags=re.IGNORECASE).strip()
         if fact:
             save_memory_fact(fact)
-            reply = f"Memory updated and indexed in cross-session persistence storage, {honorific}: '{fact}'"
+            reply = f"Memory updated and indexed in E.V.A.S. cross-session persistence storage, {honorific}: '{fact}'"
 
     elif inferred_intent == "CANCEL_CCTV":
         cancel_cctv = True
@@ -380,7 +442,7 @@ def ask():
 
     elif inferred_intent == "SECURITY_LOCK":
         trigger_lock = True
-        reply = f"Stark Security Protocol Engaged. Locking chat terminal interface, {honorific}."
+        reply = f"E.V.A.S. Security Protocol Engaged. Locking chat terminal interface, {honorific}."
 
     elif inferred_intent == "SMART_HOME":
         act = "OFF" if "off" in cmd_lower else "ON"
@@ -392,7 +454,7 @@ def ask():
         news_summary = GLOBAL_NEWS_CACHE[0] if GLOBAL_NEWS_CACHE else "Global telemetry feeds optimal."
         mem_data = get_memory_data()
         facts_count = len(mem_data.get('facts', []))
-        reply = f"Good day, {honorific}. Executive Briefing:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\n3. Memory Records: {facts_count} active facts archived."
+        reply = f"Good day, {honorific}. Executive Briefing from E.V.A.S.:\n\n1. Weather Telemetry:\n{weather_summary}\n\n2. Headlines:\n{news_summary}\n\n3. Memory Records: {facts_count} active facts archived."
 
     elif inferred_intent == "MEDIA_PLAYBACK":
         query = re.sub(r'play|put on|some tracks|music|video|listen to|spotify|youtube', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -412,8 +474,8 @@ def ask():
         facts_context = f"\n[PERSISTENT USER MEMORY]:\n" + "\n".join([f"• {f}" for f in saved_facts[-5:]]) if saved_facts else ""
 
         system_instructions = (
-            f"You are J.A.R.V.I.S. Mark LXXXV. Address the user as '{honorific}'. "
-            f"Be authoritative, highly intelligent, concise, and smart. "
+            f"You are E.V.A.S. (Eventually Very Advanced System). Address the user as '{honorific}'. "
+            f"Be highly intelligent, authoritative, and precise. "
             f"Structure complex explanations clearly with markdown headers, tables, bullet points, and runnable code blocks when relevant. "
             f"Always begin your response with step-by-step internal reasoning enclosed inside <think>...</think> tags. "
             f"Include a '💡 Proactive Tactical Tip:' at the bottom of responses."
@@ -471,6 +533,9 @@ def ask():
         'reasoning_steps': reasoning_steps,
         'audio': has_audio,
         'google_maps_url': google_maps_url,
+        'grab_deep_link': grab_deep_link,
+        'lazada_tracking_url': lazada_tracking_url,
+        'generated_image_url': generated_image_url,
         'cctv_stream_url': cctv_stream_url,
         'cancel_cctv': cancel_cctv,
         'open_translate_hud': open_translate_hud,

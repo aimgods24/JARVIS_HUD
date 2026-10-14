@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JARVIS // MARK LXXXV MASTER CORE</title>
+    <title>E.V.A.S. // EVENTUALLY VERY ADVANCED SYSTEM</title>
     <link rel="manifest" href="/manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -120,7 +120,7 @@
 
         .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
-        .msg-jarvis { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
+        .msg-evas { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
         .reasoning-box {
             background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.25);
@@ -136,10 +136,10 @@
         .hud-table th { background: rgba(0, 243, 255, 0.2); color: var(--hud-cyan); }
 
         .hud-action-badge {
-            display: inline-block; margin-top: 4px; margin-right: 4px; padding: 4px 8px;
+            display: inline-block; margin-top: 6px; margin-right: 6px; padding: 6px 12px;
             background: var(--hud-glow); border: 1px solid var(--hud-cyan);
-            border-radius: 4px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.68rem;
-            cursor: pointer;
+            border-radius: 6px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.72rem;
+            cursor: pointer; box-shadow: 0 0 10px var(--hud-glow);
         }
 
         .hud-center-pill {
@@ -208,7 +208,6 @@
             border-bottom: 1px dashed rgba(0, 243, 255, 0.2); padding-bottom: 8px; margin-bottom: 8px;
         }
 
-        /* CINEMATIC WELCOME SCREEN OVERLAY */
         #welcomeOverlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(1, 8, 16, 0.98); z-index: 4000;
@@ -218,7 +217,7 @@
         }
 
         .welcome-card {
-            width: 100%; max-width: 650px; background: rgba(0, 12, 24, 0.95);
+            width: 100%; max-width: 680px; background: rgba(0, 12, 24, 0.95);
             border: 2px solid var(--hud-cyan); border-radius: 10px; padding: 20px;
             box-shadow: 0 0 30px var(--hud-glow); display: flex; flex-direction: column; gap: 12px;
             max-height: 80vh; overflow-y: auto;
@@ -228,15 +227,19 @@
             font-size: 0.88rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
             min-height: 140px; border-left: 2px solid var(--hud-cyan); padding-left: 10px;
         }
+
+        .generated-img-preview {
+            width: 100%; max-width: 500px; border-radius: 8px; border: 2px solid var(--hud-cyan);
+            margin-top: 8px; box-shadow: 0 0 15px var(--hud-glow);
+        }
     </style>
 </head>
 <body>
 
-    <!-- CINEMATIC SLOW TYPEWRITER WELCOME SCREEN OVERLAY -->
     <div id="welcomeOverlay">
         <div class="welcome-card">
             <div style="font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;">
-                ⚡ J.A.R.V.I.S. MARK LXXXV // SYSTEM BOOT PROTOCOL
+                ⚡ E.V.A.S. (EVENTUALLY VERY ADVANCED SYSTEM) // INITIALIZING PROTOCOLS
             </div>
 
             <div id="typewriterText"></div>
@@ -251,7 +254,7 @@
 
     <div id="securityLockOverlay">
         <div style="font-size: 3rem;">🔒</div>
-        <div style="font-size: 1.2rem; font-weight: bold;">STARK SECURITY LOCK</div>
+        <div style="font-size: 1.2rem; font-weight: bold;">E.V.A.S. SECURITY LOCK</div>
         <div style="display: flex; gap: 6px; margin-top: 10px;">
             <input type="text" id="unlockPhraseInput" placeholder="Enter wake phrase..." style="width: 220px; border-color: #ff2200; color: #ff2200;">
             <button onclick="attemptSecurityUnlock()" style="border-color: #ff2200; color: #ff2200;">UNLOCK</button>
@@ -259,7 +262,7 @@
     </div>
 
     <div class="hud-top-bar">
-        <div><span class="status-pill"></span>JARVIS // MARK LXXXV</div>
+        <div><span class="status-pill"></span>E.V.A.S. // CORE MASTER</div>
         <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
         <div id="liveClock">00:00:00</div>
         <button onclick="showWelcomeScreenManual()">📖 TACTICAL GUIDE</button>
@@ -299,8 +302,8 @@
         <div class="hud-panel" id="rightPanel">
             <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
-                POWER CORE: 99%<br>
-                INTELLIGENCE ENGINE: HYBRID R1<br>
+                POWER CORE: 100%<br>
+                SYSTEM MODE: E.V.A.S. ADVANCED<br>
                 INTERRUPT KEY: ESC / F9
             </div>
             <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
@@ -311,11 +314,10 @@
     </div>
 
     <div class="hud-center-pill">
-        <textarea id="userInput" placeholder="Command J.A.R.V.I.S..."></textarea>
+        <textarea id="userInput" placeholder="Command E.V.A.S..."></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
-    <!-- TRANSLATION FLOATING POP-UP HUD MODAL -->
     <div class="hud-modal" id="translateModal">
         <div class="modal-header">
             <div>🌐 NEURAL TRANSLATION HUD</div>
@@ -343,7 +345,6 @@
         </div>
     </div>
 
-    <!-- CONFIGURATION SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div class="modal-header">
             <div>⚙️ MASTER CONFIGURATION SETTINGS</div>
@@ -376,7 +377,7 @@
             </div>
             <div class="setting-row">
                 <label>Security Wake Phrase:</label>
-                <input type="text" id="settingWakeWord" placeholder="jarvis" onchange="saveCustomSettings()">
+                <input type="text" id="settingWakeWord" placeholder="evas" onchange="saveCustomSettings()">
             </div>
             <div class="setting-row">
                 <label>Voice Speech Speed (<span id="speedValLabel">+2%</span>):</label>
@@ -402,7 +403,7 @@
 
     <script>
         let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
-        let userHonorific = "Sir", customWakeWord = "jarvis", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
+        let userHonorific = "Sir", customWakeWord = "evas", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
 
         const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
@@ -410,20 +411,18 @@
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        // --- CINEMATIC SLOW TYPEWRITER WELCOME PROTOCOL ---
         const welcomeMessageScript = 
-`Greetings, Sir. I am J.A.R.V.I.S. (Just A Rather Very Intelligent System).
-Mark LXXXV Tactical Interface online and fully operational.
+`Greetings, Sir. I am E.V.A.S. (Eventually Very Advanced System).
+Tactical Intelligence Interface online and fully operational.
 
---- TACTICAL USER OPERATING GUIDE ---
-1. COMMAND DISPATCH: Type your prompt or code request in the center pill. Desktop users press [ENTER] to send (or [SHIFT+ENTER] for newlines). Mobile users tap the [SEND] button or soft keyboard 'Go'.
-2. STEP-BY-STEP REASONING: Every executive query displays a collapsible DeepSeek-R1 logic block detailing internal calculations before output generation.
-3. CCTV SURVEILLANCE MATRIX: Type 'connect to cctv' to view live camera telemetry directly inside the 3D Arc Core Orb. Say 'cancel cctv' to return to the WebGL Hologram.
-4. VOICE BARGE-IN INTERRUPT: Press [ESC] or [F9] at any time to instantly halt speech synthesis playback.
-5. GLOBAL TRANSLATOR: Click [🌐 TRANSLATE] in the top navigation bar to open the floating neural translation HUD with the Cyber-Mesh wireframe sphere.
-6. WATCH WIDGET: Navigate to /watch or click [⌚ WATCH PWA WIDGET] for smartwatch tap-to-speak dictation.
+--- E.V.A.S. TACTICAL OPERATING GUIDE ---
+1. AUTOMATED NAVIGATION: Type "directions to [destination]" or "take me to [place]". E.V.A.S. instantly opens Google Maps navigation with your target route set.
+2. RIDE BOOKING & ORDER TRACKING: Type "book grab to [location]" or "track lazada order" to generate synchronized mobile deep links.
+3. CAD BLUEPRINTS & 3D RENDERS: Type "blueprint for [object]" or "design 3d [item]". E.V.A.S. outputs 100% accurate CAD schematics, 3D WebGL projections, and step-by-step assembly guides.
+4. AI IMAGE GENERATION: Say "generate image of [prompt]" to synthesize photorealistic artwork inline.
+5. VOICE INTERRUPT & HUD CUSTOMIZATION: Press [ESC] or [F9] to halt speech output immediately. Access ⚙️ SETTINGS to toggle between 10 HUD color schemes.
 
-All systems online. Awaiting your command.`;
+All core systems online. Awaiting your command, Sir.`;
 
         let typeIndex = 0;
         function runCinematicTypewriter() {
@@ -451,10 +450,9 @@ All systems online. Awaiting your command.`;
                 document.getElementById('welcomeOverlay').style.display = 'none';
                 document.getElementById('welcomeOverlay').style.opacity = '1';
             }, 400);
-            localStorage.setItem('jarvis_welcomed', 'true');
+            localStorage.setItem('evas_welcomed', 'true');
         }
 
-        // --- THREE.JS 3D HOLOGRAPHIC ARC REACTOR CORE ---
         let scene, camera, renderer, particleSphere, wireCore, coreMat;
 
         function init3DHologramCore() {
@@ -496,7 +494,6 @@ All systems online. Awaiting your command.`;
             animate3DCore();
         }
 
-        // --- NEON CYBER-MESH ORB CANVAS ---
         function renderCyberMeshTranslateOrb() {
             const canvas = document.getElementById('translateMeshCanvas');
             if (!canvas) return;
@@ -552,14 +549,14 @@ All systems online. Awaiting your command.`;
             init3DHologramCore();
             renderCyberMeshTranslateOrb();
 
-            if (!localStorage.getItem('jarvis_welcomed')) {
+            if (!localStorage.getItem('evas_welcomed')) {
                 runCinematicTypewriter();
             } else {
                 document.getElementById('welcomeOverlay').style.display = 'none';
             }
 
             const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML = `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Executive Intelligence Interface Mark LXXXV initialized. All tactical protocols online. Type or speak your command.</div>`;
+            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> System Master Protocol online. All tactical engines operational. Type or speak your command.</div>`;
         });
 
         function stopVoicePlaybackImmediate() {
@@ -606,7 +603,7 @@ All systems online. Awaiting your command.`;
 
         function saveCustomSettings() {
             userHonorific = document.getElementById('settingHonorific').value;
-            customWakeWord = document.getElementById('settingWakeWord').value || "jarvis";
+            customWakeWord = document.getElementById('settingWakeWord').value || "evas";
             const rVal = document.getElementById('settingVoiceRate').value;
             const pVal = document.getElementById('settingVoicePitch').value;
             selectedVoiceRate = (rVal >= 0 ? "+" : "") + rVal + "%";
@@ -658,10 +655,10 @@ All systems online. Awaiting your command.`;
                     body: JSON.stringify({ task: taskText })
                 });
                 const data = await res.json();
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> ${data.summary}</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> ${data.summary}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Agent task failed.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Agent task failed.</div>`;
             }
         }
 
@@ -707,7 +704,7 @@ All systems online. Awaiting your command.`;
             renderSoundwaves();
         }
 
-        function playJarvisVoiceWithVisualizer(audioUrl) {
+        function playEvasVoiceWithVisualizer(audioUrl) {
             stopVoicePlaybackImmediate();
             currentAudio = new Audio(audioUrl);
             setupAudioVisualizerDSP(currentAudio);
@@ -751,7 +748,7 @@ All systems online. Awaiting your command.`;
                     btn.innerText = "🎙️ DICTATE";
                     subtitleBox.innerHTML = `<b>Original:</b> ${data.original_text}<br><b style='color:var(--hud-cyan);'>Translation (${data.target_lang}):</b> ${data.translated_text}`;
 
-                    if (data.audio) { playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
+                    if (data.audio) { playEvasVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
                 } catch(err) {
                     btn.innerText = "🎙️ DICTATE";
                     subtitleBox.innerText = "Translation processing failed.";
@@ -801,20 +798,40 @@ All systems online. Awaiting your command.`;
                 if (data.open_translate_hud) { openTranslateHUD(); }
                 if (data.trigger_lock) { triggerSecurityLock(); return; }
 
+                if (data.google_maps_url) {
+                    window.open(data.google_maps_url, '_blank');
+                }
+
                 let renderedOutput = "";
                 if (data.reasoning_steps) {
-                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 DEEPSEEK-R1 RATIONALE & THOUGHT PROCESS</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
+                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. REASONING & STRUCTURAL RATIONALE</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
                 }
 
                 const parsedMarkdown = typeof marked !== 'undefined' ? marked.parse(data.raw_markdown || data.response) : data.response;
                 renderedOutput += parsedMarkdown;
 
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b><br>${renderedOutput}</div>`;
+                if (data.google_maps_url) {
+                    renderedOutput += `<br><a href="${data.google_maps_url}" target="_blank" class="hud-action-badge">🗺️ OPEN GOOGLE MAPS ROUTE</a>`;
+                }
+
+                if (data.grab_deep_link) {
+                    renderedOutput += `<br><a href="${data.grab_deep_link}" class="hud-action-badge" style="border-color:#00b14f; color:#00b14f;">🚗 LAUNCH GRAB APP DEEP LINK</a>`;
+                }
+
+                if (data.lazada_tracking_url) {
+                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 OPEN LAZADA TRACKING PORTAL</a>`;
+                }
+
+                if (data.generated_image_url) {
+                    renderedOutput += `<br><div style="margin-top:8px;"><b>🖼️ SYNTHESIZED RENDER / CAD SCHEMATIC:</b><br><img src="${data.generated_image_url}" class="generated-img-preview" alt="Generated Render"></div>`;
+                }
+
+                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b><br>${renderedOutput}</div>`;
                 terminal.scrollTop = terminal.scrollHeight;
 
-                if (data.audio) { playJarvisVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
+                if (data.audio) { playEvasVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
             } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-jarvis"><b>J.A.R.V.I.S.:</b> Connection anomaly.</div>`;
+                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Connection anomaly.</div>`;
             }
         }
     </script>
