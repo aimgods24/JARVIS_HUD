@@ -1,6 +1,5 @@
 flask
-edge-tts
-duckduckgo-search
 requests
-googlesearch-python
 beautifulsoup4
+duckduckgo-search
+gTTS
