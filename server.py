@@ -24,16 +24,16 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "6.1.0-STUDY-NOTES-EXPLAINER"
+EVAS_BUILD_VERSION = "6.2.0-STUDY-EXPLAINER-NOTES-SYLLABUS"
 GLOBAL_NEWS_CACHE = []
 
 # Persistent State Manager
 IS_STUDY_MODE_ACTIVE = False
 ACTIVE_STUDY_SESSION = {
     "subject": "General Academics",
-    "grade": "Secondary / High School",
-    "board": "IGCSE / AP / Standard",
-    "topic": "Universal Learning Matrix"
+    "grade": "All Grades / Levels",
+    "board": "Universal Syllabus (IGCSE / AP / CBSE / IB / SPM / A-Levels)",
+    "topic": "Academic Knowledge Matrix"
 }
 
 def init_memory():
@@ -167,10 +167,15 @@ def extract_academic_context(prompt_text, user_subject=None, user_grade=None, us
 
     detected_grade = user_grade
     if not detected_grade:
-        grade_match = re.search(r'(grade\s*\d+|year\s*\d+|10th|11th|12th|9th|8th|college|university)', p)
+        grade_match = re.search(r'(grade\s*\d+|year\s*\d+|10th|11th|12th|9th|8th|7th|6th|college|university)', p)
         detected_grade = grade_match.group(0).title() if grade_match else ACTIVE_STUDY_SESSION["grade"]
 
-    subjects = ["physics", "chemistry", "biology", "mathematics", "math", "calculus", "algebra", "history", "computer science", "economics", "english"]
+    subjects = [
+        "physics", "chemistry", "biology", "mathematics", "math", "calculus", "algebra",
+        "geometry", "trigonometry", "statistics", "history", "computer science", "python",
+        "economics", "accounting", "business studies", "geography", "english", "literature",
+        "psychology", "sociology"
+    ]
     detected_subject = user_subject
     if not detected_subject:
         for s in subjects:
@@ -182,7 +187,7 @@ def extract_academic_context(prompt_text, user_subject=None, user_grade=None, us
 
     detected_topic = user_topic
     if not detected_topic:
-        clean_t = re.sub(r'make notes|generate notes|notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me|explain|how to solve|what is|help me with', '', prompt_text, flags=re.IGNORECASE).strip()
+        clean_t = re.sub(r'make notes|generate notes|notes on|study notes|exam questions|quiz me|practice test|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me|explain|how to solve|what is|help me with|syllabus for|summary of', '', prompt_text, flags=re.IGNORECASE).strip()
         detected_topic = clean_t if clean_t else prompt_text
 
     return {
@@ -207,7 +212,7 @@ def parse_contextual_intent(prompt):
     if IS_STUDY_MODE_ACTIVE:
         return "STUDY_ASSISTANT"
 
-    academic_triggers = ["notes", "study", "exam", "quiz", "tutor", "explain", "syllabus", "curriculum", "flashcard", "pomodoro", "grade", "year", "igcse", "ap", "cbse", "a-levels", "ib", "spm", "gcse", "practice question", "math", "physics", "chemistry", "biology"]
+    academic_triggers = ["notes", "study", "exam", "quiz", "tutor", "explain", "syllabus", "curriculum", "flashcard", "grade", "year", "igcse", "ap", "cbse", "a-levels", "ib", "spm", "gcse", "math", "physics", "chemistry", "biology", "solve", "how to"]
     if any(w in p for w in academic_triggers):
         return "STUDY_ASSISTANT"
 
@@ -450,14 +455,9 @@ def ask():
 
     if inferred_intent == "TOGGLE_STUDY_MODE_ON":
         reply = (
-            f"🎓 **E.V.A.S. DREAM STUDY WORKSPACE ACTIVATED**\n\n"
-            f"I am now in persistent **Study Mode**, {honorific}. All query routes are locked into Academic Performance Optimization:\n"
-            f"• **Feynman Concept Explainer Engine**: Active\n"
-            f"• **Automated Notes Creator**: Active\n"
-            f"• **Dynamic Revision Flashcard Generator**: Ready\n"
-            f"• **25/5 Pomodoro Focus Sprint Engine**: Ready\n"
-            f"• **Exam Board Alignment**: AP, IGCSE, CBSE, IB, A-Levels & SPM\n\n"
-            f"What topic, subject, or problem set shall we tackle, {honorific}?"
+            f"🎓 **E.V.A.S. ACADEMIC TUTOR & SYLLABUS WORKSPACE ACTIVATED**\n\n"
+            f"I am now in persistent **Study Mode**, {honorific}. All query routes are locked into complete concept explanations, comprehensive revision notes, and curriculum syllabus alignment for any subject or grade level.\n\n"
+            f"Ask any question or specify a topic, subject, grade, or exam board to begin!"
         )
 
     elif inferred_intent == "TOGGLE_STUDY_MODE_OFF":
@@ -470,31 +470,30 @@ def ask():
         syllabus_search_data = search_general_knowledge(f"official curriculum syllabus outline {acad['board']} {acad['subject']} {acad['topic']}")
 
         dynamic_tutor_system_prompt = (
-            f"You are an expert school tutor and revision note creator running E.V.A.S. Study Workspace. "
-            f"Target Audience: Grade/Level ({acad['grade']}), Exam Board ({acad['board']}), Subject ({acad['subject']}). "
-            f"Structure your entire response with:\n"
-            f"1. 💡 FEYNMAN CONCEPT EXPLAINER: Explain '{acad['topic']}' clearly using a simple real-world analogy suited for {acad['grade']}.\n"
-            f"2. 📝 STRUCTURED REVISION NOTES: Provide key definitions, core formulas/principles, and 3 high-yield summary bullet points.\n"
-            f"3. 🎴 DYNAMIC FLASHCARDS: Markdown table with 2 revision flashcards.\n"
-            f"4. ✍️ EXAM PRACTICE QUESTIONS: 2 practice questions matching {acad['board']} marking schemes."
+            f"You are E.V.A.S. Master Academic Tutor. Provide an accurate, highly detailed academic explanation, structured notes, and syllabus breakdown for any subject or grade level.\n"
+            f"Level: {acad['grade']} | Exam Board: {acad['board']} | Subject: {acad['subject']} | Topic: {acad['topic']}\n\n"
+            f"Mandatory Response Format:\n"
+            f"1. 📖 IN-DEPTH EXPLANATION: Give a thorough, detailed, and completely accurate step-by-step breakdown explaining the user's question.\n"
+            f"2. 📝 COMPREHENSIVE REVISION NOTES: Bulleted definitions, core laws/formulas, worked step-by-step examples, and high-yield takeaway points.\n"
+            f"3. 🎯 SYLLABUS & CURRICULUM OVERVIEW: Outline the syllabus unit objectives, core learning outcomes, and common exam traps/mistakes for {acad['board']} {acad['subject']}."
         )
 
         reasoning_steps = (
-            f"1. STUDY WORKSPACE ENGAGED:\n"
-            f"   • Subject: {acad['subject']} | Level: {acad['grade']} | Syllabus: {acad['board']}\n"
-            f"   • Topic Focus: {acad['topic']}\n"
-            f"2. Executed Concept Explainer & Structured Notes Creator Pipeline.\n"
-            f"3. Synthesized Syllabus Telemetry & Exam Board Marking Scheme Requirements."
+            f"1. STUDY MODE EXPLAINER & NOTES GENERATOR ENGAGED:\n"
+            f"   • Subject: {acad['subject']} | Grade Level: {acad['grade']} | Exam Board: {acad['board']}\n"
+            f"   • Query Focus: {acad['topic']}\n"
+            f"2. Querying Live Web Knowledge Matrix for Syllabus Standard Verification.\n"
+            f"3. Constructing In-Depth Explanation, Structured Revision Notes, and Syllabus Breakdown."
         )
 
         ollama_reply = None
         if HAS_OLLAMA:
             try:
-                prompt_payload = f"{dynamic_tutor_system_prompt}\n\nUser Request: {user_prompt}\nSyllabus Data: {syllabus_search_data}"
+                prompt_payload = f"{dynamic_tutor_system_prompt}\n\nUser Question/Prompt: {user_prompt}\nVerified Syllabus Context: {syllabus_search_data}"
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
                     messages=[{"role": "system", "content": dynamic_tutor_system_prompt}, {"role": "user", "content": prompt_payload}],
-                    options={"num_predict": 1000, "temperature": 0.2}
+                    options={"num_predict": 1200, "temperature": 0.2}
                 )
                 ollama_reply = response['message']['content'].strip()
                 if "<think>" in ollama_reply and "</think>" in ollama_reply:
@@ -508,40 +507,44 @@ def ask():
         if ollama_reply:
             reply = ollama_reply
         else:
+            search_context = search_general_knowledge(f"detailed explanation {acad['subject']} {acad['topic']}")
+            
             reply = (
-                f"### 🎓 E.V.A.S. STUDY WORKSPACE [{acad['board'].upper()} | {acad['grade']}]\n\n"
-                f"**Academic Parameters for {honorific}:**\n"
-                f"• **Subject**: `{acad['subject']}` | **Board**: `{acad['board']}` | **Topic**: `{acad['topic']}`\n\n"
+                f"### 🎓 E.V.A.S. ACADEMIC TUTOR [{acad['subject'].upper()} | {acad['grade']} | {acad['board'].upper()}]\n\n"
+                f"**Target Topic**: `{acad['topic']}`\n\n"
                 f"---\n\n"
-                f"### 💡 1. FEYNMAN CONCEPT EXPLAINER\n"
-                f"**Understanding `{acad['topic']}` Made Simple**:\n"
-                f"Imagine this concept like a structured water pipeline. Pressure forces water through pipes, while narrow sections resist the flow. In `{acad['subject']}`, inputs interact through governing rules to create predictable outputs.\n\n"
+                f"### 📖 1. IN-DEPTH EXPLANATION\n"
+                f"To understand **{acad['topic']}**, we look directly at its foundational principles within {acad['subject']}:\n\n"
+                f"• **Core Mechanics**: The concept functions as an interconnected system where input variables determine outcomes based on established rules.\n"
+                f"• **Step-by-Step Breakdown**:\n"
+                f"  1. *Primary Condition*: The initial state or baseline equation governing the phenomenon.\n"
+                f"  2. *Process Interaction*: How components shift when subjected to forces, reactions, logic, or calculations.\n"
+                f"  3. *Final Result*: The measurable quantity, conclusion, or output derived.\n\n"
+                f"{(f'**Verified Concept Knowledge:**\n' + search_context + '\n\n') if search_context else ''}"
                 f"---\n\n"
-                f"### 📝 2. AUTOMATED REVISION NOTES: {acad['topic'].upper()}\n\n"
-                f"#### Key Terms & Definitions:\n"
-                f"• **Primary Definition**: The exact, syllabus-defined rule for `{acad['topic']}` as mandated by `{acad['board']}`.\n"
-                f"• **Governing Principle**: Core relation determining how variables change relative to system energy or inputs.\n\n"
-                f"#### Essential Formulas / Laws:\n"
-                f"$$\\text{{Core Relationship}}: \\quad X = \\frac{{Y \\cdot Z}}{{k}}$$\n"
-                f"*(Always specify standard SI units in final answers to avoid losing working marks on {acad['board']} exams).*\n\n"
-                f"#### Core Summary Points:\n"
-                f"1. **Primary Rule**: System remains in equilibrium unless unbalanced external factors apply.\n"
-                f"2. **Calculations**: Derive missing values using standard step-by-step substitution.\n"
-                f"3. **Exam Pitfall**: Common mistake is forgetting to convert units prior to formula calculation.\n\n"
-                f"{(f'#### 🔎 LIVE SYLLABUS TELEMETRY:\n{syllabus_search_data}\n\n' if syllabus_search_data else '')}"
+                f"### 📝 2. COMPREHENSIVE REVISION NOTES\n\n"
+                f"#### Key Terms & Standard Definitions:\n"
+                f"• **{acad['topic']}**: Formal syllabus-defined terminology required for full marks in exams.\n"
+                f"• **Governing Variables**: Primary units, parameters, or historical/theoretical framework involved.\n\n"
+                f"#### Core Rules, Formulas & Laws:\n"
+                f"$$\\text{{Standard Expression}}: \\quad Y = f(X) \\implies \\text{{Derived Outcome}}$$\n"
+                f"*(Always verify SI units and algebraic manipulations before writing final values).*\n\n"
+                f"#### Key Takeaways:\n"
+                f"1. **Primary Concept**: Master the core definition before attempting multi-step calculations.\n"
+                f"2. **Worked Progression**: Substitute known values directly into standard formulas.\n"
+                f"3. **Summary Rule**: State units, context, or clear working for full evaluation.\n\n"
                 f"---\n\n"
-                f"### 🎴 3. REVISION FLASHCARDS\n"
-                f"| Flashcard Prompt | Answer / Explanation |\n"
-                f"| :--- | :--- |\n"
-                f"| **Q1: What is the fundamental definition of {acad['topic']}?** | Formal state defined by official {acad['board']} syllabus parameters. |\n"
-                f"| **Q2: Which SI unit is required for final derivations?** | Standard metric values with full step progression shown. |\n\n"
-                f"---\n\n"
-                f"### ✍️ 4. CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS\n\n"
-                f"**Question 1 ({acad['board']} Paper Style):**\n"
-                f"State the primary law governing {acad['topic']} and calculate the resulting change when system input increases by 25%.\n\n"
-                f"**Question 2 (Extended Response):**\n"
-                f"Describe two common mistakes students make when answering questions on {acad['topic']} and explain how to avoid them according to the marking scheme.\n\n"
-                f"⏱️ *Study Mode Active*: Say **'start 25 min timer'** to initiate a focus sprint!"
+                f"### 🎯 3. SYLLABUS & CURRICULUM OVERVIEW [{acad['board'].upper()}]\n\n"
+                f"#### Syllabus Module Objectives:\n"
+                f"• **Unit Objective 1**: Demonstrate knowledge and understanding of {acad['topic']} with accurate terms.\n"
+                f"• **Unit Objective 2**: Apply theoretical principles to solve multi-step problems or extended answers.\n"
+                f"• **Unit Objective 3**: Analyze experimental data, case studies, or mathematical proofs.\n\n"
+                f"#### ⚠️ Common Exam Pitfalls & Mistakes to Avoid:\n"
+                f"• *Mistake 1*: Omitting units or working steps in numerical questions.\n"
+                f"• *Mistake 2*: Confusing closely related terms or failing to use board-specific key words.\n"
+                f"• *Mistake 3*: Misinterpreting graph axes or problem conditions.\n\n"
+                f"{(f'#### 🔎 LIVE SYLLABUS MATRIX TELEMETRY:\n' + syllabus_search_data + '\n\n') if syllabus_search_data else ''}"
+                f"💡 *Tip*: Ask **'give me a practice question on this'** to test your knowledge!"
             )
 
     elif inferred_intent == "DIRECTIONS":
