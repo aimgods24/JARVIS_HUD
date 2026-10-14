@@ -8,7 +8,7 @@ import time
 import requests
 import urllib.parse
 
-# Safe imports for external tools
+# Safe imports for external dependencies
 try:
     from bs4 import BeautifulSoup
     HAS_BS4 = True
@@ -35,7 +35,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "7.0.0-CORE-NO-STUDY-MODE"
+EVAS_BUILD_VERSION = "8.0.0-MASSIVE-UPGRADE"
 
 def init_memory():
     if not os.path.exists(MEMORY_FILE):
@@ -65,7 +65,7 @@ def save_memory_fact(fact_str):
             json.dump(data, f, indent=2)
 
 def perform_direct_google_search(query):
-    """Queries Google Search results directly."""
+    """Directly queries Google Search without needing API keys."""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
@@ -93,7 +93,7 @@ def perform_direct_google_search(query):
         if extracted_data:
             return "\n\n".join(extracted_data[:4])
     except Exception as e:
-        print(f"[GOOGLE SEARCH ENGINE LOG]: {e}")
+        print(f"[GOOGLE SEARCH LOG]: {e}")
     return None
 
 def fetch_global_weather(location_query, lat=None, lon=None):
@@ -142,7 +142,7 @@ def fetch_global_weather(location_query, lat=None, lon=None):
 def parse_contextual_intent(prompt):
     p = prompt.lower()
 
-    if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "destination"]):
+    if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "go to", "maps to", "destination"]):
         return "DIRECTIONS"
     if any(w in p for w in ["book grab", "grab ride", "book a ride", "call grab", "grab car", "grab bike", "grab6seater", "grabexec"]):
         return "BOOK_GRAB"
@@ -158,6 +158,8 @@ def parse_contextual_intent(prompt):
         return "CCTV_SCAN"
     if any(w in p for w in ["open translate", "activate translate", "launch translate", "translate mode", "translator"]):
         return "OPEN_TRANSLATE"
+    if any(w in p for w in ["weather", "temperature", "forecast", "how hot", "how cold"]):
+        return "WEATHER"
     if any(w in p for w in ["remember that", "save note", "keep in mind"]):
         return "SAVE_FACT"
 
@@ -192,12 +194,14 @@ def ask():
     data = request.json or {}
     user_prompt = data.get('prompt', '').strip()
     honorific = data.get('honorific', 'Sir')
+    location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
+    lat = data.get('latitude', None)
+    lon = data.get('longitude', None)
     is_dnd = data.get('dnd_mode', False)
 
     if not user_prompt:
         return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
 
-    cmd_lower = user_prompt.lower()
     inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
     google_maps_url = None
@@ -207,15 +211,28 @@ def ask():
     generated_image_url = None
     exploded_view_url = None
     grab_deep_link = None
-    grab_driver_info = None
     lazada_tracking_url = None
 
     if inferred_intent == "DIRECTIONS":
-        destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
-        if not destination: destination = "Penang Hill, Malaysia"
+        # Extract target destination
+        destination = re.sub(r'directions to|route to|navigate to|map to|maps to|take me to|how to go to|go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
+        if not destination: 
+            destination = "Penang Hill, Malaysia"
+            
         encoded_dest = urllib.parse.quote(destination)
-        google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}"
-        reply = f"Route calculations complete for '{destination}', {honorific}. Launching Google Maps navigation."
+        
+        # Build direct Google Maps 'Go Now' Navigation URL with destination pre-filled
+        if lat is not None and lon is not None:
+            google_maps_url = f"https://www.google.com/maps/dir/?api=1&origin={lat},{lon}&destination={encoded_dest}&travelmode=driving"
+        else:
+            google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}&travelmode=driving"
+
+        reply = (
+            f"🗺️ **DIRECT GOOGLE MAPS NAVIGATION LAUNCHED**\n\n"
+            f"• **Destination**: `{destination}`\n"
+            f"• **Routing Protocol**: Direct Navigation ('Go Now') Mode Enabled\n"
+            f"• **Action**: Launching Google Maps with `{destination}` pre-filled, {honorific}."
+        )
 
     elif inferred_intent == "BOOK_GRAB":
         dest = re.sub(r'book grab|grab ride|book a ride|call grab|grab car|grab bike|grab6seater|grabexec|to', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -243,6 +260,9 @@ def ask():
         generated_image_url = f"https://image.pollinations.ai/prompt/{prompt_cad}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
         exploded_view_url = f"https://image.pollinations.ai/prompt/{prompt_exploded}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
         reply = f"CAD Blueprint & Exploded view generated for {build_item}, {honorific}."
+
+    elif inferred_intent == "WEATHER":
+        reply = fetch_global_weather(location, lat, lon)
 
     elif inferred_intent == "SAVE_FACT":
         fact = re.sub(r'remember that|save note|keep in mind', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -275,7 +295,7 @@ def ask():
 
         if not reply:
             if google_context:
-                reply = f"### 🌐 SEARCH RESULTS:\n\n{google_context}"
+                reply = f"### 🌐 LIVE GOOGLE SEARCH RESULTS:\n\n{google_context}"
             else:
                 reply = f"Processed request, {honorific}: **'{user_prompt}'**."
 
