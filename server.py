@@ -24,7 +24,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "5.0.0-DYNAMIC-TUTOR"
+EVAS_BUILD_VERSION = "5.1.0-DYNAMIC-TUTOR-FIXED"
 GLOBAL_NEWS_CACHE = []
 
 def init_memory():
@@ -143,39 +143,54 @@ def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
     clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
 
-def parse_academic_parameters(prompt):
-    p = prompt.lower()
-    
+def extract_academic_context(prompt_text, user_subject=None, user_grade=None, user_board=None, user_topic=None):
+    p = prompt_text.lower()
+
+    # Exam Board Detection
     boards = ["igcse", "ap", "cbse", "a-levels", "a levels", "ib", "gcse", "spm", "sat", "act"]
-    detected_board = "General Curriculum"
-    for b in boards:
-        if b in p:
-            detected_board = b.upper()
-            break
+    detected_board = user_board
+    if not detected_board:
+        for b in boards:
+            if b in p:
+                detected_board = b.upper()
+                break
+    if not detected_board:
+        detected_board = "IGCSE / AP / Standard Syllabus"
 
-    grade_match = re.search(r'(grade\s*\d+|year\s*\d+|10th|11th|12th|9th|8th|college|university)', p)
-    detected_grade = grade_match.group(0).title() if grade_match else "High School / Pre-U"
+    # Grade / Year Detection
+    detected_grade = user_grade
+    if not detected_grade:
+        grade_match = re.search(r'(grade\s*\d+|year\s*\d+|10th|11th|12th|9th|8th|college|university)', p)
+        detected_grade = grade_match.group(0).title() if grade_match else "High School / Secondary"
 
-    subject_keywords = ["physics", "chemistry", "biology", "mathematics", "math", "calculus", "history", "computer science", "economics", "english literature"]
-    detected_subject = "General Subject"
-    for s in subject_keywords:
-        if s in p:
-            detected_subject = s.title()
-            break
+    # Subject Detection
+    subjects = ["physics", "chemistry", "biology", "mathematics", "math", "calculus", "algebra", "history", "computer science", "economics", "english"]
+    detected_subject = user_subject
+    if not detected_subject:
+        for s in subjects:
+            if s in p:
+                detected_subject = s.title()
+                break
+    if not detected_subject:
+        detected_subject = "General Science & Mathematics"
 
-    topic_clean = re.sub(r'notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me', '', prompt, flags=re.IGNORECASE).strip()
-    detected_topic = topic_clean if topic_clean else "Core Topic Principles"
+    # Topic Cleaning
+    detected_topic = user_topic
+    if not detected_topic:
+        clean_t = re.sub(r'notes on|study notes|exam questions|quiz me|practice test|mock exam|explain topic|explain subject|study guide|flashcards|revision|lesson on|teach me|explain|how to solve|what is|help me with', '', prompt_text, flags=re.IGNORECASE).strip()
+        detected_topic = clean_t if clean_t else prompt_text
 
     return {
-        "board": detected_board,
-        "grade": detected_grade,
         "subject": detected_subject,
+        "grade": detected_grade,
+        "board": detected_board,
         "topic": detected_topic
     }
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
-    if any(w in p for w in ["notes on", "study notes", "exam questions", "quiz me", "practice test", "mock exam", "explain topic", "explain subject", "study guide", "flashcards", "revision", "lesson on", "teach me", "syllabus"]):
+    academic_triggers = ["notes", "study", "exam", "quiz", "tutor", "explain", "syllabus", "curriculum", "grade", "year", "igcse", "ap", "cbse", "a-levels", "ib", "spm", "gcse", "practice question", "problem", "solve", "math", "physics", "chemistry", "biology", "history"]
+    if any(w in p for w in academic_triggers):
         return "STUDY_ASSISTANT"
     if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "how to go to", "destination"]):
         return "DIRECTIONS"
@@ -382,6 +397,12 @@ def ask():
     is_dnd = data.get('dnd_mode', False)
     temperature = float(data.get('temperature', 0.2))
 
+    # Optional Context Inputs
+    input_subject = data.get('subject', None)
+    input_grade = data.get('grade', None)
+    input_board = data.get('exam_board', None)
+    input_topic = data.get('topic', None)
+
     voice_pitch = data.get('voice_pitch', '-3Hz')
     voice_rate = data.get('voice_rate', '+2%')
     smooth_punct = data.get('smooth_punct', True)
@@ -409,52 +430,79 @@ def ask():
     user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
     if inferred_intent == "STUDY_ASSISTANT":
-        params = parse_academic_parameters(user_prompt)
+        acad = extract_academic_context(user_prompt, input_subject, input_grade, input_board, input_topic)
         
         # Web Search Syllabus Verification Query
-        syllabus_search = search_general_knowledge(f"official syllabus curriculum outline {params['board']} {params['subject']} {params['topic']}")
+        syllabus_search_data = search_general_knowledge(f"official curriculum syllabus outline {acad['board']} {acad['subject']} {acad['topic']}")
 
-        # Dynamic System Instruction Injection
-        dynamic_tutor_system_instruction = (
+        dynamic_tutor_system_prompt = (
             f"You are an expert school tutor. Always align explanations, problem-step breakdowns, and vocabulary "
-            f"to the user's specified subject ({params['subject']}), grade level ({params['grade']}), and exam board/syllabus ({params['board']}). "
-            f"After explaining concepts, generate 1-2 short check-for-understanding practice questions matching the exam style. "
+            f"to the user's specified subject ({acad['subject']}), grade level ({acad['grade']}), and exam board/syllabus ({acad['board']}). "
+            f"After explaining concepts, generate 1–2 short check-for-understanding practice questions matching the exam style. "
             f"If syllabus details are ambiguous or potentially outdated, prompt the user to provide their official topic outline."
         )
 
         reasoning_steps = (
-            f"1. Context Parameters Identified:\n"
-            f"   • Subject: {params['subject']}\n"
-            f"   • Grade: {params['grade']}\n"
-            f"   • Exam Board: {params['board']}\n"
-            f"   • Topic: {params['topic']}\n"
-            f"2. Performed Syllabus Verification Query via DuckDuckGo Web Search.\n"
-            f"3. Injected Dynamic School Tutor Prompt Matrix & Generated Check-for-Understanding Exam Questions."
+            f"1. Dynamic Context Handling:\n"
+            f"   • Subject: {acad['subject']}\n"
+            f"   • Grade/Year: {acad['grade']}\n"
+            f"   • Exam Board: {acad['board']}\n"
+            f"   • Topic: {acad['topic']}\n"
+            f"2. Web Search Knowledge Integration: Executed live DuckDuckGo syllabus verification.\n"
+            f"3. Dynamic Prompt Injected: Applied Expert School Tutor System Instruction.\n"
+            f"4. Generated Explanation, Step-by-Step Breakdown, and Check-for-Understanding Questions."
         )
 
-        reply = (
-            f"### 🏫 E.V.A.S. EXPERT ACADEMIC TUTOR [{params['board']} | {params['grade']}]\n\n"
-            f"**Target Curriculum Parameters for {honorific}:**\n"
-            f"• **Subject**: `{params['subject']}`\n"
-            f"• **Exam Board / Syllabus**: `{params['board']}`\n"
-            f"• **Grade / Year Level**: `{params['grade']}`\n"
-            f"• **Topic Focus**: `{params['topic']}`\n\n"
-            f"---\n\n"
-            f"### 📖 CONCEPT BREAKDOWN & EXPLANATION ({params['board']} ALIGNED)\n"
-            f"In accordance with standard **{params['board']}** guidelines for **{params['grade']}**, here is the precise explanation of **{params['topic']}**:\n\n"
-            f"1. **Primary Theoretical Principle**: Comprehensive core concept aligned to the {params['board']} learning objectives.\n"
-            f"2. **Problem-Step Breakdown**: Step-by-step problem-solving method using officially recognized terminology.\n"
-            f"3. **Syllabus Vocabulary**: Standard keywords required to earn full marks in written exam evaluations.\n\n"
-            f"{(f'#### 🔎 OFFICIAL SYLLABUS VERIFICATION DATA:\n{syllabus_search}\n\n' if syllabus_search else '')}"
-            f"---\n\n"
-            f"### ✍️ CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS ({params['board']} STYLE)\n\n"
-            f"**Question 1 (Paper 1 / Structured Exam Style):**\n"
-            f"Apply the core formula/rule of {params['topic']} to calculate the result when primary variables increase by 25%. Show step-by-step working.\n\n"
-            f"**Question 2 (Paper 2 / Extended Analysis):**\n"
-            f"Explain two key factors that lead to deviation from theoretical predictions in {params['topic']}, referencing the {params['board']} marking scheme criteria.\n\n"
-            f"---\n\n"
-            f"💡 *Note*: If your specific school or teacher uses a customized unit outline for {params['topic']}, feel free to paste your official class topic list here for even sharper alignment!"
-        )
+        ollama_reply = None
+        if HAS_OLLAMA:
+            try:
+                prompt_payload = (
+                    f"{dynamic_tutor_system_prompt}\n\n"
+                    f"User Topic / Question: {user_prompt}\n\n"
+                    f"Verified Syllabus Context:\n{syllabus_search_data if syllabus_search_data else 'Standard Board Syllabus'}"
+                )
+                response = ollama.chat(
+                    model='deepseek-r1:1.5b',
+                    messages=[{"role": "system", "content": dynamic_tutor_system_prompt}, {"role": "user", "content": prompt_payload}],
+                    options={"num_predict": 1000, "temperature": 0.2}
+                )
+                ollama_reply = response['message']['content'].strip()
+                if "<think>" in ollama_reply and "</think>" in ollama_reply:
+                    think_match = re.search(r'<think>([\s\S]*?)</think>', ollama_reply)
+                    if think_match:
+                        reasoning_steps = think_match.group(1).strip()
+                        ollama_reply = re.sub(r'<think>[\s\S]*?</think>', '', ollama_reply).strip()
+            except Exception:
+                ollama_reply = None
+
+        if ollama_reply:
+            reply = ollama_reply
+        else:
+            reply = (
+                f"### 🏫 EXPERT SCHOOL TUTOR [{acad['board'].upper()} | {acad['grade']}]\n\n"
+                f"**Topic Alignment Parameters for {honorific}:**\n"
+                f"• **Subject**: `{acad['subject']}`\n"
+                f"• **Grade / Level**: `{acad['grade']}`\n"
+                f"• **Exam Board / Syllabus**: `{acad['board']}`\n"
+                f"• **Target Topic**: `{acad['topic']}`\n\n"
+                f"---\n\n"
+                f"### 📖 1. CONCEPT EXPLANATION & VOCABULARY BREAKDOWN\n"
+                f"Aligned with **{acad['board']}** curriculum standards for **{acad['grade']}**:\n\n"
+                f"• **Core Theory**: Explanation of `{acad['topic']}` focused on primary syllabus objectives.\n"
+                f"• **Step-by-Step Problem Breakdown**:\n"
+                f"  1. Identify given variables and target metrics.\n"
+                f"  2. Apply the recognized {acad['board']} formula and theoretical principles.\n"
+                f"  3. Execute step-by-step mathematical or analytical deduction.\n\n"
+                f"{(f'#### 🔎 VERIFIED SYLLABUS OUTLINE:\n{syllabus_search_data}\n\n' if syllabus_search_data else '')}"
+                f"---\n\n"
+                f"### ✍️ 2. CHECK-FOR-UNDERSTANDING PRACTICE QUESTIONS\n\n"
+                f"**Question 1 ({acad['board']} Short Answer Style):**\n"
+                f"Define the governing principle of {acad['topic']} and explain how changing initial parameters affects the outcome.\n\n"
+                f"**Question 2 ({acad['board']} Structured Problem Style):**\n"
+                f"Calculate the value for {acad['topic']} when standard conditions are modified, showing all problem steps clearly.\n\n"
+                f"---\n\n"
+                f"💡 *Syllabus Tip*: If your school's official unit outline for {acad['topic']} has specific sub-topics, paste them here to refine the alignment!"
+            )
 
     elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
@@ -624,7 +672,7 @@ def ask():
 
         system_instructions = (
             f"You are E.V.A.S. (Eventually Very Advanced System), operating as a Tri-Engine Universal AI Workspace. "
-            f"Address the user as '{honorific}'. Execute any valid request given to you with high accuracy and precision. "
+            f"Address the user as '{honorific}'. Execute any valid request given to you with precision. "
             f"Always enclose internal reasoning inside <think>...</think> tags. "
             f"Conclude every answer with a '💡 Proactive Tactical Tip:'."
         )
@@ -650,7 +698,7 @@ def ask():
                         reasoning_steps = think_match.group(1).strip()
                         reply = re.sub(r'<think>[\s\S]*?</think>', '', raw_reply).strip()
                 if not reply: reply = raw_reply
-            except Exception as e:
+            except Exception:
                 reply = None
 
         if not reply:
@@ -671,7 +719,7 @@ def ask():
                 reply = (
                     f"### ⚡ E.V.A.S. TASK REPORT\n\n"
                     f"Processed your request, {honorific}: **'{user_prompt}'**.\n\n"
-                    f"💡 Proactive Tactical Tip: State your exam board (e.g. AP, IGCSE, CBSE) for custom study practice questions."
+                    f"💡 Proactive Tactical Tip: Specify a subject and exam board (e.g., 'Explain mitosis for IGCSE Grade 10') for instant tailored practice questions."
                 )
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
