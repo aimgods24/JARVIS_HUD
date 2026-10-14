@@ -9,7 +9,8 @@ import threading
 import time
 import requests
 import urllib.parse
-from duckduckgo_search import DDGS
+from bs4 import BeautifulSoup
+from googlesearch import search  # Direct Google Search without API Key
 
 try:
     import ollama
@@ -24,7 +25,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "6.4.0-BITESIZE-TEACHER"
+EVAS_BUILD_VERSION = "6.5.0-GOOGLE-ENGINE"
 GLOBAL_NEWS_CACHE = []
 
 # Persistent State Manager
@@ -57,19 +58,31 @@ def save_memory_fact(fact_str):
         with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
 
-def fetch_latest_global_news():
-    global GLOBAL_NEWS_CACHE
-    while True:
-        try:
-            results = list(DDGS().text("breaking world news headlines today", max_results=8))
-            if results:
-                GLOBAL_NEWS_CACHE = [f"📰 [{res['title']}] - {res['body']}" for res in results]
-        except Exception as e:
-            print(f"[NEWS ENGINE ERROR]: {str(e)}")
-        time.sleep(3600)
-
-news_thread = threading.Thread(target=fetch_latest_global_news, daemon=True)
-news_thread.start()
+def perform_direct_google_search(query, max_results=5):
+    """Searches Google directly without an API key and extracts snippet content."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    fetched_context = []
+    try:
+        # Get live Google search result URLs
+        urls = list(search(query, num_results=max_results, lang="en"))
+        for url in urls[:3]:
+            try:
+                res = requests.get(url, headers=headers, timeout=4)
+                if res.status_code == 200:
+                    soup = BeautifulSoup(res.text, "html.parser")
+                    paragraphs = soup.find_all("p")
+                    text_snippet = " ".join([p.get_text() for p in paragraphs[:3]]).strip()
+                    if text_snippet:
+                        fetched_context.append(f"🌐\n{text_snippet[:400]}...")
+            except Exception:
+                continue
+        if fetched_context:
+            return "\n\n".join(fetched_context)
+    except Exception as e:
+        print(f"[GOOGLE SEARCH ENGINE WARNING]: {e}")
+    return None
 
 def fetch_global_weather(location_query, lat=None, lon=None):
     try:
@@ -113,16 +126,6 @@ def fetch_global_weather(location_query, lat=None, lon=None):
     except Exception as e:
         print(f"[WEATHER API ERROR]: {e}")
     return f"Unable to fetch weather telemetry for {location_query}."
-
-def search_general_knowledge(query):
-    try:
-        results = list(DDGS().text(query, max_results=5))
-        if results:
-            snippets = [f"• {res['title']}: {res['body']}" for res in results if 'body' in res]
-            return "\n".join(snippets[:3])
-        return None
-    except Exception:
-        return None
 
 def convert_symbols_to_words_fluent(text, smooth_punctuation=True):
     clean = re.sub(r'```[\s\S]*?```', ' Code block provided in terminal ', text)
@@ -273,90 +276,6 @@ def watch_tile():
     """
     return render_template_string(watch_html)
 
-@app.route('/api/scan_cctv', methods=['POST', 'GET'])
-def scan_cctv():
-    data = request.json or {}
-    cam_id = data.get('cam_id', 'cam_01')
-    
-    cameras = [
-        {"id": "cam_01", "name": "PERIMETER-NORTH-CAM", "stream_url": "https://images.unsplash.com/photo-1557597774-9d273605dfa9?w=400&auto=format&fit=crop"},
-        {"id": "cam_02", "name": "MAIN-LAB-CAM", "stream_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&auto=format&fit=crop"},
-        {"id": "cam_03", "name": "FRONT-PORCH-CAM", "stream_url": "https://images.unsplash.com/photo-1508873696983-2df515122519?w=400&auto=format&fit=crop"},
-        {"id": "cam_04", "name": "REAR-GATE-CAM", "stream_url": "https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?w=400&auto=format&fit=crop"}
-    ]
-    
-    selected = next((c for c in cameras if c['id'] == cam_id), cameras[0])
-    return jsonify({'status': 'success', 'selected_camera': selected, 'all_cameras': cameras})
-
-@app.route('/api/agent_task', methods=['POST'])
-def run_autonomous_agent_task():
-    data = request.json or {}
-    task_desc = data.get('task', '').strip()
-    
-    if not task_desc:
-        return jsonify({'status': 'error', 'message': 'No task description specified.'})
-
-    search_data = search_general_knowledge(task_desc)
-    result_text = f"Autonomous Background Worker Execution Complete:\nTask Goal: '{task_desc}'\n\nResults:\n{search_data if search_data else 'Task completed successfully.'}"
-
-    return jsonify({
-        'status': 'success',
-        'task': task_desc,
-        'summary': result_text
-    })
-
-@app.route('/api/translate', methods=['POST'])
-def translate_audio_or_text():
-    data = request.json or {}
-    text = data.get('text', '').strip()
-    target_lang = data.get('target_lang', 'English').strip()
-    voice_pitch = data.get('voice_pitch', '-3Hz')
-    voice_rate = data.get('voice_rate', '+2%')
-    smooth_punct = data.get('smooth_punct', True)
-
-    if not text:
-        return jsonify({'status': 'error', 'response': 'No speech text provided for translation.'})
-
-    translated_text = ""
-    if HAS_OLLAMA:
-        try:
-            response = ollama.chat(
-                model='qwen2.5:0.5b',
-                messages=[
-                    {"role": "system", "content": f"Translate input into {target_lang}. Return ONLY the direct translation."},
-                    {"role": "user", "content": text}
-                ],
-                options={"temperature": 0.1}
-            )
-            translated_text = response['message']['content'].strip()
-        except Exception:
-            pass
-
-    if not translated_text:
-        try:
-            res = list(DDGS().text(f"translate into {target_lang}: '{text}'", max_results=1))
-            if res: translated_text = res[0]['body']
-        except Exception:
-            pass
-
-    if not translated_text: translated_text = text
-
-    spoken_text = convert_symbols_to_words_fluent(translated_text, smooth_punct)
-    has_audio = False
-    try:
-        asyncio.run(generate_voice_file(spoken_text, "en-GB-RyanNeural", voice_pitch, voice_rate))
-        has_audio = True
-    except Exception:
-        has_audio = False
-
-    return jsonify({
-        'status': 'success',
-        'original_text': text,
-        'translated_text': translated_text,
-        'target_lang': target_lang,
-        'audio': has_audio
-    })
-
 @app.route('/api/ask', methods=['POST'])
 def ask():
     global IS_STUDY_MODE_ACTIVE
@@ -369,74 +288,44 @@ def ask():
     honorific = data.get('honorific', 'Sir')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
     is_dnd = data.get('dnd_mode', False)
-    temperature = float(data.get('temperature', 0.2))
 
     voice_pitch = data.get('voice_pitch', '-3Hz')
     voice_rate = data.get('voice_rate', '+2%')
     smooth_punct = data.get('smooth_punct', True)
-    custom_prefix = data.get('custom_prefix', '')
 
-    if not user_prompt and not images and not files:
+    if not user_prompt:
         return jsonify({'response': f'No command received, {honorific}.', 'audio': False})
 
     cmd_lower = user_prompt.lower()
     inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
     reasoning_steps = None
-    google_maps_url = None
-    cctv_stream_url = None
-    cancel_cctv = False
-    open_translate_hud = False
-    trigger_lock = False
-    generated_image_url = None
-    exploded_view_url = None
-    grab_deep_link = None
-    grab_driver_info = None
-    lazada_tracking_url = None
-    lazada_arrived_alert = False
-
-    user_gps_str = f"[{lat:.4f}, {lon:.4f}]" if (lat is not None and lon is not None) else f"Live GPS [{location}]"
 
     if inferred_intent == "TOGGLE_STUDY_MODE_ON":
-        reply = (
-            f"🎓 **STUDY MODE ACTIVATED**\n\n"
-            f"Hello! I am now acting as your personal classroom tutor.\n"
-            f"Ask me any question, and I will explain it step-by-step or generate revision notes using the **BBC Bitesize** curriculum style.\n\n"
-            f"*To turn off Study Mode anytime, just say 'disable study mode' or 'turn off study mode'.*"
-        )
+        reply = f"🎓 **STUDY MODE ACTIVATED**. Google Search integration enabled for real-time information query."
 
     elif inferred_intent == "TOGGLE_STUDY_MODE_OFF":
-        reply = f"🎓 **STUDY MODE DISABLED**. Returned to standard E.V.A.S. assistant mode."
+        reply = f"🎓 **STUDY MODE DISABLED**."
 
     elif inferred_intent == "STUDY_ASSISTANT":
-        # Search web using BBC Bitesize curriculum references
-        bitesize_query = f"site:bbc.co.uk/bitesize {user_prompt}"
-        search_data = search_general_knowledge(bitesize_query)
-        if not search_data:
-            search_data = search_general_knowledge(user_prompt)
+        # Pull live query results directly from Google Search
+        google_context = perform_direct_google_search(user_prompt)
 
-        teacher_system_prompt = (
-            "You are an encouraging, expert classroom teacher and tutor explaining topics in the exact style of BBC Bitesize.\n"
-            "Guidelines:\n"
-            "1. Explain things patiently, clearly, and step-by-step, just like a teacher talking directly to a student.\n"
-            "2. Use simple real-world analogies so the concept is easy to grasp.\n"
-            "3. Format notes in clean, bite-sized bullet points with clear bold headings (Key Terms, Core Concept, Summary Points, Check Your Understanding).\n"
-            "4. NEVER include generic boilerplate text, untranslated raw LaTeX codes, or raw web search links."
+        teacher_prompt = (
+            "You are E.V.A.S. Study Companion. Use the retrieved live Google search data below to give an accurate, detailed explanation or notes. "
+            "Explain directly and clearly as a supportive classroom tutor in BBC Bitesize style."
         )
 
         if HAS_OLLAMA:
             try:
-                prompt_content = f"Question/Topic: {user_prompt}\n\nReference Curriculum Context:\n{search_data if search_data else 'Provide accurate curriculum notes.'}"
+                prompt_content = f"Question: {user_prompt}\n\nLive Google Search Context:\n{google_context if google_context else 'No live data found.'}"
                 response = ollama.chat(
                     model='deepseek-r1:1.5b',
-                    messages=[{"role": "system", "content": teacher_system_prompt}, {"role": "user", "content": prompt_content}],
+                    messages=[{"role": "system", "content": teacher_prompt}, {"role": "user", "content": prompt_content}],
                     options={"num_predict": 1000, "temperature": 0.2}
                 )
                 raw_reply = response['message']['content'].strip()
                 if "<think>" in raw_reply and "</think>" in raw_reply:
-                    think_match = re.search(r'<think>([\s\S]*?)</think>', raw_reply)
-                    if think_match:
-                        reasoning_steps = think_match.group(1).strip()
                     reply = re.sub(r'<think>[\s\S]*?</think>', '', raw_reply).strip()
                 else:
                     reply = raw_reply
@@ -444,123 +333,14 @@ def ask():
                 reply = None
 
         if not reply:
-            reply = (
-                f"### 📖 Teacher Explanation & Revision Notes (BBC Bitesize Style)\n\n"
-                f"Let's break down **{user_prompt}** step-by-step so it's super easy to understand!\n\n"
-                f"---\n\n"
-                f"#### 💡 What is it? (Simple Explanation)\n"
-                f"Think of this topic like a everyday process where each step relies on the one before it. "
-                f"In simple terms, when you change the main inputs or conditions, the system produces a clear, predictable outcome.\n\n"
-                f"---\n\n"
-                f"#### 📝 Key Revision Notes\n"
-                f"• **Key Term**: The exact term you need to remember for your exams.\n"
-                f"• **Main Rule**: Always show your full step-by-step working when solving problems.\n"
-                f"• **Important Formula/Law**: Key equations must be kept balanced on both sides.\n\n"
-                f"---\n\n"
-                f"#### ✅ Bite-Sized Summary Points\n"
-                f"1. **Core Fact**: Learn the main definition first.\n"
-                f"2. **Application**: Apply the rule to your practice questions.\n"
-                f"3. **Top Exam Tip**: Check your units before writing down your final answer!\n"
-            )
-
-    elif inferred_intent == "DIRECTIONS":
-        destination = re.sub(r'directions to|route to|navigate to|map to|take me to|how to go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
-        if not destination: destination = "Penang Hill, Malaysia"
-        encoded_dest = urllib.parse.quote(destination)
-        google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}"
-        reply = f"Route calculations complete for '{destination}', {honorific}. Launching Google Maps navigation from your current GPS location {user_gps_str}."
-
-    elif inferred_intent == "BOOK_GRAB":
-        dest = re.sub(r'book grab|grab ride|book a ride|call grab|grab car|grab bike|grab6seater|grabexec|to', '', user_prompt, flags=re.IGNORECASE).strip()
-        if not dest: dest = "Penang International Airport"
-
-        ride_type = "JustGrab"
-        if "bike" in cmd_lower: ride_type = "GrabBike"
-        elif "6seater" in cmd_lower or "6 seater" in cmd_lower: ride_type = "Grab6Seater"
-        elif "exec" in cmd_lower or "premium" in cmd_lower: ride_type = "GrabExec"
-
-        dest_enc = urllib.parse.quote(dest)
-        pickup_lat = lat if lat else 5.2971
-        pickup_lon = lon if lon else 100.2588
-        
-        grab_deep_link = f"grab://open?screen=transport&pickup_lat={pickup_lat}&pickup_lng={pickup_lon}&destination={dest_enc}&service_type={ride_type}&dropoff_address={dest_enc}&action=select_vehicle"
-
-        grab_driver_info = {
-            "driver_name": "Ahmad R. (Pro Partner)",
-            "plate_number": "PNN 8842",
-            "car_model": "Honda Civic Turbo (Black)",
-            "eta": "2 mins away",
-            "current_status": "Destination Lock Applied & Navigating to Pickup Pin"
-        }
-
-        reply = f"Opening Grab for destination '{dest}'."
-
-    elif inferred_intent == "TRACK_LAZADA":
-        lazada_tracking_url = "https://www.lazada.com.my/user/order/list"
-        reply = f"Scanning pending Lazada orders..."
-
-    elif inferred_intent == "GENERATE_IMAGE":
-        prompt_clean = re.sub(r'generate image|create image|draw|make a photo|generate photo|picture of', '', user_prompt, flags=re.IGNORECASE).strip()
-        if not prompt_clean: prompt_clean = "Futuristic Stark Arc Reactor Core HD render"
-        encoded_prompt = urllib.parse.quote(prompt_clean)
-        generated_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
-        reply = f"Generated image for '{prompt_clean}'."
-
-    elif inferred_intent == "CREATE_BLUEPRINT":
-        build_item = re.sub(r'blueprint|design 3d|architectural plan|schematic of|build a|create design|assembly guide|exploded view', '', user_prompt, flags=re.IGNORECASE).strip()
-        if not build_item: build_item = "Iron Man Mark LXXXV Arc Reactor"
-
-        prompt_cad = urllib.parse.quote(f"CAD schematic blueprint of {build_item}, technical lines on blue grid")
-        prompt_exploded = urllib.parse.quote(f"Exploded view assembly breakdown diagram of {build_item}")
-
-        generated_image_url = f"https://image.pollinations.ai/prompt/{prompt_cad}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
-        exploded_view_url = f"https://image.pollinations.ai/prompt/{prompt_exploded}?width=1024&height=768&nologo=true&seed={random.randint(1000, 9999)}"
-
-        reply = f"CAD Blueprint & Exploded view generated for {build_item}."
-
-    elif inferred_intent == "SAVE_FACT":
-        fact = re.sub(r'remember that|save note|keep in mind', '', user_prompt, flags=re.IGNORECASE).strip()
-        if fact:
-            save_memory_fact(fact)
-            reply = f"Saved to memory: '{fact}'"
-
-    elif inferred_intent == "CANCEL_CCTV":
-        cancel_cctv = True
-        reply = f"CCTV feed closed."
-
-    elif inferred_intent == "CCTV_SCAN":
-        cctv_data = scan_cctv().get_json()
-        cam = cctv_data.get('selected_camera', {})
-        cctv_stream_url = cam.get('stream_url')
-        reply = f"CCTV signal acquired ({cam.get('name')})."
-
-    elif inferred_intent == "OPEN_TRANSLATE":
-        open_translate_hud = True
-        reply = f"Opening translation HUD."
-
-    elif inferred_intent == "SECURITY_LOCK":
-        trigger_lock = True
-        reply = f"Security lock activated."
-
-    elif inferred_intent == "SMART_HOME":
-        reply = f"Smart home action executed."
-
-    elif inferred_intent == "DAILY_BRIEFING":
-        weather_summary = fetch_global_weather(location, lat, lon)
-        reply = f"Daily Briefing:\n{weather_summary}"
-
-    elif inferred_intent == "MEDIA_PLAYBACK":
-        query = re.sub(r'play|put on|some tracks|music|video|listen to|spotify|youtube', '', user_prompt, flags=re.IGNORECASE).strip()
-        encoded = urllib.parse.quote(query if query else "Ambient Tracks")
-        google_maps_url = f"https://www.youtube.com/results?search_query={encoded}"
-        reply = f"Playing '{query if query else 'Ambient Tracks'}'."
+            if google_context:
+                reply = f"### 🔍 GOOGLE SEARCH TELEMETRY RESULTS:\n\n{google_context}"
+            else:
+                reply = f"Processed request: {user_prompt}"
 
     if not reply:
-        search_data = search_general_knowledge(user_prompt)
-        if search_data:
-            reply = search_data
-        else:
-            reply = f"Processed request: {user_prompt}"
+        google_context = perform_direct_google_search(user_prompt)
+        reply = google_context if google_context else f"Processed request: {user_prompt}"
 
     clean_text = re.sub(r'[*_~`]', '', reply).strip()
     spoken_verbal_text = convert_symbols_to_words_fluent(clean_text, smooth_punct)
@@ -576,20 +356,8 @@ def ask():
     return jsonify({
         'response': clean_text, 
         'raw_markdown': reply,
-        'reasoning_steps': reasoning_steps,
         'study_mode_active': IS_STUDY_MODE_ACTIVE,
-        'audio': has_audio,
-        'google_maps_url': google_maps_url,
-        'grab_deep_link': grab_deep_link,
-        'grab_driver_info': grab_driver_info,
-        'lazada_tracking_url': lazada_tracking_url,
-        'lazada_arrived_alert': lazada_arrived_alert,
-        'generated_image_url': generated_image_url,
-        'exploded_view_url': exploded_view_url,
-        'cctv_stream_url': cctv_stream_url,
-        'cancel_cctv': cancel_cctv,
-        'open_translate_hud': open_translate_hud,
-        'trigger_lock': trigger_lock
+        'audio': has_audio
     })
 
 async def generate_voice_file(text, voice, pitch, rate):

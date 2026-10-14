@@ -1,0 +1,48 @@
+    1: from flask import Flask, render_template_string, request, jsonify, send_file
+    1: import ollama
+    1: import edge_tts
+    1: import asyncio
+       
+    1: app = Flask(__name__)
+       
+    2: with open('index.html', 'r', encoding='utf-8') as f:
+    1:     HTML_TEMPLATE = f.read()
+       
+    1: SYSTEM_PROMPT = (
+    1:     "You are J.A.R.V.I.S. "
+           "Respond in under 8 words MAXIMUM. "
+           "Be direct, sharp, and concise. Address the user as Sir or Ma'am."
+       )
+       
+    2: @app.route('/')
+    2: def home():
+           return render_template_string(HTML_TEMPLATE)
+       
+    2: @app.route('/api/ask', methods=['POST'])
+    2: def ask():
+           user_prompt = request.json.get('prompt', '')
+           
+           try:
+               response = ollama.chat(
+                   model='llama3.2:1b',
+                   messages=[
+                       {"role": "system", "content": SYSTEM_PROMPT},
+                       {"role": "user", "content": user_prompt}
+                   ]
+               )
+               reply = response['message']['content']
+               
+               # Generate British Neural Voice Audio File cleanly
+               loop = asyncio.new_event_loop()
+               asyncio.set_event_loop(loop)
+               loop.run_until_complete(generate_voice(reply))
+               loop.close()
+               
+               return jsonify({'response': reply, 'audio': True})
+           except Exception as e:
+               print(f"Error: {e}")
+               return jsonify({'response': f"System error: {str(e)}", 'audio': False})
+       
+    1: async def generate_voice(text):
+           communicate = edge_tts.Communicate(text, "en-GB-RyanNeural", rate="+5%")
+           await communicate.save("static_speech.mp3")
