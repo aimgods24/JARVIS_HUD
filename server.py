@@ -35,7 +35,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "8.1.0-FAILSAFE-ENGINE"
+EVAS_BUILD_VERSION = "8.2.0-DEBUGGED-STABLE"
 
 def init_memory():
     if not os.path.exists(MEMORY_FILE):
@@ -65,7 +65,7 @@ def save_memory_fact(fact_str):
             json.dump(data, f, indent=2)
 
 def perform_live_web_search(query):
-    """Dual-engine web search: Google Scraper with DuckDuckGo fallback."""
+    """Dual-engine web search with robust scrapers and error handling."""
     extracted_data = []
 
     # Attempt 1: Direct Google Scraper
@@ -84,17 +84,25 @@ def perform_live_web_search(query):
                 txt = s.get_text().strip()
                 if len(txt) > 30 and txt not in extracted_data:
                     extracted_data.append(txt)
+            
+            # General fallback if class names shifted
+            if not extracted_data:
+                for p in soup.find_all('p'):
+                    txt = p.get_text().strip()
+                    if len(txt) > 30 and txt not in extracted_data:
+                        extracted_data.append(txt)
     except Exception:
         pass
 
-    # Attempt 2: DuckDuckGo Fallback (if Google blocked or returned empty)
+    # Attempt 2: DuckDuckGo Fallback
     if not extracted_data:
         try:
-            ddg_results = list(DDGS().text(query, max_results=5))
-            if ddg_results:
-                for res in ddg_results:
-                    if 'body' in res and res['body']:
-                        extracted_data.append(f"**{res.get('title', 'Result')}**\n{res['body']}")
+            with DDGS() as ddgs:
+                ddg_results = list(ddgs.text(query, max_results=5))
+                if ddg_results:
+                    for res in ddg_results:
+                        if 'body' in res and res['body']:
+                            extracted_data.append(f"**{res.get('title', 'Result')}**\n{res['body']}")
         except Exception as e:
             print(f"[SEARCH FALLBACK LOG]: {e}")
 
@@ -184,6 +192,55 @@ def get_manifest():
 @app.route('/sw.js')
 def get_sw():
     return send_from_directory('.', 'sw.js', mimetype='application/javascript')
+
+@app.route('/watch')
+def watch_tile():
+    watch_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        <link rel="manifest" href="/manifest.json">
+        <title>E.V.A.S. WATCH WIDGET</title>
+        <style>
+            body { background: #000; color: #00f3ff; font-family: -apple-system, sans-serif; text-align: center; margin: 0; padding: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+            .widget-ring { width: 120px; height: 120px; border-radius: 50%; border: 3px solid #00f3ff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: bold; box-shadow: 0 0 15px #00f3ff; cursor: pointer; }
+            .widget-ring:active { transform: scale(0.95); opacity: 0.8; }
+            #out { font-size: 0.65rem; margin-top: 6px; max-height: 45px; overflow: hidden; text-overflow: ellipsis; }
+        </style>
+    </head>
+    <body>
+        <div class="widget-ring" onclick="triggerWatchVoice()">
+            <span>E.V.A.S.</span>
+            <span style="font-size:0.45rem; opacity:0.8;">TAP TO SPEAK</span>
+        </div>
+        <div id="out">Widget Active</div>
+        <script>
+            function triggerWatchVoice() {
+                if ('vibrate' in navigator) navigator.vibrate(40);
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) { document.getElementById('out').innerText = "Mic Unavailable"; return; }
+                const rec = new SpeechRecognition();
+                rec.onstart = () => document.getElementById('out').innerText = "Listening...";
+                rec.onresult = (e) => {
+                    const txt = e.results[0][0].transcript;
+                    document.getElementById('out').innerText = txt;
+                    fetch('/api/ask', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({prompt: txt, honorific: 'Sir'})
+                    }).then(r => r.json()).then(d => {
+                        document.getElementById('out').innerText = d.response;
+                        if ('vibrate' in navigator) navigator.vibrate([80, 40, 80]);
+                    });
+                };
+                rec.start();
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return render_template_string(watch_html)
 
 @app.route('/api/version')
 def get_version():
@@ -302,10 +359,13 @@ def ask():
     has_audio = False
     if not is_dnd and HAS_EDGE_TTS:
         try:
-            asyncio.run(generate_voice_file(clean_text, "en-GB-RyanNeural", "-3Hz", "+2%"))
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(generate_voice_file(clean_text, "en-GB-RyanNeural", "-3Hz", "+2%"))
+            loop.close()
             has_audio = True
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[TTS GENERATION ERROR]: {e}")
 
     return jsonify({
         'response': clean_text, 
