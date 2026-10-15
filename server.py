@@ -35,9 +35,14 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "9.0.0-TELEPHONY-AUDIO-HUD"
+EVAS_BUILD_VERSION = "10.0.0-MACRODROID-FULL-BRIDGE"
 
-# Phone Contacts Memory Registry
+# ---------------------------------------------------------
+# CONFIGURATION: MACRODROID & CONTACTS REGISTRY
+# ---------------------------------------------------------
+# Replace this string with your actual MacroDroid Device ID from the Webhook URL
+MACRODROID_DEVICE_ID = "YOUR_MACRODROID_DEVICE_ID_HERE"
+
 CONTACTS = {
     "mom": "+60123456789",
     "dad": "+60198765432",
@@ -72,6 +77,28 @@ def save_memory_fact(fact_str):
         with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
 
+# ---------------------------------------------------------
+# MACRODROID WEBHOOK DISPATCHER
+# ---------------------------------------------------------
+def dispatch_macrodroid_command(action_name, target_param=""):
+    """Sends HTTP GET Webhook commands to MacroDroid to execute OS-level actions on phone."""
+    if MACRODROID_DEVICE_ID == "YOUR_MACRODROID_DEVICE_ID_HERE":
+        print("[MACRODROID WARNING]: Device ID not configured in server.py.")
+        return False
+        
+    encoded_target = urllib.parse.quote(target_param)
+    webhook_url = f"https://trigger.macrodroid.com/{MACRODROID_DEVICE_ID}/evas_command?action={action_name}&target={encoded_target}"
+    
+    try:
+        res = requests.get(webhook_url, timeout=4)
+        return res.status_code == 200
+    except Exception as e:
+        print(f"[MACRODROID HTTP ERROR]: {e}")
+        return False
+
+# ---------------------------------------------------------
+# LIVE SEARCH & WEATHER TELEMETRY ENGINES
+# ---------------------------------------------------------
 def perform_live_web_search(query):
     extracted_data = []
 
@@ -156,9 +183,14 @@ def fetch_global_weather(location_query, lat=None, lon=None):
         print(f"[WEATHER API ERROR]: {e}")
     return f"Unable to fetch weather telemetry for {location_query}."
 
+# ---------------------------------------------------------
+# INTENT PARSER
+# ---------------------------------------------------------
 def parse_contextual_intent(prompt):
     p = prompt.lower()
 
+    if any(w in p for w in ["open app", "launch app", "open whatsapp", "open spotify", "open youtube", "open instagram", "open tiktok", "open facebook"]):
+        return "MACRODROID_APP_CONTROL"
     if any(w in p for w in ["call", "dial", "phone", "ring"]):
         return "MAKE_CALL"
     if any(w in p for w in ["incoming call", "simulate call", "trigger ring"]):
@@ -180,6 +212,9 @@ def parse_contextual_intent(prompt):
 
     return "UNIVERSAL_EXECUTION"
 
+# ---------------------------------------------------------
+# ROUTES
+# ---------------------------------------------------------
 @app.route('/')
 def home():
     if os.path.exists('index.html'):
@@ -279,17 +314,25 @@ def ask():
     grab_deep_link = None
     lazada_tracking_url = None
 
-    if inferred_intent == "MAKE_CALL":
-        target = re.sub(r'call|dial|phone|ring', '', user_prompt, flags=re.IGNORECASE).strip().lower()
+    if inferred_intent == "MACRODROID_APP_CONTROL":
+        target_app = re.sub(r'open app|launch app|open|launch', '', user_prompt, flags=re.IGNORECASE).strip()
+        if not target_app: target_app = "whatsapp"
         
-        # Check contact list or extract raw number
+        success = dispatch_macrodroid_command("launch_app", target_app)
+        if success:
+            reply = f"📱 **MACRODROID COMMAND DISPATCHED**: Launching `{target_app.upper()}` on your phone, {honorific}."
+        else:
+            reply = f"⚠️ MacroDroid bridge command sent for `{target_app.upper()}`. Make sure your MacroDroid Device ID is configured in `server.py`, {honorific}."
+
+    elif inferred_intent == "MAKE_CALL":
+        target = re.sub(r'call|dial|phone|ring', '', user_prompt, flags=re.IGNORECASE).strip().lower()
         phone_num = CONTACTS.get(target)
         if not phone_num:
             digits = re.sub(r'[^\d+]', '', target)
             phone_num = digits if digits else "+60123456789"
 
         call_phone_number = f"tel:{phone_num}"
-        reply = f"📞 Initiating call to **{target.upper()}** (`{phone_num}`), {honorific}."
+        reply = f"📞 Directing call to **{target.upper()}** (`{phone_num}`), {honorific}."
 
     elif inferred_intent == "SIMULATE_INCOMING_CALL":
         incoming_call_event = {
@@ -297,7 +340,7 @@ def ask():
             "caller_number": "+1 (800) 555-EVAS",
             "auto_wake": True
         }
-        reply = f"🚨 Incoming Telemetry Call Detected! Auto-waking screen HUD and overriding quiet profiles, {honorific}."
+        reply = f"🚨 Incoming Telemetry Call Detected! Auto-waking screen HUD and overriding silent profiles, {honorific}."
 
     elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|maps to|take me to|how to go to|go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
