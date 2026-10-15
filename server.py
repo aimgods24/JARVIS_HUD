@@ -35,20 +35,27 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "10.0.0-MACRODROID-FULL-BRIDGE"
+EVAS_BUILD_VERSION = "11.0.0-SECURE-MACRODROID-CORE"
 
 # ---------------------------------------------------------
-# CONFIGURATION: MACRODROID & CONTACTS REGISTRY
+# ENVIRONMENT SECURITY & CONFIGURATION
+# Loaded safely from Environment Variables (Render Dashboard / OS)
 # ---------------------------------------------------------
-# Replace this string with your actual MacroDroid Device ID from the Webhook URL
-MACRODROID_DEVICE_ID = "YOUR_MACRODROID_DEVICE_ID_HERE"
+MACRODROID_DEVICE_ID = os.environ.get("MACRODROID_DEVICE_ID", "YOUR_MACRODROID_DEVICE_ID_HERE")
+EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
-CONTACTS = {
+# Phone Contacts (Set via EVAS_CONTACTS env var formatted as JSON, or default)
+DEFAULT_CONTACTS = {
     "mom": "+60123456789",
     "dad": "+60198765432",
     "emergency": "999",
     "office": "+6046543210"
 }
+
+try:
+    CONTACTS = json.loads(os.environ.get("EVAS_CONTACTS", "{}")) or DEFAULT_CONTACTS
+except Exception:
+    CONTACTS = DEFAULT_CONTACTS
 
 def init_memory():
     if not os.path.exists(MEMORY_FILE):
@@ -82,8 +89,8 @@ def save_memory_fact(fact_str):
 # ---------------------------------------------------------
 def dispatch_macrodroid_command(action_name, target_param=""):
     """Sends HTTP GET Webhook commands to MacroDroid to execute OS-level actions on phone."""
-    if MACRODROID_DEVICE_ID == "YOUR_MACRODROID_DEVICE_ID_HERE":
-        print("[MACRODROID WARNING]: Device ID not configured in server.py.")
+    if not MACRODROID_DEVICE_ID or MACRODROID_DEVICE_ID == "YOUR_MACRODROID_DEVICE_ID_HERE":
+        print("[MACRODROID WARNING]: Device ID not set in environment variables.")
         return False
         
     encoded_target = urllib.parse.quote(target_param)
@@ -269,7 +276,10 @@ def watch_tile():
                     document.getElementById('out').innerText = txt;
                     fetch('/api/ask', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-EVAS-KEY': 'DefaultSecureKey123'
+                        },
                         body: JSON.stringify({prompt: txt, honorific: 'Sir'})
                     }).then(r => r.json()).then(d => {
                         document.getElementById('out').innerText = d.response;
@@ -290,7 +300,15 @@ def get_version():
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
+    # ---------------------------------------------------------
+    # TOKEN AUTHENTICATION CHECK
+    # ---------------------------------------------------------
     data = request.json or {}
+    provided_key = request.headers.get("X-EVAS-KEY") or data.get("secret_key")
+    
+    if EVAS_SECRET_KEY and provided_key != EVAS_SECRET_KEY:
+        return jsonify({'response': '🔒 Unauthorized access blocked. Invalid Secret Key.', 'audio': False}), 403
+
     user_prompt = data.get('prompt', '').strip()
     honorific = data.get('honorific', 'Sir')
     location = data.get('location', 'Bayan Lepas, Penang, Malaysia')
@@ -320,9 +338,9 @@ def ask():
         
         success = dispatch_macrodroid_command("launch_app", target_app)
         if success:
-            reply = f"📱 **MACRODROID COMMAND DISPATCHED**: Launching `{target_app.upper()}` on your phone, {honorific}."
+            reply = f"📱 **SECURE MACRODROID DISPATCH**: Launching `{target_app.upper()}` on your phone, {honorific}."
         else:
-            reply = f"⚠️ MacroDroid bridge command sent for `{target_app.upper()}`. Make sure your MacroDroid Device ID is configured in `server.py`, {honorific}."
+            reply = f"⚠️ MacroDroid command sent for `{target_app.upper()}`. Ensure `MACRODROID_DEVICE_ID` is set in Render Environment Variables, {honorific}."
 
     elif inferred_intent == "MAKE_CALL":
         target = re.sub(r'call|dial|phone|ring', '', user_prompt, flags=re.IGNORECASE).strip().lower()
