@@ -35,7 +35,15 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "8.2.0-DEBUGGED-STABLE"
+EVAS_BUILD_VERSION = "9.0.0-TELEPHONY-AUDIO-HUD"
+
+# Phone Contacts Memory Registry
+CONTACTS = {
+    "mom": "+60123456789",
+    "dad": "+60198765432",
+    "emergency": "999",
+    "office": "+6046543210"
+}
 
 def init_memory():
     if not os.path.exists(MEMORY_FILE):
@@ -65,10 +73,8 @@ def save_memory_fact(fact_str):
             json.dump(data, f, indent=2)
 
 def perform_live_web_search(query):
-    """Dual-engine web search with robust scrapers and error handling."""
     extracted_data = []
 
-    # Attempt 1: Direct Google Scraper
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
@@ -84,8 +90,6 @@ def perform_live_web_search(query):
                 txt = s.get_text().strip()
                 if len(txt) > 30 and txt not in extracted_data:
                     extracted_data.append(txt)
-            
-            # General fallback if class names shifted
             if not extracted_data:
                 for p in soup.find_all('p'):
                     txt = p.get_text().strip()
@@ -94,7 +98,6 @@ def perform_live_web_search(query):
     except Exception:
         pass
 
-    # Attempt 2: DuckDuckGo Fallback
     if not extracted_data:
         try:
             with DDGS() as ddgs:
@@ -156,6 +159,10 @@ def fetch_global_weather(location_query, lat=None, lon=None):
 def parse_contextual_intent(prompt):
     p = prompt.lower()
 
+    if any(w in p for w in ["call", "dial", "phone", "ring"]):
+        return "MAKE_CALL"
+    if any(w in p for w in ["incoming call", "simulate call", "trigger ring"]):
+        return "SIMULATE_INCOMING_CALL"
     if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "maps to", "take me to", "how to go to", "go to", "destination"]):
         return "DIRECTIONS"
     if any(w in p for w in ["book grab", "grab ride", "book a ride", "call grab", "grab car", "grab bike", "grab6seater", "grabexec"]):
@@ -261,6 +268,8 @@ def ask():
 
     inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
+    call_phone_number = None
+    incoming_call_event = None
     google_maps_url = None
     cctv_stream_url = None
     cancel_cctv = False
@@ -270,7 +279,27 @@ def ask():
     grab_deep_link = None
     lazada_tracking_url = None
 
-    if inferred_intent == "DIRECTIONS":
+    if inferred_intent == "MAKE_CALL":
+        target = re.sub(r'call|dial|phone|ring', '', user_prompt, flags=re.IGNORECASE).strip().lower()
+        
+        # Check contact list or extract raw number
+        phone_num = CONTACTS.get(target)
+        if not phone_num:
+            digits = re.sub(r'[^\d+]', '', target)
+            phone_num = digits if digits else "+60123456789"
+
+        call_phone_number = f"tel:{phone_num}"
+        reply = f"📞 Initiating call to **{target.upper()}** (`{phone_num}`), {honorific}."
+
+    elif inferred_intent == "SIMULATE_INCOMING_CALL":
+        incoming_call_event = {
+            "caller_id": "HQ Secure Line",
+            "caller_number": "+1 (800) 555-EVAS",
+            "auto_wake": True
+        }
+        reply = f"🚨 Incoming Telemetry Call Detected! Auto-waking screen HUD and overriding quiet profiles, {honorific}."
+
+    elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|maps to|take me to|how to go to|go to|destination', '', user_prompt, flags=re.IGNORECASE).strip()
         if not destination: destination = "Penang Hill, Malaysia"
         encoded_dest = urllib.parse.quote(destination)
@@ -323,7 +352,6 @@ def ask():
             save_memory_fact(fact)
             reply = f"Saved to persistent memory, {honorific}: '{fact}'"
 
-    # Search & LLM Generation logic
     if not reply:
         live_search_data = perform_live_web_search(user_prompt)
 
@@ -347,7 +375,6 @@ def ask():
             except Exception:
                 reply = None
 
-        # Fallback when LLM is unavailable (e.g., Render Cloud hosting)
         if not reply:
             if live_search_data:
                 reply = f"### 📰 LIVE TELEMETRY REPORT:\n\n{live_search_data}"
@@ -371,6 +398,8 @@ def ask():
         'response': clean_text, 
         'raw_markdown': reply,
         'audio': has_audio,
+        'call_phone_number': call_phone_number,
+        'incoming_call_event': incoming_call_event,
         'google_maps_url': google_maps_url,
         'grab_deep_link': grab_deep_link,
         'lazada_tracking_url': lazada_tracking_url,
