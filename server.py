@@ -28,6 +28,12 @@ try:
 except Exception:
     HAS_OLLAMA = False
 
+try:
+    import speedtest
+    HAS_SPEEDTEST = True
+except Exception:
+    HAS_SPEEDTEST = False
+
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
@@ -35,16 +41,14 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "11.0.0-SECURE-MACRODROID-CORE"
+EVAS_BUILD_VERSION = "12.0.0-SPEEDTEST-CORE"
 
 # ---------------------------------------------------------
 # ENVIRONMENT SECURITY & CONFIGURATION
-# Loaded safely from Environment Variables (Render Dashboard / OS)
 # ---------------------------------------------------------
 MACRODROID_DEVICE_ID = os.environ.get("MACRODROID_DEVICE_ID", "YOUR_MACRODROID_DEVICE_ID_HERE")
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
-# Phone Contacts (Set via EVAS_CONTACTS env var formatted as JSON, or default)
 DEFAULT_CONTACTS = {
     "mom": "+60123456789",
     "dad": "+60198765432",
@@ -85,10 +89,43 @@ def save_memory_fact(fact_str):
             json.dump(data, f, indent=2)
 
 # ---------------------------------------------------------
+# NETWORK DIAGNOSTICS TELEMETRY ENGINE
+# ---------------------------------------------------------
+def run_network_speedtest():
+    """Performs live speed test measuring download, upload, and latency."""
+    if not HAS_SPEEDTEST:
+        return "⚠️ Speedtest module not available. Install 'speedtest-cli' in requirements.txt."
+    
+    try:
+        st = speedtest.Speedtest(secure=True)
+        st.get_best_server()
+        
+        download_bps = st.download()
+        upload_bps = st.upload()
+        ping_ms = st.results.ping
+        
+        download_mbps = download_bps / 1000000.0
+        upload_mbps = upload_bps / 1000000.0
+        
+        server_info = st.results.server.get('sponsor', 'Unknown')
+        server_location = st.results.server.get('name', 'Unknown')
+        
+        return (
+            f"⚡ **LIVE NETWORK DIAGNOSTIC REPORT**\n\n"
+            f"• **Download Speed**: `{download_mbps:.2f} Mbps`\n"
+            f"• **Upload Speed**: `{upload_mbps:.2f} Mbps`\n"
+            f"• **Latency / Ping**: `{ping_ms:.1f} ms`\n"
+            f"• **Test Node Server**: `{server_info}` ({server_location})\n"
+            f"• **Status**: Connection operational."
+        )
+    except Exception as e:
+        print(f"[SPEEDTEST ERROR]: {e}")
+        return f"Failed to execute network diagnostic test: {str(e)}"
+
+# ---------------------------------------------------------
 # MACRODROID WEBHOOK DISPATCHER
 # ---------------------------------------------------------
 def dispatch_macrodroid_command(action_name, target_param=""):
-    """Sends HTTP GET Webhook commands to MacroDroid to execute OS-level actions on phone."""
     if not MACRODROID_DEVICE_ID or MACRODROID_DEVICE_ID == "YOUR_MACRODROID_DEVICE_ID_HERE":
         print("[MACRODROID WARNING]: Device ID not set in environment variables.")
         return False
@@ -196,6 +233,8 @@ def fetch_global_weather(location_query, lat=None, lon=None):
 def parse_contextual_intent(prompt):
     p = prompt.lower()
 
+    if any(w in p for w in ["speed test", "test speed", "wifi speed", "internet speed", "bandwidth test", "connection speed"]):
+        return "RUN_SPEEDTEST"
     if any(w in p for w in ["open app", "launch app", "open whatsapp", "open spotify", "open youtube", "open instagram", "open tiktok", "open facebook"]):
         return "MACRODROID_APP_CONTROL"
     if any(w in p for w in ["call", "dial", "phone", "ring"]):
@@ -300,9 +339,6 @@ def get_version():
 
 @app.route('/api/ask', methods=['POST'])
 def ask():
-    # ---------------------------------------------------------
-    # TOKEN AUTHENTICATION CHECK
-    # ---------------------------------------------------------
     data = request.json or {}
     provided_key = request.headers.get("X-EVAS-KEY") or data.get("secret_key")
     
@@ -332,7 +368,10 @@ def ask():
     grab_deep_link = None
     lazada_tracking_url = None
 
-    if inferred_intent == "MACRODROID_APP_CONTROL":
+    if inferred_intent == "RUN_SPEEDTEST":
+        reply = run_network_speedtest()
+
+    elif inferred_intent == "MACRODROID_APP_CONTROL":
         target_app = re.sub(r'open app|launch app|open|launch', '', user_prompt, flags=re.IGNORECASE).strip()
         if not target_app: target_app = "whatsapp"
         
