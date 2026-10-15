@@ -3,1068 +3,386 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>E.V.A.S. // EVENTUALLY VERY ADVANCED SYSTEM</title>
-    
+    <title>E.V.A.S. UNIVERSAL AI WORKSPACE</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#00f3ff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="E.V.A.S.">
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
-            --hud-cyan: #00f3ff;
-            --hud-glow: rgba(0, 243, 255, 0.5);
-            --hud-orange: #ff9d00;
-            --hud-purple: #bd00ff;
-            --hud-bg: #010810;
-            --hud-panel: rgba(1, 12, 24, 0.9);
-            --hud-border: rgba(0, 243, 255, 0.35);
-            --hud-font: 'Consolas', 'Courier New', monospace;
+            --cyan-glow: #00f3ff;
+            --cyan-dim: #008891;
+            --bg-dark: #030a0e;
+            --panel-bg: rgba(4, 20, 29, 0.85);
+            --red-alert: #ff2a2a;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Courier New', Courier, monospace;
+        }
 
         body {
-            background-color: var(--hud-bg);
-            color: var(--hud-cyan);
-            font-family: var(--hud-font);
-            margin: 0; padding: 6px;
+            background-color: var(--bg-dark);
+            color: var(--cyan-glow);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .hud-container {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-start;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--cyan-glow);
+            color: var(--cyan-glow);
+            padding: 8px 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 243, 255, 0.2);
+        }
+
+        .btn:active {
+            transform: scale(0.96);
+            background: rgba(0, 243, 255, 0.15);
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--cyan-dim);
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+        }
+
+        .panel-title {
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+
+        .agent-bar {
+            display: flex;
+            gap: 8px;
+        }
+
+        .agent-bar input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--cyan-dim);
+            border-radius: 12px;
+            padding: 8px 12px;
+            color: var(--cyan-glow);
+            font-size: 0.75rem;
+        }
+
+        .terminal-box {
+            min-height: 220px;
+            max-height: 380px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .message-you {
+            color: #ffffff;
+            text-align: right;
+            border-right: 2px solid var(--cyan-glow);
+            padding-right: 8px;
+        }
+
+        .message-evas {
+            color: var(--cyan-glow);
+            border-left: 2px solid var(--cyan-glow);
+            padding-left: 8px;
+            white-space: pre-wrap;
+        }
+
+        .telemetry-list {
+            font-size: 0.7rem;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            opacity: 0.9;
+        }
+
+        .input-bar {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .input-bar input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid var(--cyan-glow);
+            border-radius: 16px;
+            padding: 10px 14px;
+            color: #fff;
+            font-size: 0.8rem;
+        }
+
+        .incoming-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
             height: 100vh;
-            display: flex; flex-direction: column;
-            overflow: hidden;
-            background-image: 
-                radial-gradient(circle at 50% 50%, var(--hud-glow) 0%, transparent 85%),
-                linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
+            background: rgba(10, 0, 0, 0.95);
+            border: 4px solid var(--red-alert);
+            z-index: 9999;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--red-alert);
+            text-align: center;
         }
 
-        body, .hud-panel, #chat-terminal, .msg-line, .hud-table, .translate-subtitle-box {
-            user-select: text !important;
-            -webkit-user-select: text !important;
-            -moz-user-select: text !important;
-        }
-
-        .hud-top-bar {
-            display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--hud-border);
-            padding: 4px 10px; font-size: 0.7rem; letter-spacing: 1px;
-            background: rgba(0, 243, 255, 0.03);
-            flex-wrap: wrap; gap: 4px;
-            user-select: none !important;
-        }
-
-        .status-pill {
-            display: inline-block; width: 8px; height: 8px;
-            background: var(--hud-cyan); border-radius: 50%;
-            box-shadow: 0 0 8px var(--hud-cyan); margin-right: 4px;
-        }
-
-        .hud-workspace {
-            display: grid;
-            grid-template-columns: 320px 1fr 280px;
-            gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
-            position: relative;
-        }
-
-        .hud-panel {
-            background: var(--hud-panel);
-            border: 1px solid var(--hud-border);
-            border-radius: 3px; padding: 8px;
-            box-shadow: inset 0 0 10px var(--hud-glow);
-            display: flex; flex-direction: column; gap: 6px;
-            overflow-y: auto; position: relative;
-        }
-
-        .panel-header {
-            font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
-            display: flex; justify-content: space-between; opacity: 0.8;
-            border-bottom: 1px dashed var(--hud-border); padding-bottom: 3px;
-            cursor: pointer; user-select: none !important;
-        }
-
-        @media (max-width: 850px) {
-            body { height: auto; overflow-y: auto; padding-bottom: 70px; }
-            .hud-workspace { display: flex; flex-direction: column; overflow: visible; }
-            .hud-panel { overflow: visible; width: 100%; }
-            .hud-top-bar { font-size: 0.6rem; justify-content: center; text-align: center; }
-        }
-
-        .core-orb-widget {
-            position: relative; width: 100%; height: 230px;
-            display: flex; align-items: center; justify-content: center;
-            margin: 4px 0; border: 1px solid var(--hud-border);
-            border-radius: 6px; background: rgba(0, 4, 10, 0.95);
-            overflow: hidden; user-select: none !important;
-            box-shadow: inset 0 0 15px var(--hud-glow);
-        }
-
-        #webglCanvas { position: absolute; width: 100%; height: 100%; z-index: 1; }
-
-        #cctvVideoFeed {
-            position: absolute; width: 160px; height: 160px;
-            border-radius: 50%; object-fit: cover; z-index: 2;
-            opacity: 0; transition: opacity 0.6s ease;
-            filter: contrast(1.2) brightness(1.1);
-            border: 2px solid var(--hud-cyan);
-            box-shadow: 0 0 20px var(--hud-cyan);
-        }
-
-        #audioWaveCanvas {
-            position: absolute; width: 220px; height: 220px;
-            z-index: 3; pointer-events: none; border-radius: 50%;
-        }
-
-        #chat-terminal {
-            flex: 1; background: rgba(0, 0, 0, 0.85);
-            border: 1px solid var(--hud-border);
-            border-radius: 3px; padding: 10px; min-height: 250px;
-            overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 10px var(--hud-glow); z-index: 1;
-        }
-
-        .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
-        .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
-        .msg-evas { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
-
-        .reasoning-box {
-            background: rgba(0, 243, 255, 0.05); border: 1px solid rgba(0, 243, 255, 0.25);
-            border-radius: 4px; padding: 6px 8px; font-size: 0.72rem; color: #a3e8ff; margin-bottom: 6px;
-        }
-
-        .hud-action-badge {
-            display: inline-block; margin-top: 6px; margin-right: 6px; padding: 6px 12px;
-            background: var(--hud-glow); border: 1px solid var(--hud-cyan);
-            border-radius: 6px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.72rem;
-            cursor: pointer; box-shadow: 0 0 10px var(--hud-glow);
-        }
-
-        .hud-center-pill {
-            position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
-            width: 95%; max-width: 600px;
-            background: rgba(1, 12, 24, 0.95);
-            border: 1px solid var(--hud-cyan); border-radius: 20px;
-            padding: 6px 10px; display: flex; align-items: center; gap: 6px;
-            box-shadow: 0 0 15px var(--hud-glow); z-index: 100;
-        }
-
-        textarea {
-            flex: 1; height: 36px; background: transparent; border: none;
-            color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.85rem; outline: none;
-        }
-
-        button, select, input[type="text"], input[type="range"] {
-            background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
-            color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 8px; font-size: 0.7rem; outline: none;
-        }
-        button:hover { background: var(--hud-cyan); color: #000; }
-
-        .voice-chat-active {
-            background: #ff0055 !important;
-            color: #fff !important;
-            border-color: #ff0055 !important;
-            box-shadow: 0 0 15px #ff0055 !important;
-            animation: pulseVoice 1.2s infinite;
-        }
-
-        .study-mode-active-btn {
-            background: #bd00ff !important;
-            color: #ffffff !important;
-            border-color: #bd00ff !important;
-            box-shadow: 0 0 15px #bd00ff !important;
-        }
-
-        @keyframes pulseVoice {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .hud-modal {
-            display: none; position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 92vw; max-width: 520px;
-            background: rgba(1, 10, 22, 0.98);
-            border: 2px solid var(--hud-cyan); border-radius: 12px;
-            box-shadow: 0 0 45px var(--hud-glow);
-            z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
-            backdrop-filter: blur(10px);
-            max-height: 85vh; overflow-y: auto;
-        }
-
-        .modal-header {
-            font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;
-            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-
-        .translate-subtitle-box {
-            background: rgba(0, 0, 0, 0.9); border: 1px solid var(--hud-cyan);
-            padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; line-height: 1.4; color: #fff;
-            box-shadow: inset 0 0 12px var(--hud-glow); min-height: 65px; word-break: break-word;
-        }
-
-        .cyber-mesh-wrapper {
-            position: relative; width: 100%; height: 230px;
-            display: flex; align-items: center; justify-content: center;
-            margin: 10px 0; background: radial-gradient(circle at 50% 50%, #15002b 0%, #030008 100%);
-            border: 1px solid var(--hud-purple); border-radius: 10px; overflow: hidden;
-            box-shadow: inset 0 0 25px rgba(189, 0, 255, 0.4);
-        }
-
-        #translateMeshCanvas { position: absolute; width: 220px; height: 220px; }
-
-        #securityLockOverlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 3, 8, 0.98); z-index: 5000;
-            flex-direction: column; align-items: center; justify-content: center; gap: 15px;
-            color: #ff2200; box-shadow: inset 0 0 50px #ff2200; text-align: center;
-        }
-
-        .setting-row {
-            display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem;
-            border-bottom: 1px dashed rgba(0, 243, 255, 0.2); padding-bottom: 8px; margin-bottom: 8px;
-        }
-
-        #welcomeOverlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(1, 8, 16, 0.98); z-index: 4000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px; color: var(--hud-cyan); text-align: left;
-            backdrop-filter: blur(15px); box-shadow: inset 0 0 60px var(--hud-glow);
-        }
-
-        .welcome-card {
-            width: 100%; max-width: 680px; background: rgba(0, 12, 24, 0.95);
-            border: 2px solid var(--hud-cyan); border-radius: 10px; padding: 20px;
-            box-shadow: 0 0 30px var(--hud-glow); display: flex; flex-direction: column; gap: 12px;
-            max-height: 80vh; overflow-y: auto;
-        }
-
-        #typewriterText {
-            font-size: 0.88rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
-            min-height: 140px; border-left: 2px solid var(--hud-cyan); padding-left: 10px;
-        }
-
-        .generated-img-preview {
-            width: 100%; max-width: 500px; border-radius: 8px; border: 2px solid var(--hud-cyan);
-            margin-top: 8px; box-shadow: 0 0 15px var(--hud-glow);
-        }
-
-        #updateToastNotification {
-            display: none; position: fixed; top: 12px; right: 12px; z-index: 6000;
-            background: rgba(0, 243, 255, 0.95); color: #000; padding: 8px 14px;
-            border-radius: 8px; font-weight: bold; font-size: 0.75rem; box-shadow: 0 0 20px var(--hud-cyan);
+        .incoming-overlay.active {
+            display: flex;
         }
     </style>
 </head>
 <body>
 
-    <div id="updateToastNotification">⚡ E.V.A.S. AUTO-UPDATED TO LATEST VERSION</div>
-
-    <div id="welcomeOverlay">
-        <div class="welcome-card">
-            <div style="font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;">
-                ⚡ E.V.A.S. (EVENTUALLY VERY ADVANCED SYSTEM) // FULL SUITE WORKSPACE
-            </div>
-
-            <div id="typewriterText"></div>
-
-            <div id="welcomeActionArea" style="display: none; flex-direction: column; gap: 8px; margin-top: 10px;">
-                <button onclick="dismissWelcomeScreen()" style="padding: 10px; font-size: 0.8rem; background: var(--hud-cyan); color: #000;">
-                    INITIALIZE DASHBOARD TERMINAL →
-                </button>
-            </div>
-        </div>
+    <!-- Incoming Call Overlay Alert -->
+    <div id="incomingOverlay" class="incoming-overlay">
+        <h1 style="font-size: 2rem; margin-bottom: 10px;">🚨 TELEMETRY CALL DETECTED</h1>
+        <p id="callerDetails" style="font-size: 1.2rem; color: #fff; margin-bottom: 20px;">INCOMING SIGNAL...</p>
+        <button class="btn" style="border-color: var(--red-alert); color: var(--red-alert);" onclick="dismissOverlay()">DISMISS HUD ALERT</button>
     </div>
 
-    <div id="securityLockOverlay">
-        <div style="font-size: 3rem;">🔒</div>
-        <div style="font-size: 1.2rem; font-weight: bold;">E.V.A.S. SECURITY LOCK</div>
-        <div style="display: flex; gap: 6px; margin-top: 10px;">
-            <input type="text" id="unlockPhraseInput" placeholder="Enter wake phrase..." style="width: 220px; border-color: #ff2200; color: #ff2200;">
-            <button onclick="attemptSecurityUnlock()" style="border-color: #ff2200; color: #ff2200;">UNLOCK</button>
-        </div>
-    </div>
-
-    <!-- TOP NAVIGATION BAR WITH STUDY MODE BAR -->
-    <div class="hud-top-bar">
-        <div><span class="status-pill"></span>E.V.A.S. // CORE MASTER</div>
-        <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
-        <div id="liveClock">00:00:00</div>
+    <div class="hud-container">
         
-        <!-- STUDY MODE BAR BUTTON -->
-        <button id="studyModeBtn" onclick="toggleStudyModeUI()" style="border-color:#bd00ff; color:#bd00ff;">🎓 STUDY MODE: OFF</button>
-        
-        <button id="pwaInstallBtn" style="display:none; border-color:#00f3ff; color:#00f3ff;" onclick="installEVASApp()">📲 INSTALL APP</button>
-        <button id="continuousVoiceBtn" onclick="toggleContinuousVoiceChat()">🎙️ VOICE CHAT: OFF</button>
-        <button onclick="showWelcomeScreenManual()">📖 TACTICAL GUIDE</button>
-        <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
-        <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
-        <button onclick="sendCommandCustom('brief me')">🎙️ BRIEFING</button>
-        <button onclick="triggerSecurityLock()">🔒 LOCK</button>
-    </div>
+        <!-- Header Quick Action Buttons -->
+        <div class="header-controls">
+            <button class="btn" onclick="sendQuickCommand('CCTV CAM 1')">📹 CAM 1</button>
+            <button class="btn" onclick="sendQuickCommand('CANCEL')">✕ CANCEL</button>
+        </div>
 
-    <div class="hud-workspace">
-        <div class="hud-panel" id="leftPanel">
-            <div class="panel-header"><span>CORE DIAL // 3D HOLOGRAM & SOUNDWAVE</span></div>
-            
-            <div class="core-orb-widget">
-                <canvas id="webglCanvas"></canvas>
-                <img id="cctvVideoFeed" src="" alt="Live CCTV Feed">
-                <canvas id="audioWaveCanvas" width="220" height="220"></canvas>
-            </div>
-
-            <div class="panel-header" style="margin-top:4px;"><span>CCTV MATRIX SWITCHER</span></div>
-            <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
-                <button onclick="sendCommandCustom('connect to cctv')">📹 CAM 1</button>
-                <button onclick="sendCommandCustom('cancel cctv')">✕ CANCEL</button>
-            </div>
-
-            <div class="panel-header" style="margin-top:8px;"><span>AUTONOMOUS AGENT RUNNER</span></div>
-            <div style="display: flex; gap: 4px; margin-top: 4px;">
-                <input type="text" id="agentTaskInput" placeholder="Assign background agent task..." style="flex:1; font-size:0.65rem;">
-                <button onclick="dispatchAgentTask()">EXECUTE</button>
+        <!-- Background Agent Runner -->
+        <div class="panel">
+            <div class="panel-title">AUTONOMOUS AGENT RUNNER</div>
+            <div class="agent-bar">
+                <input type="text" id="agentTaskInput" placeholder="Assign background agent task...">
+                <button class="btn" onclick="runAgentTask()">EXECUTE</button>
             </div>
         </div>
 
-        <div class="hud-panel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
-            <div id="chat-terminal"></div>
+        <!-- Central Terminal Conversation Panel -->
+        <div class="panel">
+            <div id="terminalOutput" class="terminal-box">
+                <div class="message-evas">E.V.A.S.: Universal AI Workspace online. Type or speak any request, or run network diagnostics.</div>
+            </div>
         </div>
 
-        <div class="hud-panel" id="rightPanel">
-            <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
-            <div style="font-size: 0.7rem; margin-top: 4px;">
-                FULL SUITE ENGINE: ONLINE<br>
-                • CHATGPT SUITE: ACTIVE<br>
-                • GEMINI MULTIMODAL: ACTIVE<br>
-                • DEEPSEEK REASONING: ACTIVE<br>
-                BUILD VERSION: <span id="appBuildVersionTag">6.0.0</span><br>
-                STUDY MODE: <span id="studyModeTelemetryTag" style="color:#ff9d00; font-weight:bold;">STANDBY</span><br>
-                VOICE CHAT: <span id="voiceChatStatusTag" style="color:#ff9d00;">READY</span><br>
-                LAZADA TO-RECEIVE: 2 ORDERS<br>
-                INTERRUPT KEY: ESC / F9
+        <!-- Telemetry Details Panel -->
+        <div class="panel">
+            <div class="panel-title">SYSTEM TELEMETRY</div>
+            <div class="telemetry-list">
+                <div>FULL SUITE ENGINE: ONLINE</div>
+                <div>• CHATGPT SUITE: ACTIVE</div>
+                <div>• GEMINI MULTIMODAL: ACTIVE</div>
+                <div>• DEEPSEEK REASONING: ACTIVE</div>
+                <div>BUILD VERSION: 12.0.0-SPEEDTEST-CORE</div>
+                <div>VOICE CHAT: READY</div>
             </div>
-            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
-            <button onclick="stopVoicePlaybackImmediate()" style="color:#ff9d00; border-color:#ff9d00;">⏹️ INTERRUPT VOICE</button>
-            <button onclick="openTranslateHUD()" style="margin-top:4px;">🌐 TRANSLATE POPUP</button>
-            <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:6px;">⌚ WATCH PWA WIDGET</a>
-        </div>
-    </div>
-
-    <div class="hud-center-pill">
-        <textarea id="userInput" placeholder="Ask E.V.A.S. anything or activate study mode..."></textarea>
-        <button onclick="sendCommand()">SEND</button>
-    </div>
-
-    <div class="hud-modal" id="translateModal">
-        <div class="modal-header">
-            <div>🌐 NEURAL TRANSLATION HUD</div>
-            <button onclick="closeTranslateHUD()">✕ CLOSE</button>
         </div>
 
-        <div style="margin-top: 10px; display: flex; gap: 6px; align-items: center;">
-            <select id="targetLangSelect" style="flex:1;">
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Japanese">Japanese</option>
-                <option value="Mandarin Chinese">Mandarin Chinese</option>
-            </select>
-            <button id="translateMicBtn" onclick="triggerTranslateDictation()">🎙️ DICTATE</button>
+        <!-- Controls Block -->
+        <button class="btn" style="width: 100%; padding: 10px;" onclick="stopVoiceOutput()">⏹ INTERRUPT VOICE</button>
+        <button class="btn" style="width: 100%; padding: 10px;" onclick="sendQuickCommand('TRANSLATE POPUP')">🌐 TRANSLATE POPUP</button>
+        <button class="btn" style="width: 100%; padding: 10px;" onclick="window.location.href='/watch'">⌚ WATCH PWA WIDGET</button>
+
+        <!-- Command Input Bar -->
+        <div class="input-bar">
+            <input type="text" id="userInput" placeholder="Ask E.V.A.S. anything or activate commands..." onkeydown="if(event.key==='Enter') sendAskCommand()">
+            <button class="btn" onclick="sendAskCommand()">SEND</button>
+            <button class="btn" id="micBtn" onclick="toggleSpeechRecognition()">🎤</button>
         </div>
 
-        <div class="cyber-mesh-wrapper">
-            <canvas id="translateMeshCanvas" width="220" height="220"></canvas>
-        </div>
-
-        <div class="translate-subtitle-box" id="translateSubtitleBox">
-            <span style="color: var(--hud-cyan); font-style: italic;">Awaiting speech dictation... Press [🎙️ DICTATE] above.</span>
-        </div>
-    </div>
-
-    <div class="hud-modal" id="settingsModal">
-        <div class="modal-header">
-            <div>⚙️ MASTER CONFIGURATION SETTINGS</div>
-            <button onclick="closeSettingsHUD()">✕ CLOSE</button>
-        </div>
-        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
-            <div class="setting-row">
-                <label>HUD Accent Theme Color (10 Colors):</label>
-                <select id="settingThemeColor" onchange="saveCustomSettings()">
-                    <option value="#00f3ff">Mark LXXXV Cyan (Default)</option>
-                    <option value="#ff2200">Stark Crimson Red</option>
-                    <option value="#bd00ff">DeepSeek Neon Purple</option>
-                    <option value="#10b981">Matrix Emerald Green</option>
-                    <option value="#ffb700">Amber Gold</option>
-                    <option value="#ff6600">Cyber Orange</option>
-                    <option value="#e000ff">Neon Violet</option>
-                    <option value="#76ff03">Electric Lime</option>
-                    <option value="#0066ff">Deep Sea Navy Blue</option>
-                    <option value="#ffffff">Pure Arc White</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>User Honorific Title:</label>
-                <select id="settingHonorific" onchange="saveCustomSettings()">
-                    <option value="Sir">Sir</option>
-                    <option value="Ma'am">Ma'am</option>
-                    <option value="Commander">Commander</option>
-                    <option value="Boss">Boss</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>Security Wake Phrase:</label>
-                <input type="text" id="settingWakeWord" placeholder="evas" onchange="saveCustomSettings()">
-            </div>
-            <div class="setting-row">
-                <label>Voice Speech Speed (<span id="speedValLabel">+2%</span>):</label>
-                <input type="range" id="settingVoiceRate" min="-10" max="25" value="2" oninput="updateSettingLabels()" onchange="saveCustomSettings()">
-            </div>
-            <div class="setting-row">
-                <label>Voice Pitch Adjustment (<span id="pitchValLabel">-3Hz</span>):</label>
-                <input type="range" id="settingVoicePitch" min="-10" max="10" value="-3" oninput="updateSettingLabels()" onchange="saveCustomSettings()">
-            </div>
-            <div class="setting-row">
-                <label>Fluent Speech Punctuation Pause Removal:</label>
-                <select id="settingSmoothPunct" onchange="saveCustomSettings()">
-                    <option value="true">Enabled (Ultra-Fluent Speech)</option>
-                    <option value="false">Disabled (Standard Pauses)</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>Custom Response Prefix:</label>
-                <input type="text" id="settingCustomPrefix" placeholder="e.g., Right away Sir," onchange="saveCustomSettings()">
-            </div>
-        </div>
     </div>
 
     <script>
-        let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
-        let userHonorific = "Sir", customWakeWord = "evas", selectedVoiceRate = "+2%", selectedVoicePitch = "-3Hz", smoothPunctuation = true, customPrefix = "";
-        let currentLat = 5.2971, currentLon = 100.2588;
-        let deferredPwaPrompt = null;
-        let currentInstalledVersion = "6.0.0-STUDY-WORKSPACE";
-        let isVoiceChatActive = false;
-        let isStudyModeActiveUI = false;
-        let voiceChatRecognition = null;
+        // Secret Authentication Key Configuration
+        const EVAS_SECRET_KEY = "DefaultSecureKey123";
 
-        const isTouchMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+        let currentAudio = null;
+        let isListening = false;
+        let recognition = null;
 
-        setInterval(() => {
-            document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
-        }, 1000);
+        // Core Send Request Handler
+        function sendAskCommand(customText = null) {
+            const inputField = document.getElementById('userInput');
+            const promptText = customText || inputField.value.trim();
+            if (!promptText) return;
 
-        if ("Notification" in window && Notification.permission !== "granted") {
-            Notification.requestPermission();
-        }
+            appendMessage("YOU: " + promptText, "message-you");
+            if (!customText) inputField.value = "";
 
-        function triggerPhonePushNotification(title, bodyText) {
-            if ("Notification" in window && Notification.permission === "granted") {
-                new Notification(title, {
-                    body: bodyText,
-                    icon: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=192&auto=format&fit=crop"
-                });
-            }
-        }
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then((reg) => {
-                    reg.onupdatefound = () => {
-                        const installingWorker = reg.installing;
-                        installingWorker.onstatechange = () => {
-                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                triggerAutoUpdateHotSwap();
-                            }
-                        };
-                    };
-                });
-            });
-        }
-
-        setInterval(async () => {
-            try {
-                const res = await fetch('/api/version');
-                const data = await res.json();
-                if (data.version && data.version !== currentInstalledVersion) {
-                    currentInstalledVersion = data.version;
-                    document.getElementById('appBuildVersionTag').innerText = currentInstalledVersion;
-                    triggerAutoUpdateHotSwap();
-                }
-            } catch (e) { }
-        }, 180000);
-
-        function triggerAutoUpdateHotSwap() {
-            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-            }
-            const toast = document.getElementById('updateToastNotification');
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 4000);
-        }
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPwaPrompt = e;
-            document.getElementById('pwaInstallBtn').style.display = 'inline-block';
-        });
-
-        async function installEVASApp() {
-            if (deferredPwaPrompt) {
-                deferredPwaPrompt.prompt();
-                const choiceResult = await deferredPwaPrompt.userChoice;
-                if (choiceResult.outcome === 'accepted') {
-                    document.getElementById('pwaInstallBtn').style.display = 'none';
-                }
-                deferredPwaPrompt = null;
-            }
-        }
-
-        if ("geolocation" in navigator) {
-            navigator.geolocation.watchPosition(
-                (pos) => {
-                    currentLat = pos.coords.latitude;
-                    currentLon = pos.coords.longitude;
+            fetch('/api/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-EVAS-KEY': EVAS_SECRET_KEY
                 },
-                (err) => console.log("GPS Telemetry Active: Default Location Set"),
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        }
-
-        function toggleStudyModeUI() {
-            if (isStudyModeActiveUI) {
-                sendCommandCustom("deactivate study mode");
-            } else {
-                sendCommandCustom("activate study mode");
-            }
-        }
-
-        function updateStudyModeBadgeState(isActive) {
-            isStudyModeActiveUI = isActive;
-            const btn = document.getElementById('studyModeBtn');
-            const tag = document.getElementById('studyModeTelemetryTag');
-
-            if (isActive) {
-                btn.classList.add('study-mode-active-btn');
-                btn.innerText = "🎓 STUDY MODE: LIVE";
-                if (tag) { tag.innerText = "ACTIVE"; tag.style.color = "#bd00ff"; }
-            } else {
-                btn.classList.remove('study-mode-active-btn');
-                btn.innerText = "🎓 STUDY MODE: OFF";
-                if (tag) { tag.innerText = "STANDBY"; tag.style.color = "#ff9d00"; }
-            }
-        }
-
-        function toggleContinuousVoiceChat() {
-            const btn = document.getElementById('continuousVoiceBtn');
-            const statusTag = document.getElementById('voiceChatStatusTag');
-
-            if (isVoiceChatActive) {
-                isVoiceChatActive = false;
-                if (voiceChatRecognition) voiceChatRecognition.stop();
-                btn.classList.remove('voice-chat-active');
-                btn.innerText = "🎙️ VOICE CHAT: OFF";
-                statusTag.innerText = "READY";
-                statusTag.style.color = "#ff9d00";
-            } else {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) {
-                    alert("Speech recognition unsupported on this browser.");
-                    return;
+                body: JSON.stringify({
+                    prompt: promptText,
+                    honorific: 'Sir'
+                })
+            })
+            .then(res => {
+                if (res.status === 403) {
+                    throw new Error("🔒 Unauthorized access blocked. Invalid Secret Key.");
                 }
-
-                isVoiceChatActive = true;
-                btn.classList.add('voice-chat-active');
-                btn.innerText = "🎙️ VOICE CHAT: LIVE";
-                statusTag.innerText = "LISTENING";
-                statusTag.style.color = "#00f3ff";
-
-                startVoiceChatLoop();
-            }
-        }
-
-        function startVoiceChatLoop() {
-            if (!isVoiceChatActive) return;
-
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            voiceChatRecognition = new SpeechRecognition();
-            voiceChatRecognition.continuous = false;
-            voiceChatRecognition.interimResults = false;
-
-            voiceChatRecognition.onresult = (e) => {
-                const transcript = e.results[0][0].transcript.trim();
-                if (transcript) {
-                    document.getElementById('userInput').value = transcript;
-                    sendCommand(true);
-                }
-            };
-
-            voiceChatRecognition.onend = () => {
-                if (isVoiceChatActive) {
-                    if (!currentAudio || currentAudio.paused) {
-                        setTimeout(startVoiceChatLoop, 400);
-                    }
-                }
-            };
-
-            voiceChatRecognition.onerror = () => {
-                if (isVoiceChatActive) {
-                    setTimeout(startVoiceChatLoop, 1000);
-                }
-            };
-
-            voiceChatRecognition.start();
-        }
-
-        const welcomeMessageScript = 
-`Greetings, Sir. I am E.V.A.S. (Eventually Very Advanced System).
-Full AI Workspace Capabilities Initialized (Gemini + ChatGPT Suite + DeepSeek R1).
-
---- E.V.A.S. FULL AI SUITE FEATURES ---
-1. DREAM STUDY WORKSPACE MODE: Feynman concept explainer, flashcard matrix, syllabus search, and exam-style questions.
-2. FULL CHATGPT CAPABILITIES: Multi-step research synthesis, code execution, structured documents, and persistent memory.
-3. LAZADA 'TO RECEIVE' TRACKING: Live monitoring for undelivered orders with instant phone push notifications.
-4. DIRECT GRAB RIDE SELECTION PAGE: Pre-fills your dropoff target and opens straight to vehicle options.
-5. CONTINUOUS VOICE CHAT: Hands-free listening and verbal speech engine.
-
-All core systems online. Awaiting your command, Sir.`;
-
-        let typeIndex = 0;
-        function runCinematicTypewriter() {
-            const container = document.getElementById('typewriterText');
-            if (typeIndex < welcomeMessageScript.length) {
-                container.textContent += welcomeMessageScript.charAt(typeIndex);
-                typeIndex++;
-                setTimeout(runCinematicTypewriter, 18);
-            } else {
-                document.getElementById('welcomeActionArea').style.display = 'flex';
-            }
-        }
-
-        function showWelcomeScreenManual() {
-            document.getElementById('typewriterText').textContent = '';
-            typeIndex = 0;
-            document.getElementById('welcomeActionArea').style.display = 'none';
-            document.getElementById('welcomeOverlay').style.display = 'flex';
-            runCinematicTypewriter();
-        }
-
-        function dismissWelcomeScreen() {
-            document.getElementById('welcomeOverlay').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('welcomeOverlay').style.display = 'none';
-                document.getElementById('welcomeOverlay').style.opacity = '1';
-            }, 400);
-            localStorage.setItem('evas_welcomed', 'true');
-        }
-
-        let scene, camera, renderer, particleSphere, wireCore, coreMat;
-
-        function init3DHologramCore() {
-            const container = document.querySelector('.core-orb-widget');
-            const canvas = document.getElementById('webglCanvas');
-            
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 180;
-
-            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-
-            const coreGeo = new THREE.IcosahedronGeometry(36, 2);
-            coreMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.8 });
-            wireCore = new THREE.Mesh(coreGeo, coreMat);
-            scene.add(wireCore);
-
-            const particleGeo = new THREE.BufferGeometry();
-            const particleCount = 400;
-            const posArray = new Float32Array(particleCount * 3);
-
-            for(let i=0; i<particleCount*3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 160;
-            }
-
-            particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const particleMat = new THREE.PointsMaterial({ size: 2, color: 0xff9d00, transparent: true, opacity: 0.85 });
-            particleSphere = new THREE.Points(particleGeo, particleMat);
-            scene.add(particleSphere);
-
-            function animate3DCore() {
-                requestAnimationFrame(animate3DCore);
-                wireCore.rotation.x += 0.005;
-                wireCore.rotation.y += 0.008;
-                particleSphere.rotation.y -= 0.003;
-                renderer.render(scene, camera);
-            }
-            animate3DCore();
-        }
-
-        function renderCyberMeshTranslateOrb() {
-            const canvas = document.getElementById('translateMeshCanvas');
-            if (!canvas) return;
-            const ctx = canvas.getContext('2d');
-            let angle = 0;
-
-            function drawMesh() {
-                requestAnimationFrame(drawMesh);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                angle += 0.015;
-
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const radius = 70;
-
-                const grad = ctx.createRadialGradient(centerX, centerY, 10, centerX, centerY, 95);
-                grad.addColorStop(0, 'rgba(0, 243, 255, 0.6)');
-                grad.addColorStop(0.5, 'rgba(189, 0, 255, 0.4)');
-                grad.addColorStop(1, 'rgba(3, 0, 8, 0)');
-                ctx.fillStyle = grad;
-                ctx.beginPath(); ctx.arc(centerX, centerY, 95, 0, Math.PI*2); ctx.fill();
-
-                ctx.strokeStyle = '#bd00ff';
-                ctx.lineWidth = 0.8;
-
-                for (let i = -radius; i <= radius; i += 10) {
-                    ctx.beginPath();
-                    for (let j = -radius; j <= radius; j += 4) {
-                        const dist = Math.sqrt(i*i + j*j);
-                        if (dist <= radius) {
-                            const wave = Math.sin(dist * 0.1 - angle) * 6;
-                            const x = centerX + i + Math.cos(angle + i*0.05)*4;
-                            const y = centerY + j + wave;
-                            if (j === -radius) ctx.moveTo(x, y);
-                            else ctx.lineTo(x, y);
-                        }
-                    }
-                    ctx.stroke();
-                }
-
-                ctx.fillStyle = '#00f3ff';
-                for (let a = 0; a < Math.PI * 2; a += 0.25) {
-                    const r = radius + 15 + Math.sin(a * 4 + angle) * 4;
-                    const px = centerX + Math.cos(a) * r;
-                    const py = centerY + Math.sin(a) * r;
-                    ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2); ctx.fill();
-                }
-            }
-            drawMesh();
-        }
-
-        window.addEventListener('load', () => {
-            init3DHologramCore();
-            renderCyberMeshTranslateOrb();
-
-            if (!localStorage.getItem('evas_welcomed')) {
-                runCinematicTypewriter();
-            } else {
-                document.getElementById('welcomeOverlay').style.display = 'none';
-            }
-
-            const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML = `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Universal AI Workspace online. Type or speak any request, or press [🎓 STUDY MODE].</div>`;
-        });
-
-        function stopVoicePlaybackImmediate() {
-            if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; }
-            if (animFrameId) cancelAnimationFrame(animFrameId);
-            const canvas = document.getElementById('audioWaveCanvas');
-            if (canvas) {
-                const ctx = canvas.getContext('2d');
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-        }
-
-        window.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' || e.key === 'F9') {
-                stopVoicePlaybackImmediate();
-                closeSettingsHUD();
-                closeTranslateHUD();
-            }
-        });
-
-        const userInputEl = document.getElementById('userInput');
-        if (userInputEl) {
-            userInputEl.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    if (isTouchMobile) {
-                        e.preventDefault();
-                        sendCommand();
-                    } else {
-                        if (!e.shiftKey) {
-                            e.preventDefault();
-                            sendCommand();
-                        }
-                    }
-                }
+                return res.json();
+            })
+            .then(data => {
+                appendMessage("E.V.A.S.:\n" + data.response, "message-evas");
+                handlePayloadActions(data);
+            })
+            .catch(err => {
+                appendMessage("E.V.A.S.:\n" + err.message, "message-evas");
             });
         }
 
-        function updateSettingLabels() {
-            const rVal = document.getElementById('settingVoiceRate').value;
-            const pVal = document.getElementById('settingVoicePitch').value;
-            document.getElementById('speedValLabel').innerText = (rVal >= 0 ? "+" : "") + rVal + "%";
-            document.getElementById('pitchValLabel').innerText = (pVal >= 0 ? "+" : "") + pVal + "Hz";
-        }
-
-        function saveCustomSettings() {
-            userHonorific = document.getElementById('settingHonorific').value;
-            customWakeWord = document.getElementById('settingWakeWord').value || "evas";
-            const rVal = document.getElementById('settingVoiceRate').value;
-            const pVal = document.getElementById('settingVoicePitch').value;
-            selectedVoiceRate = (rVal >= 0 ? "+" : "") + rVal + "%";
-            selectedVoicePitch = (pVal >= 0 ? "+" : "") + pVal + "Hz";
-            smoothPunctuation = document.getElementById('settingSmoothPunct').value === "true";
-            customPrefix = document.getElementById('settingCustomPrefix').value.trim();
-
-            const selectedThemeColor = document.getElementById('settingThemeColor').value;
-            document.documentElement.style.setProperty('--hud-cyan', selectedThemeColor);
-            
-            let hex = selectedThemeColor.replace('#', '');
-            if(hex.length === 6) {
-                let r = parseInt(hex.substring(0,2), 16);
-                let g = parseInt(hex.substring(2,4), 16);
-                let b = parseInt(hex.substring(4,6), 16);
-                document.documentElement.style.setProperty('--hud-glow', `rgba(${r}, ${g}, ${b}, 0.5)`);
+        // Payload Router
+        function handlePayloadActions(data) {
+            // 1. Direct Telephony Dialing
+            if (data.call_phone_number) {
+                window.location.href = data.call_phone_number;
             }
 
-            if (coreMat) {
-                coreMat.color.setHex(parseInt(hex, 16));
+            // 2. Incoming Call Screen Wake Overlay
+            if (data.incoming_call_event && data.incoming_call_event.auto_wake) {
+                triggerIncomingOverlay(data.incoming_call_event);
             }
+
+            // 3. Audio Playback with Bluetooth Routing
+            if (data.audio) {
+                playEvasAudio();
+            }
+
+            // 4. External App Link Dispatches
+            if (data.google_maps_url) window.open(data.google_maps_url, '_blank');
+            if (data.grab_deep_link) window.location.href = data.grab_deep_link;
+            if (data.lazada_tracking_url) window.open(data.lazada_tracking_url, '_blank');
         }
 
-        function triggerSecurityLock() { document.getElementById('securityLockOverlay').style.display = 'flex'; }
-        function attemptSecurityUnlock() { document.getElementById('securityLockOverlay').style.display = 'none'; }
-        function openSettingsHUD() { document.getElementById('settingsModal').style.display = 'flex'; }
-        function closeSettingsHUD() { document.getElementById('settingsModal').style.display = 'none'; }
-        function openTranslateHUD() { document.getElementById('translateModal').style.display = 'flex'; }
-        function closeTranslateHUD() { document.getElementById('translateModal').style.display = 'none'; }
+        function playEvasAudio() {
+            stopVoiceOutput();
+            currentAudio = new Audio('/api/audio?t=' + Date.now());
 
-        function sendCommandCustom(cmdText) {
-            document.getElementById('userInput').value = cmdText;
-            sendCommand();
+            if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                navigator.mediaDevices.enumerateDevices().then(devices => {
+                    const btDevice = devices.find(d => d.kind === 'audiooutput' && d.label.toLowerCase().includes('bluetooth'));
+                    if (btDevice && typeof currentAudio.setSinkId === 'function') {
+                        currentAudio.setSinkId(btDevice.deviceId);
+                    }
+                }).catch(console.error);
+            }
+
+            currentAudio.play().catch(e => console.log("Audio play blocked until tap:", e));
         }
 
-        async function dispatchAgentTask() {
-            const input = document.getElementById('agentTaskInput');
-            const taskText = input.value.trim();
-            if (!taskText) return;
-
-            const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML += `<div class="msg-line msg-user"><b>AUTONOMOUS AGENT DISPATCHED:</b> ${taskText}</div>`;
-            input.value = '';
-
-            try {
-                const res = await fetch('/api/agent_task', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ task: taskText })
-                });
-                const data = await res.json();
-                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> ${data.summary}</div>`;
-                terminal.scrollTop = terminal.scrollHeight;
-            } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Agent task failed.</div>`;
+        function stopVoiceOutput() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
             }
         }
 
-        function setupAudioVisualizerDSP(audioElement) {
-            if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        function triggerIncomingOverlay(eventData) {
+            const overlay = document.getElementById('incomingOverlay');
+            document.getElementById('callerDetails').innerText = `${eventData.caller_id} (${eventData.caller_number})`;
+            overlay.classList.add('active');
 
-            const source = audioCtx.createMediaElementSource(audioElement);
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 64;
-            source.connect(analyser); analyser.connect(audioCtx.destination);
-
-            const canvas = document.getElementById('audioWaveCanvas');
-            const ctx = canvas.getContext('2d');
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-
-            function renderSoundwaves() {
-                animFrameId = requestAnimationFrame(renderSoundwaves);
-                analyser.getByteFrequencyData(dataArray);
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                const centerX = canvas.width / 2;
-                const centerY = canvas.height / 2;
-                const radius = 68;
-
-                ctx.beginPath();
-                for (let i = 0; i < bufferLength; i++) {
-                    const angle = (i / bufferLength) * Math.PI * 2;
-                    const amplitude = dataArray[i] / 4.0;
-                    const x = centerX + Math.cos(angle) * (radius + amplitude);
-                    const y = centerY + Math.sin(angle) * (radius + amplitude);
-
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-                ctx.closePath();
-                const activeThemeColor = getComputedStyle(document.documentElement).getPropertyValue('--hud-cyan').trim();
-                ctx.strokeStyle = activeThemeColor || '#00f3ff';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+            if ('wakeLock' in navigator) {
+                navigator.wakeLock.request('screen').catch(console.error);
             }
-            renderSoundwaves();
         }
 
-        function playEvasVoiceWithVisualizer(audioUrl, isVoiceChatMode = false) {
-            stopVoicePlaybackImmediate();
-            currentAudio = new Audio(audioUrl);
-            setupAudioVisualizerDSP(currentAudio);
-            
-            currentAudio.onended = () => {
-                if (isVoiceChatActive && isVoiceChatMode) {
-                    setTimeout(startVoiceChatLoop, 500);
-                }
-            };
-
-            currentAudio.play();
+        function dismissOverlay() {
+            document.getElementById('incomingOverlay').classList.remove('active');
         }
 
-        function triggerTranslateDictation() {
+        function appendMessage(text, className) {
+            const box = document.getElementById('terminalOutput');
+            const msg = document.createElement('div');
+            msg.className = className;
+            msg.innerText = text;
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function sendQuickCommand(cmd) {
+            sendAskCommand(cmd);
+        }
+
+        function runAgentTask() {
+            const taskInput = document.getElementById('agentTaskInput');
+            if (taskInput.value.trim()) {
+                sendAskCommand("Agent task: " + taskInput.value.trim());
+                taskInput.value = "";
+            }
+        }
+
+        // Web Speech Recognition Engine
+        function toggleSpeechRecognition() {
+            const micBtn = document.getElementById('micBtn');
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const subtitleBox = document.getElementById('translateSubtitleBox');
-            const btn = document.getElementById('translateMicBtn');
 
             if (!SpeechRecognition) {
-                subtitleBox.innerText = "Speech recognition unsupported in browser.";
+                alert("Speech recognition is not supported on this browser.");
                 return;
             }
 
-            const rec = new SpeechRecognition();
-            rec.onstart = () => {
-                btn.innerText = "🎙️ LISTENING...";
-                subtitleBox.innerHTML = "<span style='color:#ff9d00;'>Listening to speech...</span>";
-            };
-
-            rec.onresult = async (e) => {
-                const text = e.results[0][0].transcript;
-                const targetLang = document.getElementById('targetLangSelect').value;
-                btn.innerText = "🎙️ TRANSLATING...";
-
-                try {
-                    const res = await fetch('/api/translate', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ 
-                            text: text, 
-                            target_lang: targetLang,
-                            voice_pitch: selectedVoicePitch,
-                            voice_rate: selectedVoiceRate,
-                            smooth_punct: smoothPunctuation
-                        })
-                    });
-                    const data = await res.json();
-                    btn.innerText = "🎙️ DICTATE";
-                    subtitleBox.innerHTML = `<b>Original:</b> ${data.original_text}<br><b style='color:var(--hud-cyan);'>Translation (${data.target_lang}):</b> ${data.translated_text}`;
-
-                    if (data.audio) { playEvasVoiceWithVisualizer('/api/audio?t=' + new Date().getTime()); }
-                } catch(err) {
-                    btn.innerText = "🎙️ DICTATE";
-                    subtitleBox.innerText = "Translation processing failed.";
-                }
-            };
-
-            rec.start();
-        }
-
-        async function sendCommand(isVoiceChatMode = false) {
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if (!text) return;
-
-            const terminal = document.getElementById('chat-terminal');
-            terminal.innerHTML += `<div class="msg-line msg-user"><b>YOU:</b> ${text}</div>`;
-            input.value = '';
-
-            try {
-                const res = await fetch('/api/ask', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ 
-                        prompt: text, 
-                        honorific: userHonorific,
-                        latitude: currentLat,
-                        longitude: currentLon,
-                        voice_pitch: selectedVoicePitch,
-                        voice_rate: selectedVoiceRate,
-                        smooth_punct: smoothPunctuation,
-                        custom_prefix: customPrefix
-                    })
-                });
-                const data = await res.json();
-
-                if (typeof data.study_mode_active !== 'undefined') {
-                    updateStudyModeBadgeState(data.study_mode_active);
-                }
-
-                const cctvImg = document.getElementById('cctvVideoFeed');
-                const orbTag = document.getElementById('orbStatusTag');
-
-                if (data.cctv_stream_url) {
-                    cctvImg.src = data.cctv_stream_url;
-                    cctvImg.style.opacity = '1';
-                    if (orbTag) { orbTag.innerText = "LIVE CCTV STREAM"; orbTag.style.color = "#ff9d00"; }
-                } else if (data.cancel_cctv) {
-                    cctvImg.style.opacity = '0';
-                    setTimeout(() => { cctvImg.src = ""; }, 600);
-                    if (orbTag) { orbTag.innerText = "3D HOLOGRAM ACTIVE"; orbTag.style.color = "var(--hud-cyan)"; }
-                }
-
-                if (data.open_translate_hud) { openTranslateHUD(); }
-                if (data.trigger_lock) { triggerSecurityLock(); return; }
-
-                if (data.grab_deep_link) {
-                    window.location.href = data.grab_deep_link;
-                }
-
-                if (data.lazada_tracking_url) {
-                    triggerPhonePushNotification(
-                        "📦 E.V.A.S. LAZADA COURIER ALERT", 
-                        "To Receive (2): 10pcs Neodymium Magnets [Picked Up] & Xiaomi Watch S3 Case [In Transit]"
-                    );
-                }
-
-                let renderedOutput = "";
-                if (data.reasoning_steps) {
-                    renderedOutput += `<details class="reasoning-box"><summary><b>🧠 E.V.A.S. FULL SUITE REASONING (Gemini + ChatGPT + DeepSeek)</b></summary><div style="margin-top:4px; white-space:pre-wrap;">${data.reasoning_steps}</div></details>`;
-                }
-
-                const parsedMarkdown = (typeof marked !== 'undefined' && typeof marked.parse === 'function') ? marked.parse(data.raw_markdown || data.response) : (data.raw_markdown || data.response);
-                renderedOutput += parsedMarkdown;
-
-                if (data.google_maps_url) {
-                    renderedOutput += `<br><a href="${data.google_maps_url}" target="_blank" class="hud-action-badge">MAPS ROUTE</a>`;
-                }
-
-                if (data.grab_deep_link) {
-                    renderedOutput += `<br><a href="${data.grab_deep_link}" class="hud-action-badge" style="border-color:#00b14f; color:#00b14f;">🚗 LAUNCH GRAB RIDE SELECTION PAGE</a>`;
-                }
-
-                if (data.lazada_tracking_url) {
-                    renderedOutput += `<br><a href="${data.lazada_tracking_url}" target="_blank" class="hud-action-badge" style="border-color:#f57224; color:#f57224;">📦 LAUNCH LAZADA ORDERS IN-APP</a>`;
-                }
-
-                if (data.generated_image_url) {
-                    renderedOutput += `<br><div style="margin-top:8px;"><b>📐 CAD SCHEMATIC BLUEPRINT:</b><br><img src="${data.generated_image_url}" class="generated-img-preview" alt="CAD Blueprint"></div>`;
-                }
-
-                if (data.exploded_view_url) {
-                    renderedOutput += `<br><div style="margin-top:8px;"><b>🧩 EXPLODED PART-BY-PART VIEW & ASSEMBLY BREAKDOWN:</b><br><img src="${data.exploded_view_url}" class="generated-img-preview" alt="Exploded View"></div>`;
-                }
-
-                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b><br>${renderedOutput}</div>`;
-                terminal.scrollTop = terminal.scrollHeight;
-
-                if (data.audio) { playEvasVoiceWithVisualizer('/api/audio?t=' + new Date().getTime(), isVoiceChatMode); }
-            } catch (e) {
-                terminal.innerHTML += `<div class="msg-line msg-evas"><b>E.V.A.S.:</b> Connection anomaly.</div>`;
+            if (isListening) {
+                recognition.stop();
+                return;
             }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                micBtn.style.color = "red";
+            };
+
+            recognition.onresult = (e) => {
+                const transcript = e.results[0][0].transcript;
+                sendAskCommand(transcript);
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                micBtn.style.color = "var(--cyan-glow)";
+            };
+
+            recognition.start();
         }
     </script>
 </body>
