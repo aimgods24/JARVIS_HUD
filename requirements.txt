@@ -1,6 +1,7 @@
-flask
-requests
-duckduckgo-search
-beautifulsoup4
-edge-tts
-speedtest-cli
+Flask==3.0.0
+requests==2.31.0
+duckduckgo-search==4.2.0
+beautifulsoup4==4.12.2
+edge-tts==6.1.9
+speedtest-cli==2.1.3
+gunicorn==21.2.0
