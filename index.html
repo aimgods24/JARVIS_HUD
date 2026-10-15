@@ -2,23 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>E.V.A.S. // EVENTUALLY VERY ADVANCED SYSTEM</title>
     
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#00f3ff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="E.V.A.S.">
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --hud-cyan: #00f3ff;
             --hud-glow: rgba(0, 243, 255, 0.5);
-            --hud-orange: #ff9d00;
-            --hud-purple: #bd00ff;
             --hud-bg: #010810;
             --hud-panel: rgba(1, 12, 24, 0.9);
             --hud-border: rgba(0, 243, 255, 0.35);
@@ -27,419 +23,176 @@
 
         * { box-sizing: border-box; }
 
-        body {
+        html, body {
             background-color: var(--hud-bg);
             color: var(--hud-cyan);
             font-family: var(--hud-font);
             margin: 0; padding: 6px;
-            height: 100vh;
+            min-height: 100vh;
+            min-height: 100dvh; /* Mobile soft keyboard dynamic viewport fix */
             display: flex; flex-direction: column;
-            overflow: hidden;
-            background-image: 
-                radial-gradient(circle at 50% 50%, var(--hud-glow) 0%, transparent 85%),
-                linear-gradient(0deg, rgba(1, 8, 16, 0.98) 0%, rgba(0, 3, 6, 0.99) 100%);
-        }
-
-        body, .hud-panel, #chat-terminal, .msg-line, .hud-table, .translate-subtitle-box {
-            user-select: text !important;
-            -webkit-user-select: text !important;
-            -moz-user-select: text !important;
+            overflow-x: hidden;
         }
 
         .hud-top-bar {
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--hud-border);
-            padding: 4px 10px; font-size: 0.7rem; letter-spacing: 1px;
+            padding: 4px 10px; font-size: 0.7rem;
             background: rgba(0, 243, 255, 0.03);
             flex-wrap: wrap; gap: 4px;
-            user-select: none !important;
-        }
-
-        .status-pill {
-            display: inline-block; width: 8px; height: 8px;
-            background: var(--hud-cyan); border-radius: 50%;
-            box-shadow: 0 0 8px var(--hud-cyan); margin-right: 4px;
         }
 
         .hud-workspace {
             display: grid;
-            grid-template-columns: 320px 1fr 280px;
+            grid-template-columns: 300px 1fr 260px;
             gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
-            position: relative;
+            padding-bottom: 75px; /* Leave room for bottom keyboard input pill */
         }
 
         .hud-panel {
             background: var(--hud-panel);
             border: 1px solid var(--hud-border);
-            border-radius: 3px; padding: 8px;
+            border-radius: 4px; padding: 8px;
             box-shadow: inset 0 0 10px var(--hud-glow);
             display: flex; flex-direction: column; gap: 6px;
-            overflow-y: auto; position: relative;
-            transition: border-color 0.3s ease, background-color 0.3s ease;
+            overflow-y: auto;
         }
 
         .hud-panel.dragover {
             border-color: #ffffff !important;
-            background-color: rgba(0, 243, 255, 0.2) !important;
+            background: rgba(0, 243, 255, 0.2) !important;
         }
 
         .panel-header {
-            font-size: 0.65rem; font-weight: bold; letter-spacing: 1px;
-            display: flex; justify-content: space-between; opacity: 0.8;
+            font-size: 0.65rem; font-weight: bold; opacity: 0.8;
             border-bottom: 1px dashed var(--hud-border); padding-bottom: 3px;
-            cursor: pointer; user-select: none !important;
         }
 
         @media (max-width: 850px) {
-            body { height: auto; overflow-y: auto; padding-bottom: 70px; }
-            .hud-workspace { display: flex; flex-direction: column; overflow: visible; }
-            .hud-panel { overflow: visible; width: 100%; }
-            .hud-top-bar { font-size: 0.6rem; justify-content: center; text-align: center; }
-        }
-
-        .core-orb-widget {
-            position: relative; width: 100%; height: 230px;
-            display: flex; align-items: center; justify-content: center;
-            margin: 4px 0; border: 1px solid var(--hud-border);
-            border-radius: 6px; background: rgba(0, 4, 10, 0.95);
-            overflow: hidden; user-select: none !important;
-            box-shadow: inset 0 0 15px var(--hud-glow);
-        }
-
-        #webglCanvas { position: absolute; width: 100%; height: 100%; z-index: 1; }
-
-        #cctvVideoFeed {
-            position: absolute; width: 160px; height: 160px;
-            border-radius: 50%; object-fit: cover; z-index: 2;
-            opacity: 0; transition: opacity 0.6s ease;
-            filter: contrast(1.2) brightness(1.1);
-            border: 2px solid var(--hud-cyan);
-            box-shadow: 0 0 20px var(--hud-cyan);
-        }
-
-        #audioWaveCanvas {
-            position: absolute; width: 220px; height: 220px;
-            z-index: 3; pointer-events: none; border-radius: 50%;
+            .hud-workspace { display: flex; flex-direction: column; padding-bottom: 80px; }
+            .hud-panel { width: 100%; }
         }
 
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85);
             border: 1px solid var(--hud-border);
-            border-radius: 3px; padding: 10px; min-height: 250px;
+            border-radius: 4px; padding: 10px; min-height: 250px;
             overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
-            box-shadow: inset 0 0 10px var(--hud-glow); z-index: 1;
         }
 
         .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
         .msg-user { color: #ffffff; text-align: right; border-right: 2px solid #fff; padding-right: 6px; }
-        .msg-evas { color: var(--hud-cyan); text-shadow: 0 0 4px var(--hud-glow); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
-
-        .hud-action-badge {
-            display: inline-block; margin-top: 6px; margin-right: 6px; padding: 6px 12px;
-            background: var(--hud-glow); border: 1px solid var(--hud-cyan);
-            border-radius: 6px; color: #fff; font-weight: bold; text-decoration: none; font-size: 0.72rem;
-            cursor: pointer; box-shadow: 0 0 10px var(--hud-glow);
-        }
+        .msg-evas { color: var(--hud-cyan); border-left: 2px solid var(--hud-cyan); padding-left: 6px; }
 
         .hud-center-pill {
-            position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+            position: fixed;
+            bottom: calc(8px + env(safe-area-inset-bottom));
+            left: 50%; transform: translateX(-50%);
             width: 95%; max-width: 650px;
-            background: rgba(1, 12, 24, 0.95);
+            background: rgba(1, 12, 24, 0.98);
             border: 1px solid var(--hud-cyan); border-radius: 20px;
             padding: 6px 10px; display: flex; align-items: center; gap: 6px;
-            box-shadow: 0 0 15px var(--hud-glow); z-index: 100;
+            box-shadow: 0 0 15px var(--hud-glow); z-index: 1000;
         }
 
         textarea {
-            flex: 1; height: 36px; background: transparent; border: none;
+            flex: 1; height: 38px; background: transparent; border: none;
             color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.85rem; outline: none;
         }
 
-        button, select, input[type="text"], input[type="range"] {
+        button, input[type="text"] {
             background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
-            color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 4px 8px; font-size: 0.7rem; outline: none;
+            color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 6px 10px; font-size: 0.72rem; outline: none;
         }
         button:hover { background: var(--hud-cyan); color: #000; }
 
-        .voice-chat-active {
-            background: #ff0055 !important;
-            color: #fff !important;
-            border-color: #ff0055 !important;
-            box-shadow: 0 0 15px #ff0055 !important;
-            animation: pulseVoice 1.2s infinite;
-        }
-
-        @keyframes pulseVoice {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-
-        .hud-modal {
-            display: none; position: fixed; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 92vw; max-width: 520px;
-            background: rgba(1, 10, 22, 0.98);
-            border: 2px solid var(--hud-cyan); border-radius: 12px;
-            box-shadow: 0 0 45px var(--hud-glow);
-            z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
-            backdrop-filter: blur(10px);
-            max-height: 85vh; overflow-y: auto;
-        }
-
-        .modal-header {
-            font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;
-            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-
-        .translate-subtitle-box {
-            background: rgba(0, 0, 0, 0.9); border: 1px solid var(--hud-cyan);
-            padding: 10px 12px; border-radius: 6px; font-size: 0.85rem; line-height: 1.4; color: #fff;
-            box-shadow: inset 0 0 12px var(--hud-glow); min-height: 65px; word-break: break-word;
-        }
-
-        .cyber-mesh-wrapper {
-            position: relative; width: 100%; height: 230px;
-            display: flex; align-items: center; justify-content: center;
-            margin: 10px 0; background: radial-gradient(circle at 50% 50%, #15002b 0%, #030008 100%);
-            border: 1px solid var(--hud-purple); border-radius: 10px; overflow: hidden;
-            box-shadow: inset 0 0 25px rgba(189, 0, 255, 0.4);
-        }
-
-        #translateMeshCanvas { position: absolute; width: 220px; height: 220px; }
-
-        #securityLockOverlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0, 3, 8, 0.98); z-index: 5000;
-            flex-direction: column; align-items: center; justify-content: center; gap: 15px;
-            color: #ff2200; box-shadow: inset 0 0 50px #ff2200; text-align: center;
-        }
-
-        .setting-row {
-            display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem;
-            border-bottom: 1px dashed rgba(0, 243, 255, 0.2); padding-bottom: 8px; margin-bottom: 8px;
-        }
-
-        #welcomeOverlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(1, 8, 16, 0.98); z-index: 4000;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            padding: 20px; color: var(--hud-cyan); text-align: left;
-            backdrop-filter: blur(15px); box-shadow: inset 0 0 60px var(--hud-glow);
-        }
-
-        .welcome-card {
-            width: 100%; max-width: 680px; background: rgba(0, 12, 24, 0.95);
-            border: 2px solid var(--hud-cyan); border-radius: 10px; padding: 20px;
-            box-shadow: 0 0 30px var(--hud-glow); display: flex; flex-direction: column; gap: 12px;
-            max-height: 80vh; overflow-y: auto;
-        }
-
-        #typewriterText {
-            font-size: 0.88rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word;
-            min-height: 140px; border-left: 2px solid var(--hud-cyan); padding-left: 10px;
-        }
-
-        .generated-img-preview {
-            width: 100%; max-width: 500px; border-radius: 8px; border: 2px solid var(--hud-cyan);
-            margin-top: 8px; box-shadow: 0 0 15px var(--hud-glow);
-        }
-
-        #updateToastNotification {
-            display: none; position: fixed; top: 12px; right: 12px; z-index: 6000;
-            background: rgba(0, 243, 255, 0.95); color: #000; padding: 8px 14px;
-            border-radius: 8px; font-weight: bold; font-size: 0.75rem; box-shadow: 0 0 20px var(--hud-cyan);
-        }
-
         #filePreviewBadge {
-            display: none; font-size: 0.65rem; color: #fff; background: rgba(0, 243, 255, 0.2);
-            border: 1px solid var(--hud-cyan); border-radius: 6px; padding: 2px 6px; margin-right: 4px;
+            display: none; font-size: 0.65rem; color: #fff; background: rgba(0, 243, 255, 0.25);
+            border: 1px solid var(--hud-cyan); border-radius: 6px; padding: 3px 6px; white-space: nowrap;
         }
     </style>
 </head>
 <body>
 
-    <div id="updateToastNotification">⚡ E.V.A.S. AUTO-UPDATED TO LATEST VERSION</div>
-
-    <div id="welcomeOverlay">
-        <div class="welcome-card">
-            <div style="font-size: 1.1rem; font-weight: bold; letter-spacing: 2px; border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;">
-                ⚡ E.V.A.S. (EVENTUALLY VERY ADVANCED SYSTEM) // FULL SUITE WORKSPACE
-            </div>
-
-            <div id="typewriterText"></div>
-
-            <div id="welcomeActionArea" style="display: none; flex-direction: column; gap: 8px; margin-top: 10px;">
-                <button onclick="dismissWelcomeScreen()" style="padding: 10px; font-size: 0.8rem; background: var(--hud-cyan); color: #000;">
-                    INITIALIZE DASHBOARD TERMINAL →
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="securityLockOverlay">
-        <div style="font-size: 3rem;">🔒</div>
-        <div style="font-size: 1.2rem; font-weight: bold;">E.V.A.S. SECURITY LOCK</div>
-        <div style="display: flex; gap: 6px; margin-top: 10px;">
-            <input type="text" id="unlockPhraseInput" placeholder="Enter wake phrase..." style="width: 220px; border-color: #ff2200; color: #ff2200;">
-            <button onclick="attemptSecurityUnlock()" style="border-color: #ff2200; color: #ff2200;">UNLOCK</button>
-        </div>
-    </div>
-
     <!-- TOP NAVIGATION BAR -->
     <div class="hud-top-bar">
-        <div><span class="status-pill"></span>E.V.A.S. // CORE MASTER</div>
-        <div>ORB CORE: <span id="orbStatusTag" style="color: var(--hud-cyan); font-weight: bold;">3D HOLOGRAM ACTIVE</span></div>
+        <div>E.V.A.S. // UNIVERSAL AI CORE</div>
         <div id="liveClock">00:00:00</div>
-        
-        <button id="pwaInstallBtn" style="display:none; border-color:#00f3ff; color:#00f3ff;" onclick="installEVASApp()">📲 INSTALL APP</button>
-        <button id="continuousVoiceBtn" onclick="toggleContinuousVoiceChat()">🎙️ VOICE CHAT: OFF</button>
         <button onclick="sendCommandCustom('Conduct speed test')">⚡ SPEED TEST</button>
-        <button onclick="showWelcomeScreenManual()">📖 TACTICAL GUIDE</button>
-        <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
-        <button onclick="openTranslateHUD()">🌐 TRANSLATE</button>
-        <button onclick="sendCommandCustom('brief me')">🎙️ BRIEFING</button>
-        <button onclick="triggerSecurityLock()">🔒 LOCK</button>
+        <button onclick="stopAudioImmediate()">⏹️ INTERRUPT VOICE</button>
     </div>
 
     <div class="hud-workspace">
-        <div class="hud-panel" id="leftPanel">
-            <div class="panel-header"><span>CORE DIAL // 3D HOLOGRAM & SOUNDWAVE</span></div>
-            
-            <div class="core-orb-widget">
-                <canvas id="webglCanvas"></canvas>
-                <img id="cctvVideoFeed" src="" alt="Live CCTV Feed">
-                <canvas id="audioWaveCanvas" width="220" height="220"></canvas>
-            </div>
-
-            <div class="panel-header" style="margin-top:4px;"><span>CCTV MATRIX SWITCHER</span></div>
-            <div style="display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap;">
-                <button onclick="sendCommandCustom('connect to cctv')">📹 CAM 1</button>
-                <button onclick="sendCommandCustom('cancel cctv')">✕ CANCEL</button>
-            </div>
-
-            <div class="panel-header" style="margin-top:8px;"><span>AUTONOMOUS AGENT RUNNER</span></div>
-            <div style="display: flex; gap: 4px; margin-top: 4px;">
-                <input type="text" id="agentTaskInput" placeholder="Assign background agent task..." style="flex:1; font-size:0.65rem;">
-                <button onclick="dispatchAgentTask()">EXECUTE</button>
-            </div>
-        </div>
-
-        <div class="hud-panel" id="terminalPanel" style="flex: 1; display: flex; flex-direction: column; z-index: 1;">
-            <div id="chat-terminal">
-                <div class="msg-line msg-evas">E.V.A.S.: Universal AI Workspace online. Type, speak, or drag and drop homework/files to analyze.</div>
-            </div>
-        </div>
-
-        <div class="hud-panel" id="rightPanel">
-            <div class="panel-header"><span>SYSTEM TELEMETRY</span></div>
+        <div class="hud-panel">
+            <div class="panel-header">CORE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
-                FULL SUITE ENGINE: ONLINE<br>
                 • CHATGPT SUITE: ACTIVE<br>
                 • GEMINI MULTIMODAL: ACTIVE<br>
                 • DEEPSEEK REASONING: ACTIVE<br>
-                BUILD VERSION: <span id="appBuildVersionTag">13.0.0-VISION</span><br>
-                VOICE CHAT: <span id="voiceChatStatusTag" style="color:#ff9d00;">READY</span><br>
-                LAZADA TO-RECEIVE: 2 ORDERS<br>
-                INTERRUPT KEY: ESC / F9
+                BUILD: 14.0.0-VISION-VOICE
             </div>
-            <hr style="border-color: var(--hud-border); opacity: 0.3; margin: 6px 0;">
-            <button onclick="stopVoicePlaybackImmediate()" style="color:#ff9d00; border-color:#ff9d00;">⏹️ INTERRUPT VOICE</button>
-            <button onclick="openTranslateHUD()" style="margin-top:4px;">🌐 TRANSLATE POPUP</button>
-            <a href="/watch" target="_blank" class="hud-action-badge" style="text-align:center; margin-top:6px;">⌚ WATCH PWA WIDGET</a>
+        </div>
+
+        <div class="hud-panel" id="terminalPanel" style="flex: 1;">
+            <div id="chat-terminal">
+                <div class="msg-line msg-evas">E.V.A.S.: Universal AI Workspace online. Type, speak, paste screenshots (Ctrl+V), or drag & drop attachments.</div>
+            </div>
+        </div>
+
+        <div class="hud-panel">
+            <div class="panel-header">QUICK ACTIONS</div>
+            <button onclick="sendCommandCustom('brief me')">🎙️ BRIEFING</button>
+            <a href="/watch" target="_blank" style="text-align:center; text-decoration:none; color:var(--hud-cyan); margin-top:6px;">⌚ WATCH WIDGET</a>
         </div>
     </div>
 
+    <!-- FLOATING INPUT PILL -->
     <div class="hud-center-pill">
         <input type="file" id="fileAttachmentInput" style="display: none;" onchange="handleFileSelection(event)">
         <button onclick="document.getElementById('fileAttachmentInput').click()">📎</button>
         <span id="filePreviewBadge">📎 <span id="filePreviewName"></span></span>
-        <textarea id="userInput" placeholder="Ask E.V.A.S. anything or attach files/homework..."></textarea>
-        <button onclick="sendCommand()">SEND</button>
-    </div>
-
-    <div class="hud-modal" id="translateModal">
-        <div class="modal-header">
-            <div>🌐 NEURAL TRANSLATION HUD</div>
-            <button onclick="closeTranslateHUD()">✕ CLOSE</button>
-        </div>
-
-        <div style="margin-top: 10px; display: flex; gap: 6px; align-items: center;">
-            <select id="targetLangSelect" style="flex:1;">
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="German">German</option>
-                <option value="Japanese">Japanese</option>
-                <option value="Mandarin Chinese">Mandarin Chinese</option>
-            </select>
-            <button id="translateMicBtn" onclick="triggerTranslateDictation()">🎙️ DICTATE</button>
-        </div>
-
-        <div class="cyber-mesh-wrapper">
-            <canvas id="translateMeshCanvas" width="220" height="220"></canvas>
-        </div>
-
-        <div class="translate-subtitle-box" id="translateSubtitleBox">
-            <span style="color: var(--hud-cyan); font-style: italic;">Awaiting speech dictation... Press [🎙️ DICTATE] above.</span>
-        </div>
-    </div>
-
-    <div class="hud-modal" id="settingsModal">
-        <div class="modal-header">
-            <div>⚙️ MASTER CONFIGURATION SETTINGS</div>
-            <button onclick="closeSettingsHUD()">✕ CLOSE</button>
-        </div>
-        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
-            <div class="setting-row">
-                <label>HUD Accent Theme Color (10 Colors):</label>
-                <select id="settingThemeColor" onchange="saveCustomSettings()">
-                    <option value="#00f3ff">Mark LXXXV Cyan (Default)</option>
-                    <option value="#ff2200">Stark Crimson Red</option>
-                    <option value="#bd00ff">DeepSeek Neon Purple</option>
-                    <option value="#10b981">Matrix Emerald Green</option>
-                    <option value="#ffb700">Amber Gold</option>
-                    <option value="#ff6600">Cyber Orange</option>
-                    <option value="#e000ff">Neon Violet</option>
-                    <option value="#76ff03">Electric Lime</option>
-                    <option value="#0066ff">Deep Sea Navy Blue</option>
-                    <option value="#ffffff">Pure Arc White</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>User Honorific Title:</label>
-                <select id="settingHonorific" onchange="saveCustomSettings()">
-                    <option value="Sir">Sir</option>
-                    <option value="Ma'am">Ma'am</option>
-                    <option value="Commander">Commander</option>
-                    <option value="Boss">Boss</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>Security Wake Phrase:</label>
-                <input type="text" id="settingWakeWord" placeholder="evas" onchange="saveCustomSettings()">
-            </div>
-        </div>
+        <textarea id="userInput" placeholder="Ask E.V.A.S. or paste screenshots (Ctrl+V)..." onkeydown="handleKeyPress(event)"></textarea>
+        <button onclick="unlockAudioAndSend()">SEND</button>
     </div>
 
     <script>
         const EVAS_SECRET_KEY = "DefaultSecureKey123";
-
-        let currentAudio = null, audioCtx = null, analyser = null, animFrameId = null;
-        let userHonorific = "Sir", customWakeWord = "evas";
-        let currentLat = 5.2971, currentLon = 100.2588;
-        let deferredPwaPrompt = null;
-        let currentInstalledVersion = "13.0.0-VISION";
-        let isVoiceChatActive = false;
-        let voiceChatRecognition = null;
+        let currentAudio = null;
         let pendingFileB64 = null, pendingFileType = "";
 
         setInterval(() => {
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        // Drag and drop attachment listeners
+        // Mobile Keyboard Enter Key Handling
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                unlockAudioAndSend();
+            }
+        }
+
+        // Auto-Scroll Terminal into view when Soft Keyboard focuses
+        const userInputElem = document.getElementById('userInput');
+        userInputElem.addEventListener('focus', () => {
+            setTimeout(() => {
+                const term = document.getElementById('chat-terminal');
+                term.scrollTop = term.scrollHeight;
+            }, 300);
+        });
+
+        // Clipboard Image Screenshot Paste Handler (Ctrl+V / Mobile Long Press Paste)
+        document.addEventListener('paste', (e) => {
+            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    const blob = item.getAsFile();
+                    processAttachedFile(blob);
+                }
+            }
+        });
+
+        // Drag and Drop Handler
         const terminalPanel = document.getElementById('terminalPanel');
         terminalPanel.addEventListener('dragover', (e) => { e.preventDefault(); terminalPanel.classList.add('dragover'); });
         terminalPanel.addEventListener('dragleave', () => terminalPanel.classList.remove('dragover'));
@@ -459,29 +212,35 @@
             reader.onload = function(evt) {
                 pendingFileB64 = evt.target.result;
                 document.getElementById('filePreviewBadge').style.display = 'inline-block';
-                document.getElementById('filePreviewName').innerText = file.name;
+                document.getElementById('filePreviewName').innerText = file.name || "Pasted_Screenshot.png";
             };
             reader.readAsDataURL(file);
         }
 
-        function sendCommand(isFromVoice = false) {
+        function unlockAudioAndSend() {
+            // Unlock browser web audio context on user interaction
+            if (!currentAudio) {
+                currentAudio = new Audio();
+            }
+            sendCommand();
+        }
+
+        function sendCommand() {
             const input = document.getElementById('userInput');
             const txt = input.value.trim();
             if (!txt && !pendingFileB64) return;
 
-            appendMessage("YOU: " + (txt || "[Attached File Homework Analysis Request]"), "msg-user");
+            appendMessage("YOU: " + (txt || "[Attached Screenshot / Homework File]"), "msg-user");
             input.value = "";
 
             const payload = {
-                prompt: txt || "Please solve and explain this attached homework/file problem step-by-step.",
-                honorific: userHonorific,
-                latitude: currentLat,
-                longitude: currentLon,
+                prompt: txt || "Please analyze and solve this attached screenshot/file step-by-step.",
+                honorific: "Sir",
                 file_b64: pendingFileB64,
                 file_type: pendingFileType
             };
 
-            // Clear file state
+            // Clear attachment preview
             pendingFileB64 = null;
             document.getElementById('filePreviewBadge').style.display = 'none';
 
@@ -496,14 +255,16 @@
             .then(res => res.json())
             .then(data => {
                 appendMessage("E.V.A.S.:\n" + data.response, "msg-evas");
-                if (data.audio) playVoiceAudio();
+                if (data.audio) {
+                    playEvasVoice();
+                }
             })
-            .catch(err => appendMessage("E.V.A.S.: Error parsing request.", "msg-evas"));
+            .catch(err => appendMessage("E.V.A.S.: Communication error.", "msg-evas"));
         }
 
         function sendCommandCustom(cmd) {
             document.getElementById('userInput').value = cmd;
-            sendCommand();
+            unlockAudioAndSend();
         }
 
         function appendMessage(text, className) {
@@ -515,153 +276,18 @@
             term.scrollTop = term.scrollHeight;
         }
 
-        function stopVoicePlaybackImmediate() {
+        function stopAudioImmediate() {
             if (currentAudio) {
                 currentAudio.pause();
                 currentAudio = null;
             }
         }
 
-        function playVoiceAudio() {
-            stopVoicePlaybackImmediate();
+        function playEvasVoice() {
+            stopAudioImmediate();
             currentAudio = new Audio('/api/audio?t=' + Date.now());
-            currentAudio.play().catch(console.error);
+            currentAudio.play().catch(e => console.log("Audio playback blocked until user tap:", e));
         }
-
-        function toggleContinuousVoiceChat() {
-            const btn = document.getElementById('continuousVoiceBtn');
-            const statusTag = document.getElementById('voiceChatStatusTag');
-
-            if (isVoiceChatActive) {
-                isVoiceChatActive = false;
-                if (voiceChatRecognition) voiceChatRecognition.stop();
-                btn.classList.remove('voice-chat-active');
-                btn.innerText = "🎙️ VOICE CHAT: OFF";
-                statusTag.innerText = "READY";
-            } else {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SpeechRecognition) return alert("Speech recognition unsupported.");
-                isVoiceChatActive = true;
-                btn.classList.add('voice-chat-active');
-                btn.innerText = "🎙️ VOICE CHAT: LIVE";
-                statusTag.innerText = "LISTENING";
-                startVoiceChatLoop();
-            }
-        }
-
-        function startVoiceChatLoop() {
-            if (!isVoiceChatActive) return;
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            voiceChatRecognition = new SpeechRecognition();
-            voiceChatRecognition.continuous = false;
-            voiceChatRecognition.onresult = (e) => {
-                const transcript = e.results[0][0].transcript.trim();
-                if (transcript) {
-                    document.getElementById('userInput').value = transcript;
-                    sendCommand(true);
-                }
-            };
-            voiceChatRecognition.onend = () => { if (isVoiceChatActive) setTimeout(startVoiceChatLoop, 400); };
-            voiceChatRecognition.start();
-        }
-
-        function openSettingsHUD() { document.getElementById('settingsModal').style.display = 'flex'; }
-        function closeSettingsHUD() { document.getElementById('settingsModal').style.display = 'none'; }
-        function openTranslateHUD() { document.getElementById('translateModal').style.display = 'flex'; }
-        function closeTranslateHUD() { document.getElementById('translateModal').style.display = 'none'; }
-        function triggerSecurityLock() { document.getElementById('securityLockOverlay').style.display = 'flex'; }
-        function attemptSecurityUnlock() {
-            const val = document.getElementById('unlockPhraseInput').value.trim();
-            if (val.toLowerCase() === customWakeWord.toLowerCase()) {
-                document.getElementById('securityLockOverlay').style.display = 'none';
-            }
-        }
-
-        const welcomeMessageScript = 
-`Greetings, Sir. I am E.V.A.S. (Eventually Very Advanced System).
-Full AI Workspace Capabilities Initialized.
-
-1. MULTI-MODAL HOMEWORK & FILE VISION: Drag & drop images, screenshots, or code files for instant step-by-step solutions.
-2. NETWORK SPEED DIAGNOSTICS: Integrated bandwidth monitoring.
-3. FULL CHATGPT & DEEPSEEK CAPABILITIES: Multi-step research synthesis and execution.
-4. CONTINUOUS VOICE CHAT: Hands-free listening and verbal speech engine.
-
-All core systems online. Awaiting your command, Sir.`;
-
-        let typeIndex = 0;
-        function runCinematicTypewriter() {
-            const container = document.getElementById('typewriterText');
-            if (typeIndex < welcomeMessageScript.length) {
-                container.textContent += welcomeMessageScript.charAt(typeIndex);
-                typeIndex++;
-                setTimeout(runCinematicTypewriter, 18);
-            } else {
-                document.getElementById('welcomeActionArea').style.display = 'flex';
-            }
-        }
-
-        function showWelcomeScreenManual() {
-            document.getElementById('typewriterText').textContent = '';
-            typeIndex = 0;
-            document.getElementById('welcomeActionArea').style.display = 'none';
-            document.getElementById('welcomeOverlay').style.display = 'flex';
-            runCinematicTypewriter();
-        }
-
-        function dismissWelcomeScreen() {
-            document.getElementById('welcomeOverlay').style.display = 'none';
-        }
-
-        // Three.js Hologram Orb Implementation
-        let scene, camera, renderer, particleSphere, wireCore, coreMat;
-
-        function init3DHologramCore() {
-            const container = document.querySelector('.core-orb-widget');
-            const canvas = document.getElementById('webglCanvas');
-            
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
-            camera.position.z = 180;
-
-            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
-
-            const coreGeo = new THREE.IcosahedronGeometry(36, 2);
-            coreMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.8 });
-            wireCore = new THREE.Mesh(coreGeo, coreMat);
-            scene.add(wireCore);
-
-            const particleGeo = new THREE.BufferGeometry();
-            const particleCount = 400;
-            const posArray = new Float32Array(particleCount * 3);
-
-            for(let i = 0; i < particleCount * 3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 160;
-            }
-
-            particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const particleMat = new THREE.PointsMaterial({ size: 2, color: 0x00f3ff, transparent: true, opacity: 0.6 });
-            particleSphere = new THREE.Points(particleGeo, particleMat);
-            scene.add(particleSphere);
-
-            function animateHologram() {
-                requestAnimationFrame(animateHologram);
-                wireCore.rotation.x += 0.005;
-                wireCore.rotation.y += 0.008;
-                particleSphere.rotation.y -= 0.003;
-                renderer.render(scene, camera);
-            }
-            animateHologram();
-        }
-
-        window.onload = () => {
-            init3DHologramCore();
-            if (!localStorage.getItem('evas_welcomed')) {
-                showWelcomeScreenManual();
-            } else {
-                document.getElementById('welcomeOverlay').style.display = 'none';
-            }
-        };
     </script>
 </body>
 </html>
