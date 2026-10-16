@@ -1,6 +1,7 @@
 Flask
 requests
 duckduckgo-search
+googlesearch-python
 beautifulsoup4
 edge-tts
 speedtest-cli
