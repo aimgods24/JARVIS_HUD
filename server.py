@@ -1,7 +1,9 @@
-from flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory
+from flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory, session
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
 import json
+import sqlite3
 import random
 import threading
 import time
@@ -51,30 +53,60 @@ except Exception:
 
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_SECRET_SESSION_KEY_998877")
 
-MEMORY_FILE = "evas_memory.json"
-GENERATED_FILES_DIR = "generated_files"
-os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
-
-EVAS_BUILD_VERSION = "18.0.0-SETTINGS-CUSTOMIZATION-CORE"
-
-MACRODROID_DEVICE_ID = os.environ.get("MACRODROID_DEVICE_ID", "YOUR_MACRODROID_DEVICE_ID_HERE")
+DB_FILE = "evas_users.db"
+EVAS_BUILD_VERSION = "19.0.0-ACCOUNT-SECURITY-CORE"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
-DEFAULT_CONTACTS = {
-    "mom": "+60123456789",
-    "dad": "+60198765432",
-    "emergency": "999",
-    "office": "+6046543210"
-}
-
-try:
-    CONTACTS = json.loads(os.environ.get("EVAS_CONTACTS", "{}")) or DEFAULT_CONTACTS
-except Exception:
-    CONTACTS = DEFAULT_CONTACTS
+# Track burst requests for anomaly detection
+USER_REQUEST_TIMESTAMPS = {}
 
 # ---------------------------------------------------------
-# MULTIMODAL IMAGE & FILE ANALYZER
+# DATABASE INITIALIZATION
+# ---------------------------------------------------------
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            settings TEXT DEFAULT '{}',
+            chat_history TEXT DEFAULT '[]',
+            is_locked INTEGER DEFAULT 0
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# ---------------------------------------------------------
+# ANOMALY DETECTION ENGINE
+# ---------------------------------------------------------
+def check_for_anomalies(username):
+    now = time.time()
+    if username not in USER_REQUEST_TIMESTAMPS:
+        USER_REQUEST_TIMESTAMPS[username] = []
+    
+    timestamps = USER_REQUEST_TIMESTAMPS[username]
+    timestamps = [t for t in timestamps if now - t < 10]
+    timestamps.append(now)
+    USER_REQUEST_TIMESTAMPS[username] = timestamps
+
+    if len(timestamps) > 6:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("UPDATE users SET is_locked = 1 WHERE username = ?", (username,))
+        conn.commit()
+        conn.close()
+        return True
+    return False
+
+# ---------------------------------------------------------
+# ATTACHMENT ANALYZER
 # ---------------------------------------------------------
 def process_and_analyze_attachment(file_b64, file_type=""):
     if not file_b64:
@@ -120,9 +152,6 @@ def process_and_analyze_attachment(file_b64, file_type=""):
         
     return "\n\n📄 **[E.V.A.S. FILE READER]**: File payload attached.", None
 
-# ---------------------------------------------------------
-# INTENT PARSER & NAVIGATION ENGINE
-# ---------------------------------------------------------
 def parse_contextual_intent(prompt):
     p = prompt.lower()
     if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "maps to", "take me to", "how to go to", "go to", "destination"]):
@@ -131,14 +160,9 @@ def parse_contextual_intent(prompt):
         return "RUN_SPEEDTEST"
     return "UNIVERSAL_EXECUTION"
 
-# ---------------------------------------------------------
-# GOOGLE SEARCH TELEMETRY ENGINE
-# ---------------------------------------------------------
 def perform_google_search(query):
     results = []
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    }
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"}
     encoded_query = urllib.parse.quote(query)
     google_url = f"https://www.google.com/search?q={encoded_query}&hl=en"
     
@@ -174,9 +198,6 @@ def perform_google_search(query):
 
     return "\n\n".join(results[:4]) if results else None
 
-# ---------------------------------------------------------
-# CUSTOMIZABLE TTS VOICE ENGINE
-# ---------------------------------------------------------
 async def create_tts_audio_file(text, voice_rate="+2%", voice_pitch="-3Hz", filename="static_speech.mp3"):
     if not HAS_EDGE_TTS:
         return False
@@ -219,7 +240,79 @@ def run_network_speedtest():
         return f"Network test failed: {e}"
 
 # ---------------------------------------------------------
-# ROUTES
+# AUTHENTICATION & USER MANAGEMENT ROUTES
+# ---------------------------------------------------------
+@app.route('/api/auth/register', methods=['POST'])
+def register():
+    data = request.json or {}
+    username = data.get('username', '').strip().lower()
+    password = data.get('password', '').strip()
+    
+    if not username or not password:
+        return jsonify({'error': 'Username and password required'}), 400
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    try:
+        pw_hash = generate_password_hash(password)
+        c.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", (username, pw_hash))
+        conn.commit()
+        session['username'] = username
+        return jsonify({'message': 'Account created successfully', 'username': username})
+    except sqlite3.IntegrityError:
+        return jsonify({'error': 'Username already exists'}), 400
+    finally:
+        conn.close()
+
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    data = request.json or {}
+    username = data.get('username', '').strip().lower()
+    password = data.get('password', '').strip()
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT password_hash, settings, chat_history, is_locked FROM users WHERE username = ?", (username,))
+    user = c.fetchone()
+    conn.close()
+
+    if user and check_password_hash(user[0], password):
+        session['username'] = username
+        return jsonify({
+            'message': 'Logged in successfully',
+            'username': username,
+            'settings': json.loads(user[1] or '{}'),
+            'chat_history': json.loads(user[2] or '[]'),
+            'is_locked': bool(user[3])
+        })
+    return jsonify({'error': 'Invalid credentials'}), 401
+
+@app.route('/api/auth/unlock', methods=['POST'])
+def unlock_account():
+    data = request.json or {}
+    username = session.get('username') or data.get('username')
+    password = data.get('password', '')
+
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT password_hash FROM users WHERE username = ?", (username,))
+    user = c.fetchone()
+
+    if user and check_password_hash(user[0], password):
+        c.execute("UPDATE users SET is_locked = 0 WHERE username = ?", (username,))
+        conn.commit()
+        conn.close()
+        return jsonify({'message': 'Account unlocked successfully'})
+    conn.close()
+    return jsonify({'error': 'Invalid password. Unlock failed.'}), 401
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    session.pop('username', None)
+    return jsonify({'message': 'Logged out successfully'})
+
+# ---------------------------------------------------------
+# CORE AI WORKSPACE ROUTE
 # ---------------------------------------------------------
 @app.route('/')
 def home():
@@ -256,9 +349,21 @@ def ask():
     if EVAS_SECRET_KEY and provided_key != EVAS_SECRET_KEY:
         return jsonify({'response': '🔒 Unauthorized access blocked. Invalid Secret Key.', 'audio': False}), 403
 
+    username = session.get('username') or data.get('username', 'guest')
+
+    if username != 'guest':
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT is_locked FROM users WHERE username = ?", (username,))
+        row = c.fetchone()
+        conn.close()
+        if row and row[0] == 1:
+            return jsonify({'response': '🚨 WORKSPACE LOCKED: Unusual activity detected. Please re-enter your account password.', 'is_locked': True}), 423
+
+        if check_for_anomalies(username):
+            return jsonify({'response': '🚨 WORKSPACE LOCKED: Rapid burst activity detected. Account auto-locked for protection.', 'is_locked': True}), 423
+
     user_prompt = data.get('prompt', '').strip()
-    
-    # Custom settings injected from index.html
     settings = data.get('settings', {})
     honorific = settings.get('honorific', 'Sir')
     voice_rate = settings.get('voice_rate', '+2%')
@@ -289,9 +394,7 @@ def ask():
             '', 
             user_prompt, 
             flags=re.IGNORECASE
-        ).strip()
-        if not destination:
-            destination = "Penang Hill, Malaysia"
+        ).strip() or "Penang Hill, Malaysia"
         
         encoded_dest = urllib.parse.quote(destination)
         if lat is not None and lon is not None:
@@ -299,44 +402,28 @@ def ask():
         else:
             google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}&travelmode=driving"
 
-        reply = (
-            f"🗺️ **DIRECT GOOGLE MAPS NAVIGATION LAUNCHED**\n\n"
-            f"• **Destination**: `{destination}`\n"
-            f"• **Routing Protocol**: Direct Navigation Mode Enabled\n"
-            f"• **Action**: Launching Google Maps with `{destination}` pre-filled, {honorific}."
-        )
+        reply = f"🗺️ **DIRECT GOOGLE MAPS NAVIGATION LAUNCHED**\n\n• **Destination**: `{destination}`\n• **Action**: Launching Google Maps, {honorific}."
 
     elif inferred_intent == "RUN_SPEEDTEST":
         reply = run_network_speedtest()
 
     if not reply:
         google_search_data = perform_google_search(user_prompt) if enable_search else None
-        
-        system_prompt = (
-            f"You are E.V.A.S., an advanced AI assistant. "
-            f"Analyze any provided attached files, images, code, or homework text thoroughly. "
-            f"Synthesize the Google Search Telemetry results when answering queries. "
-            f"Provide direct, clear, step-by-step verified solutions. Address the user as '{honorific}'."
-        )
+        system_prompt = f"You are E.V.A.S., an advanced AI assistant. Provide verified solutions. Address user as '{honorific}'."
 
         if HAS_OLLAMA:
             try:
-                full_input = f"User Request: {user_prompt}\n\nGoogle Search Telemetry:\n{google_search_data if google_search_data else 'None'}"
-                res = ollama.chat(
-                    model='deepseek-r1:1.5b',
-                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": full_input}],
-                    options={"num_predict": 1200, "temperature": 0.2}
-                )
-                raw = res['message']['content'].strip()
-                reply = re.sub(r'<think>[\s\S]*?</think>', '', raw).strip()
+                full_input = f"User Request: {user_prompt}\n\nSearch Telemetry:\n{google_search_data if google_search_data else 'None'}"
+                res = ollama.chat(model='deepseek-r1:1.5b', messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": full_input}])
+                reply = re.sub(r'<think>[\s\S]*?</think>', '', res['message']['content']).strip()
             except Exception:
                 reply = None
 
         if not reply:
             if file_analysis_text:
-                reply = f"### 📝 E.V.A.S. VISION & FILE ANALYSIS COMPLETE:\n{file_analysis_text}\n\n*Analyzed and processed successfully, {honorific}.*"
+                reply = f"### 📝 E.V.A.S. VISION ANALYSIS COMPLETE:\n{file_analysis_text}\n\n*Processed, {honorific}.*"
             elif google_search_data:
-                reply = f"### 🌐 GOOGLE SEARCH LIVE TELEMETRY REPORT:\n\n{google_search_data}\n\n*Query processed successfully, {honorific}.*"
+                reply = f"### 🌐 GOOGLE SEARCH REPORT:\n\n{google_search_data}\n\n*Query processed, {honorific}.*"
             else:
                 reply = f"E.V.A.S. Core online. Request **'{user_prompt}'** verified, {honorific}."
 
@@ -345,6 +432,19 @@ def ask():
 
     clean_reply = re.sub(r'[*_~`#>]', '', reply).strip()
     has_audio = generate_voice_sync(clean_reply, voice_rate, voice_pitch)
+
+    # Save to user persistent memory
+    if username != 'guest':
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute("SELECT settings, chat_history FROM users WHERE username = ?", (username,))
+        row = c.fetchone()
+        if row:
+            history = json.loads(row[1] or '[]')
+            history.append({'user': user_prompt, 'evas': clean_reply})
+            c.execute("UPDATE users SET settings = ?, chat_history = ? WHERE username = ?", (json.dumps(settings), json.dumps(history[-30:]), username))
+            conn.commit()
+        conn.close()
 
     return jsonify({
         'response': clean_reply, 
