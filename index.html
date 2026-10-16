@@ -10,7 +10,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
             --hud-cyan: #00f3ff;
@@ -29,7 +28,7 @@
             font-family: var(--hud-font);
             margin: 0; padding: 6px;
             min-height: 100vh;
-            min-height: 100dvh; /* Mobile soft keyboard dynamic viewport fix */
+            min-height: 100dvh;
             display: flex; flex-direction: column;
             overflow-x: hidden;
         }
@@ -44,9 +43,9 @@
 
         .hud-workspace {
             display: grid;
-            grid-template-columns: 300px 1fr 260px;
+            grid-template-columns: 280px 1fr 260px;
             gap: 8px; flex: 1; overflow: hidden; margin-top: 6px;
-            padding-bottom: 75px; /* Leave room for bottom keyboard input pill */
+            padding-bottom: 80px;
         }
 
         .hud-panel {
@@ -56,11 +55,12 @@
             box-shadow: inset 0 0 10px var(--hud-glow);
             display: flex; flex-direction: column; gap: 6px;
             overflow-y: auto;
+            transition: border-color 0.3s ease, background 0.3s ease;
         }
 
         .hud-panel.dragover {
             border-color: #ffffff !important;
-            background: rgba(0, 243, 255, 0.2) !important;
+            background: rgba(0, 243, 255, 0.25) !important;
         }
 
         .panel-header {
@@ -69,7 +69,7 @@
         }
 
         @media (max-width: 850px) {
-            .hud-workspace { display: flex; flex-direction: column; padding-bottom: 80px; }
+            .hud-workspace { display: flex; flex-direction: column; padding-bottom: 85px; }
             .hud-panel { width: 100%; }
         }
 
@@ -114,9 +114,8 @@
 </head>
 <body>
 
-    <!-- TOP NAVIGATION BAR -->
     <div class="hud-top-bar">
-        <div>E.V.A.S. // UNIVERSAL AI CORE</div>
+        <div>E.V.A.S. // UNIVERSAL VISION CORE</div>
         <div id="liveClock">00:00:00</div>
         <button onclick="sendCommandCustom('Conduct speed test')">⚡ SPEED TEST</button>
         <button onclick="stopAudioImmediate()">⏹️ INTERRUPT VOICE</button>
@@ -126,16 +125,16 @@
         <div class="hud-panel">
             <div class="panel-header">CORE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
-                • CHATGPT SUITE: ACTIVE<br>
-                • GEMINI MULTIMODAL: ACTIVE<br>
-                • DEEPSEEK REASONING: ACTIVE<br>
-                BUILD: 14.0.0-VISION-VOICE
+                • VISION ENGINE: ACTIVE<br>
+                • GOOGLE SEARCH: INTEGRATED<br>
+                • MAPS NAVIGATION: ACTIVE<br>
+                BUILD: 17.0.0-VISION-ENGINE
             </div>
         </div>
 
         <div class="hud-panel" id="terminalPanel" style="flex: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-evas">E.V.A.S.: Universal AI Workspace online. Type, speak, paste screenshots (Ctrl+V), or drag & drop attachments.</div>
+                <div class="msg-line msg-evas">E.V.A.S.: Universal AI Workspace online. Drop, paste (Ctrl+V), or attach any image/homework screenshot for instant analysis.</div>
             </div>
         </div>
 
@@ -146,12 +145,11 @@
         </div>
     </div>
 
-    <!-- FLOATING INPUT PILL -->
     <div class="hud-center-pill">
         <input type="file" id="fileAttachmentInput" style="display: none;" onchange="handleFileSelection(event)">
         <button onclick="document.getElementById('fileAttachmentInput').click()">📎</button>
         <span id="filePreviewBadge">📎 <span id="filePreviewName"></span></span>
-        <textarea id="userInput" placeholder="Ask E.V.A.S. or paste screenshots (Ctrl+V)..." onkeydown="handleKeyPress(event)"></textarea>
+        <textarea id="userInput" placeholder="Ask E.V.A.S. or paste/drop image files..." onkeydown="handleKeyPress(event)"></textarea>
         <button onclick="unlockAudioAndSend()">SEND</button>
     </div>
 
@@ -159,12 +157,20 @@
         const EVAS_SECRET_KEY = "DefaultSecureKey123";
         let currentAudio = null;
         let pendingFileB64 = null, pendingFileType = "";
+        let userLat = null, userLon = null;
 
         setInterval(() => {
             document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0];
         }, 1000);
 
-        // Mobile Keyboard Enter Key Handling
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                pos => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; },
+                err => console.log("GPS Telemetry optional"),
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        }
+
         function handleKeyPress(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -172,16 +178,6 @@
             }
         }
 
-        // Auto-Scroll Terminal into view when Soft Keyboard focuses
-        const userInputElem = document.getElementById('userInput');
-        userInputElem.addEventListener('focus', () => {
-            setTimeout(() => {
-                const term = document.getElementById('chat-terminal');
-                term.scrollTop = term.scrollHeight;
-            }, 300);
-        });
-
-        // Clipboard Image Screenshot Paste Handler (Ctrl+V / Mobile Long Press Paste)
         document.addEventListener('paste', (e) => {
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
             for (let item of items) {
@@ -192,7 +188,6 @@
             }
         });
 
-        // Drag and Drop Handler
         const terminalPanel = document.getElementById('terminalPanel');
         terminalPanel.addEventListener('dragover', (e) => { e.preventDefault(); terminalPanel.classList.add('dragover'); });
         terminalPanel.addEventListener('dragleave', () => terminalPanel.classList.remove('dragover'));
@@ -218,10 +213,7 @@
         }
 
         function unlockAudioAndSend() {
-            // Unlock browser web audio context on user interaction
-            if (!currentAudio) {
-                currentAudio = new Audio();
-            }
+            if (!currentAudio) currentAudio = new Audio();
             sendCommand();
         }
 
@@ -230,17 +222,18 @@
             const txt = input.value.trim();
             if (!txt && !pendingFileB64) return;
 
-            appendMessage("YOU: " + (txt || "[Attached Screenshot / Homework File]"), "msg-user");
+            appendMessage("YOU: " + (txt || "[Attached Vision Engine Image/File]"), "msg-user");
             input.value = "";
 
             const payload = {
                 prompt: txt || "Please analyze and solve this attached screenshot/file step-by-step.",
                 honorific: "Sir",
+                latitude: userLat,
+                longitude: userLon,
                 file_b64: pendingFileB64,
                 file_type: pendingFileType
             };
 
-            // Clear attachment preview
             pendingFileB64 = null;
             document.getElementById('filePreviewBadge').style.display = 'none';
 
@@ -255,6 +248,9 @@
             .then(res => res.json())
             .then(data => {
                 appendMessage("E.V.A.S.:\n" + data.response, "msg-evas");
+                if (data.google_maps_url) {
+                    window.open(data.google_maps_url, '_blank');
+                }
                 if (data.audio) {
                     playEvasVoice();
                 }

@@ -19,7 +19,7 @@ except Exception:
     HAS_GOOGLE_SEARCH = False
 
 try:
-    from PIL import Image
+    from PIL import Image, ImageEnhance, ImageFilter
     import pytesseract
     HAS_OCR = True
 except Exception:
@@ -56,7 +56,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "16.0.0-NAVIGATION-CORE"
+EVAS_BUILD_VERSION = "17.0.0-UNIVERSAL-VISION-ENGINE"
 
 MACRODROID_DEVICE_ID = os.environ.get("MACRODROID_DEVICE_ID", "YOUR_MACRODROID_DEVICE_ID_HERE")
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
@@ -72,6 +72,58 @@ try:
     CONTACTS = json.loads(os.environ.get("EVAS_CONTACTS", "{}")) or DEFAULT_CONTACTS
 except Exception:
     CONTACTS = DEFAULT_CONTACTS
+
+# ---------------------------------------------------------
+# ADVANCED MULTIMODAL IMAGE & FILE ANALYZER
+# ---------------------------------------------------------
+def process_and_analyze_attachment(file_b64, file_type=""):
+    if not file_b64:
+        return "", None
+    
+    try:
+        header, encoded = file_b64.split(",", 1) if "," in file_b64 else ("", file_b64)
+        file_bytes = base64.b64decode(encoded)
+        
+        # 1. Image / Screenshot / Homework Diagram Analysis
+        if any(img_ext in file_type for img_ext in ["image", ".png", ".jpg", ".jpeg", ".webp", ".bmp"]) or not file_type:
+            if HAS_OCR:
+                img = Image.open(io.BytesIO(file_bytes)).convert('L') # Convert to grayscale for OCR precision
+                
+                # Image enhancement pipeline for clear reading of handwritten/small text
+                enhancer = ImageEnhance.Contrast(img)
+                enhanced_img = enhancer.enhance(2.0)
+                
+                extracted_text = pytesseract.image_to_string(enhanced_img)
+                if not extracted_text.strip():
+                    extracted_text = pytesseract.image_to_string(img) # Fallback to raw grayscale
+                
+                if extracted_text.strip():
+                    analysis_summary = (
+                        f"\n\n📷 **[E.V.A.S. VISION ENGINE ATTACHMENT PARSED]**\n"
+                        f"• **Source Type**: Image / Screenshot / Document Capture\n"
+                        f"• **Extracted Data Content**:\n```text\n{extracted_text.strip()}\n```\n"
+                    )
+                    return analysis_summary, extracted_text.strip()
+                
+                return "\n\n📷 **[E.V.A.S. VISION ENGINE]**: Image payload received. No legible printed/handwritten text detected.", None
+            else:
+                return "\n\n⚠️ **[E.V.A.S. VISION ENGINE]**: Image payload received. OCR processing module pending system configuration.", None
+        
+        # 2. Plain Text / Code / CSV / Document Files
+        elif any(doc_ext in file_type for doc_ext in ["text", ".txt", ".py", ".js", ".html", ".css", ".json", ".csv", ".md"]):
+            decoded_text = file_bytes.decode('utf-8', errors='ignore')
+            analysis_summary = (
+                f"\n\n📄 **[E.V.A.S. FILE READER ATTACHMENT PARSED]**\n"
+                f"• **Source Type**: Text / Script / Data File (`{file_type}`)\n"
+                f"• **Content Payload**:\n```text\n{decoded_text.strip()}\n```\n"
+            )
+            return analysis_summary, decoded_text.strip()
+
+    except Exception as e:
+        print(f"[ATTACHMENT ANALYSIS ERROR]: {e}")
+        return f"\n\n⚠️ **[E.V.A.S. VISION ENGINE]**: Failed to parse file payload. Error: `{str(e)}`", None
+        
+    return "\n\n📄 **[E.V.A.S. FILE READER]**: File payload attached.", None
 
 # ---------------------------------------------------------
 # INTENT PARSER & NAVIGATION ENGINE
@@ -153,31 +205,6 @@ def generate_voice_sync(text):
     except Exception:
         return False
 
-# ---------------------------------------------------------
-# ATTACHMENT OCR PROCESSOR
-# ---------------------------------------------------------
-def extract_attachment_payload(file_b64, file_type=""):
-    if not file_b64:
-        return ""
-    try:
-        header, encoded = file_b64.split(",", 1) if "," in file_b64 else ("", file_b64)
-        file_bytes = base64.b64decode(encoded)
-        
-        if "image" in file_type or file_type in [".png", ".jpg", ".jpeg", ".webp"] or not file_type:
-            if HAS_OCR:
-                img = Image.open(io.BytesIO(file_bytes))
-                extracted = pytesseract.image_to_string(img)
-                if extracted.strip():
-                    return f"\n[OCR EXTRACTED IMAGE/SCREENSHOT TEXT]:\n{extracted.strip()}"
-                return "\n[ATTACHED IMAGE ANALYZED: Processed successfully.]"
-            else:
-                return "\n[ATTACHED IMAGE RECEIVED: OCR engine pending setup.]"
-        elif "text" in file_type or file_type in [".txt", ".py", ".js", ".json", ".csv", ".md"]:
-            return f"\n[ATTACHED FILE CONTENT]:\n{file_bytes.decode('utf-8', errors='ignore')}"
-    except Exception as e:
-        return f"\n[ATTACHMENT PARSE ERROR: {str(e)}]"
-    return "\n[ATTACHMENT ATTACHED]"
-
 def run_network_speedtest():
     if not HAS_SPEEDTEST:
         return "⚠️ Speedtest engine module not available on server host."
@@ -241,12 +268,13 @@ def ask():
     file_b64 = data.get('file_b64', None)
     file_type = data.get('file_type', '')
 
-    if file_b64:
-        parsed_attachment = extract_attachment_payload(file_b64, file_type)
-        user_prompt = f"{user_prompt}{parsed_attachment}".strip()
+    file_analysis_text, raw_extracted_ocr = process_and_analyze_attachment(file_b64, file_type)
+    
+    if file_analysis_text:
+        user_prompt = f"{user_prompt}{file_analysis_text}".strip()
 
     if not user_prompt:
-        return jsonify({'response': f'No query received, {honorific}.', 'audio': False})
+        return jsonify({'response': f'No query or file received, {honorific}.', 'audio': False})
 
     inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
@@ -280,15 +308,17 @@ def ask():
 
     if not reply:
         google_search_data = perform_google_search(user_prompt)
+        
         system_prompt = (
-            f"You are E.V.A.S., an advanced AI workspace assistant. "
-            f"Answer questions, homework tasks, math problems, and file attachments directly and accurately. "
-            f"Synthesize the Google Search Telemetry results when answering. Address the user as '{honorific}'."
+            f"You are E.V.A.S., an advanced AI assistant. "
+            f"Analyze any provided attached files, images, code, or homework text thoroughly. "
+            f"Synthesize the Google Search Telemetry results when answering queries. "
+            f"Provide direct, clear, step-by-step verified solutions. Address the user as '{honorific}'."
         )
 
         if HAS_OLLAMA:
             try:
-                full_input = f"Request: {user_prompt}\n\nGoogle Search Telemetry:\n{google_search_data if google_search_data else 'None'}"
+                full_input = f"User Request: {user_prompt}\n\nGoogle Search Telemetry:\n{google_search_data if google_search_data else 'None'}"
                 res = ollama.chat(
                     model='deepseek-r1:1.5b',
                     messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": full_input}],
@@ -300,7 +330,9 @@ def ask():
                 reply = None
 
         if not reply:
-            if google_search_data:
+            if file_analysis_text:
+                reply = f"### 📝 E.V.A.S. VISION & FILE ANALYSIS COMPLETE:\n{file_analysis_text}\n\n*Analyzed and processed successfully, {honorific}.*"
+            elif google_search_data:
                 reply = f"### 🌐 GOOGLE SEARCH LIVE TELEMETRY REPORT:\n\n{google_search_data}\n\n*Query processed successfully, {honorific}.*"
             else:
                 reply = f"E.V.A.S. Core online. Request **'{user_prompt}'** verified, {honorific}."
