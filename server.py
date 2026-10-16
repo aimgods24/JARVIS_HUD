@@ -19,7 +19,7 @@ except Exception:
     HAS_GOOGLE_SEARCH = False
 
 try:
-    from PIL import Image, ImageEnhance, ImageFilter
+    from PIL import Image, ImageEnhance
     import pytesseract
     HAS_OCR = True
 except Exception:
@@ -56,7 +56,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "17.0.0-UNIVERSAL-VISION-ENGINE"
+EVAS_BUILD_VERSION = "18.0.0-SETTINGS-CUSTOMIZATION-CORE"
 
 MACRODROID_DEVICE_ID = os.environ.get("MACRODROID_DEVICE_ID", "YOUR_MACRODROID_DEVICE_ID_HERE")
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
@@ -74,7 +74,7 @@ except Exception:
     CONTACTS = DEFAULT_CONTACTS
 
 # ---------------------------------------------------------
-# ADVANCED MULTIMODAL IMAGE & FILE ANALYZER
+# MULTIMODAL IMAGE & FILE ANALYZER
 # ---------------------------------------------------------
 def process_and_analyze_attachment(file_b64, file_type=""):
     if not file_b64:
@@ -84,18 +84,15 @@ def process_and_analyze_attachment(file_b64, file_type=""):
         header, encoded = file_b64.split(",", 1) if "," in file_b64 else ("", file_b64)
         file_bytes = base64.b64decode(encoded)
         
-        # 1. Image / Screenshot / Homework Diagram Analysis
         if any(img_ext in file_type for img_ext in ["image", ".png", ".jpg", ".jpeg", ".webp", ".bmp"]) or not file_type:
             if HAS_OCR:
-                img = Image.open(io.BytesIO(file_bytes)).convert('L') # Convert to grayscale for OCR precision
-                
-                # Image enhancement pipeline for clear reading of handwritten/small text
+                img = Image.open(io.BytesIO(file_bytes)).convert('L')
                 enhancer = ImageEnhance.Contrast(img)
                 enhanced_img = enhancer.enhance(2.0)
                 
                 extracted_text = pytesseract.image_to_string(enhanced_img)
                 if not extracted_text.strip():
-                    extracted_text = pytesseract.image_to_string(img) # Fallback to raw grayscale
+                    extracted_text = pytesseract.image_to_string(img)
                 
                 if extracted_text.strip():
                     analysis_summary = (
@@ -105,11 +102,10 @@ def process_and_analyze_attachment(file_b64, file_type=""):
                     )
                     return analysis_summary, extracted_text.strip()
                 
-                return "\n\n📷 **[E.V.A.S. VISION ENGINE]**: Image payload received. No legible printed/handwritten text detected.", None
+                return "\n\n📷 **[E.V.A.S. VISION ENGINE]**: Image payload received. No legible text detected.", None
             else:
-                return "\n\n⚠️ **[E.V.A.S. VISION ENGINE]**: Image payload received. OCR processing module pending system configuration.", None
+                return "\n\n⚠️ **[E.V.A.S. VISION ENGINE]**: Image payload received. OCR module pending setup.", None
         
-        # 2. Plain Text / Code / CSV / Document Files
         elif any(doc_ext in file_type for doc_ext in ["text", ".txt", ".py", ".js", ".html", ".css", ".json", ".csv", ".md"]):
             decoded_text = file_bytes.decode('utf-8', errors='ignore')
             analysis_summary = (
@@ -120,7 +116,6 @@ def process_and_analyze_attachment(file_b64, file_type=""):
             return analysis_summary, decoded_text.strip()
 
     except Exception as e:
-        print(f"[ATTACHMENT ANALYSIS ERROR]: {e}")
         return f"\n\n⚠️ **[E.V.A.S. VISION ENGINE]**: Failed to parse file payload. Error: `{str(e)}`", None
         
     return "\n\n📄 **[E.V.A.S. FILE READER]**: File payload attached.", None
@@ -180,26 +175,26 @@ def perform_google_search(query):
     return "\n\n".join(results[:4]) if results else None
 
 # ---------------------------------------------------------
-# TTS VOICE ENGINE
+# CUSTOMIZABLE TTS VOICE ENGINE
 # ---------------------------------------------------------
-async def create_tts_audio_file(text, filename="static_speech.mp3"):
+async def create_tts_audio_file(text, voice_rate="+2%", voice_pitch="-3Hz", filename="static_speech.mp3"):
     if not HAS_EDGE_TTS:
         return False
     try:
         clean_prompt = re.sub(r'[*_~`#>]', '', text).strip()
         if not clean_prompt:
             clean_prompt = "Response completed."
-        communicate = edge_tts.Communicate(clean_prompt[:600], "en-GB-RyanNeural", pitch="-3Hz", rate="+2%")
+        communicate = edge_tts.Communicate(clean_prompt[:600], "en-GB-RyanNeural", pitch=voice_pitch, rate=voice_rate)
         await communicate.save(filename)
         return True
     except Exception:
         return False
 
-def generate_voice_sync(text):
+def generate_voice_sync(text, voice_rate="+2%", voice_pitch="-3Hz"):
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        success = loop.run_until_complete(create_tts_audio_file(text))
+        success = loop.run_until_complete(create_tts_audio_file(text, voice_rate, voice_pitch))
         loop.close()
         return success
     except Exception:
@@ -262,7 +257,15 @@ def ask():
         return jsonify({'response': '🔒 Unauthorized access blocked. Invalid Secret Key.', 'audio': False}), 403
 
     user_prompt = data.get('prompt', '').strip()
-    honorific = data.get('honorific', 'Sir')
+    
+    # Custom settings injected from index.html
+    settings = data.get('settings', {})
+    honorific = settings.get('honorific', 'Sir')
+    voice_rate = settings.get('voice_rate', '+2%')
+    voice_pitch = settings.get('voice_pitch', '-3Hz')
+    custom_prefix = settings.get('custom_prefix', '').strip()
+    enable_search = settings.get('enable_search', True)
+
     lat = data.get('latitude', None)
     lon = data.get('longitude', None)
     file_b64 = data.get('file_b64', None)
@@ -307,7 +310,7 @@ def ask():
         reply = run_network_speedtest()
 
     if not reply:
-        google_search_data = perform_google_search(user_prompt)
+        google_search_data = perform_google_search(user_prompt) if enable_search else None
         
         system_prompt = (
             f"You are E.V.A.S., an advanced AI assistant. "
@@ -337,8 +340,11 @@ def ask():
             else:
                 reply = f"E.V.A.S. Core online. Request **'{user_prompt}'** verified, {honorific}."
 
+    if custom_prefix and not reply.startswith(custom_prefix):
+        reply = f"{custom_prefix} {reply}"
+
     clean_reply = re.sub(r'[*_~`#>]', '', reply).strip()
-    has_audio = generate_voice_sync(clean_reply)
+    has_audio = generate_voice_sync(clean_reply, voice_rate, voice_pitch)
 
     return jsonify({
         'response': clean_reply, 

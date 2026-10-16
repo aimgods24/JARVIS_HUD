@@ -100,7 +100,7 @@
             color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.85rem; outline: none;
         }
 
-        button, input[type="text"] {
+        button, select, input[type="text"], input[type="range"] {
             background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
             color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 6px 10px; font-size: 0.72rem; outline: none;
         }
@@ -110,13 +110,38 @@
             display: none; font-size: 0.65rem; color: #fff; background: rgba(0, 243, 255, 0.25);
             border: 1px solid var(--hud-cyan); border-radius: 6px; padding: 3px 6px; white-space: nowrap;
         }
+
+        /* SETTINGS MODAL HUD */
+        .hud-modal {
+            display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 92vw; max-width: 520px;
+            background: rgba(1, 10, 22, 0.98);
+            border: 2px solid var(--hud-cyan); border-radius: 12px;
+            box-shadow: 0 0 45px var(--hud-glow);
+            z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan);
+            backdrop-filter: blur(10px);
+            max-height: 85vh; overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 0.8rem; font-weight: bold; letter-spacing: 1px;
+            border-bottom: 1px solid var(--hud-cyan); padding-bottom: 6px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .setting-row {
+            display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem;
+            border-bottom: 1px dashed rgba(0, 243, 255, 0.2); padding-bottom: 8px; margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
 
     <div class="hud-top-bar">
-        <div>E.V.A.S. // UNIVERSAL VISION CORE</div>
+        <div>E.V.A.S. // UNIVERSAL SETTINGS CORE</div>
         <div id="liveClock">00:00:00</div>
+        <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="sendCommandCustom('Conduct speed test')">⚡ SPEED TEST</button>
         <button onclick="stopAudioImmediate()">⏹️ INTERRUPT VOICE</button>
     </div>
@@ -125,21 +150,22 @@
         <div class="hud-panel">
             <div class="panel-header">CORE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
+                • SETTINGS ENGINE: LIVE<br>
                 • VISION ENGINE: ACTIVE<br>
                 • GOOGLE SEARCH: INTEGRATED<br>
-                • MAPS NAVIGATION: ACTIVE<br>
-                BUILD: 17.0.0-VISION-ENGINE
+                BUILD: 18.0.0-SETTINGS-CORE
             </div>
         </div>
 
         <div class="hud-panel" id="terminalPanel" style="flex: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-evas">E.V.A.S.: Universal AI Workspace online. Drop, paste (Ctrl+V), or attach any image/homework screenshot for instant analysis.</div>
+                <div class="msg-line msg-evas">E.V.A.S.: Universal AI Workspace online. Click [⚙️ SETTINGS] to fully customize theme, voice speed, honorific, and controls.</div>
             </div>
         </div>
 
         <div class="hud-panel">
             <div class="panel-header">QUICK ACTIONS</div>
+            <button onclick="openSettingsHUD()">⚙️ CUSTOMIZE EVAS</button>
             <button onclick="sendCommandCustom('brief me')">🎙️ BRIEFING</button>
             <a href="/watch" target="_blank" style="text-align:center; text-decoration:none; color:var(--hud-cyan); margin-top:6px;">⌚ WATCH WIDGET</a>
         </div>
@@ -151,6 +177,59 @@
         <span id="filePreviewBadge">📎 <span id="filePreviewName"></span></span>
         <textarea id="userInput" placeholder="Ask E.V.A.S. or paste/drop image files..." onkeydown="handleKeyPress(event)"></textarea>
         <button onclick="unlockAudioAndSend()">SEND</button>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="hud-modal" id="settingsModal">
+        <div class="modal-header">
+            <div>⚙️ MASTER CONFIGURATION SETTINGS</div>
+            <button onclick="closeSettingsHUD()">✕ CLOSE</button>
+        </div>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
+            <div class="setting-row">
+                <label>HUD Accent Theme Color (10 Themes):</label>
+                <select id="settingThemeColor" onchange="applyCustomSettings()">
+                    <option value="#00f3ff">Cyan Blue (Default)</option>
+                    <option value="#ff2200">Stark Crimson Red</option>
+                    <option value="#bd00ff">DeepSeek Neon Purple</option>
+                    <option value="#10b981">Matrix Emerald Green</option>
+                    <option value="#ffb700">Amber Gold</option>
+                    <option value="#ff6600">Cyber Orange</option>
+                    <option value="#e000ff">Neon Violet</option>
+                    <option value="#76ff03">Electric Lime</option>
+                    <option value="#0066ff">Deep Navy</option>
+                    <option value="#ffffff">Pure White</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>User Honorific Title:</label>
+                <select id="settingHonorific" onchange="applyCustomSettings()">
+                    <option value="Sir">Sir</option>
+                    <option value="Ma'am">Ma'am</option>
+                    <option value="Commander">Commander</option>
+                    <option value="Boss">Boss</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Speech Speed (<span id="speedValLabel">+2%</span>):</label>
+                <input type="range" id="settingVoiceRate" min="-10" max="25" value="2" oninput="updateSettingLabels()" onchange="applyCustomSettings()">
+            </div>
+            <div class="setting-row">
+                <label>Voice Pitch (<span id="pitchValLabel">-3Hz</span>):</label>
+                <input type="range" id="settingVoicePitch" min="-10" max="10" value="-3" oninput="updateSettingLabels()" onchange="applyCustomSettings()">
+            </div>
+            <div class="setting-row">
+                <label>Google Web Search Routing:</label>
+                <select id="settingEnableSearch" onchange="applyCustomSettings()">
+                    <option value="true">Enabled (Live Research)</option>
+                    <option value="false">Disabled (Offline LLM Mode)</option>
+                </select>
+            </div>
+            <div class="setting-row">
+                <label>Custom Response Prefix:</label>
+                <input type="text" id="settingCustomPrefix" placeholder="e.g., Right away Sir," onchange="applyCustomSettings()">
+            </div>
+        </div>
     </div>
 
     <script>
@@ -170,6 +249,59 @@
                 { enableHighAccuracy: true, timeout: 5000 }
             );
         }
+
+        // Load / Save Settings via localStorage
+        function loadSavedSettings() {
+            const theme = localStorage.getItem('evas_theme') || "#00f3ff";
+            const honorific = localStorage.getItem('evas_honorific') || "Sir";
+            const rate = localStorage.getItem('evas_rate') || "2";
+            const pitch = localStorage.getItem('evas_pitch') || "-3";
+            const search = localStorage.getItem('evas_search') || "true";
+            const prefix = localStorage.getItem('evas_prefix') || "";
+
+            document.getElementById('settingThemeColor').value = theme;
+            document.getElementById('settingHonorific').value = honorific;
+            document.getElementById('settingVoiceRate').value = rate;
+            document.getElementById('settingVoicePitch').value = pitch;
+            document.getElementById('settingEnableSearch').value = search;
+            document.getElementById('settingCustomPrefix').value = prefix;
+
+            updateSettingLabels();
+            applyThemeColor(theme);
+        }
+
+        function updateSettingLabels() {
+            const rate = document.getElementById('settingVoiceRate').value;
+            const pitch = document.getElementById('settingVoicePitch').value;
+            document.getElementById('speedValLabel').innerText = (rate >= 0 ? "+" : "") + rate + "%";
+            document.getElementById('pitchValLabel').innerText = (pitch >= 0 ? "+" : "") + pitch + "Hz";
+        }
+
+        function applyThemeColor(colorHex) {
+            document.documentElement.style.setProperty('--hud-cyan', colorHex);
+            document.documentElement.style.setProperty('--hud-glow', colorHex + "80");
+        }
+
+        function applyCustomSettings() {
+            const theme = document.getElementById('settingThemeColor').value;
+            const honorific = document.getElementById('settingHonorific').value;
+            const rate = document.getElementById('settingVoiceRate').value;
+            const pitch = document.getElementById('settingVoicePitch').value;
+            const search = document.getElementById('settingEnableSearch').value;
+            const prefix = document.getElementById('settingCustomPrefix').value;
+
+            localStorage.setItem('evas_theme', theme);
+            localStorage.setItem('evas_honorific', honorific);
+            localStorage.setItem('evas_rate', rate);
+            localStorage.setItem('evas_pitch', pitch);
+            localStorage.setItem('evas_search', search);
+            localStorage.setItem('evas_prefix', prefix);
+
+            applyThemeColor(theme);
+        }
+
+        function openSettingsHUD() { document.getElementById('settingsModal').style.display = 'flex'; }
+        function closeSettingsHUD() { document.getElementById('settingsModal').style.display = 'none'; }
 
         function handleKeyPress(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -225,9 +357,17 @@
             appendMessage("YOU: " + (txt || "[Attached Vision Engine Image/File]"), "msg-user");
             input.value = "";
 
+            const settingsPayload = {
+                honorific: localStorage.getItem('evas_honorific') || "Sir",
+                voice_rate: (localStorage.getItem('evas_rate') >= 0 ? "+" : "") + (localStorage.getItem('evas_rate') || "2") + "%",
+                voice_pitch: (localStorage.getItem('evas_pitch') >= 0 ? "+" : "") + (localStorage.getItem('evas_pitch') || "-3") + "Hz",
+                enable_search: (localStorage.getItem('evas_search') || "true") === "true",
+                custom_prefix: localStorage.getItem('evas_prefix') || ""
+            };
+
             const payload = {
                 prompt: txt || "Please analyze and solve this attached screenshot/file step-by-step.",
-                honorific: "Sir",
+                settings: settingsPayload,
                 latitude: userLat,
                 longitude: userLon,
                 file_b64: pendingFileB64,
@@ -284,6 +424,10 @@
             currentAudio = new Audio('/api/audio?t=' + Date.now());
             currentAudio.play().catch(e => console.log("Audio playback blocked until user tap:", e));
         }
+
+        window.onload = () => {
+            loadSavedSettings();
+        };
     </script>
 </body>
 </html>
