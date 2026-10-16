@@ -56,15 +56,11 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_SECRET_SESSION_KEY_998877")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "19.0.0-ACCOUNT-SECURITY-CORE"
+EVAS_BUILD_VERSION = "20.0.0-JARVIS-AUDIO-REACTIVE-CORE"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
-# Track burst requests for anomaly detection
 USER_REQUEST_TIMESTAMPS = {}
 
-# ---------------------------------------------------------
-# DATABASE INITIALIZATION
-# ---------------------------------------------------------
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -83,16 +79,12 @@ def init_db():
 
 init_db()
 
-# ---------------------------------------------------------
-# ANOMALY DETECTION ENGINE
-# ---------------------------------------------------------
 def check_for_anomalies(username):
     now = time.time()
     if username not in USER_REQUEST_TIMESTAMPS:
         USER_REQUEST_TIMESTAMPS[username] = []
     
-    timestamps = USER_REQUEST_TIMESTAMPS[username]
-    timestamps = [t for t in timestamps if now - t < 10]
+    timestamps = [t for t in USER_REQUEST_TIMESTAMPS[username] if now - t < 10]
     timestamps.append(now)
     USER_REQUEST_TIMESTAMPS[username] = timestamps
 
@@ -105,9 +97,6 @@ def check_for_anomalies(username):
         return True
     return False
 
-# ---------------------------------------------------------
-# ATTACHMENT ANALYZER
-# ---------------------------------------------------------
 def process_and_analyze_attachment(file_b64, file_type=""):
     if not file_b64:
         return "", None
@@ -198,20 +187,25 @@ def perform_google_search(query):
 
     return "\n\n".join(results[:4]) if results else None
 
-async def create_tts_audio_file(text, voice_rate="+2%", voice_pitch="-3Hz", filename="static_speech.mp3"):
+# ---------------------------------------------------------
+# PAUL BETTANY (J.A.R.V.I.S.) VOICE ENGINE
+# ---------------------------------------------------------
+async def create_tts_audio_file(text, voice_rate="+0%", voice_pitch="-4Hz", filename="static_speech.mp3"):
     if not HAS_EDGE_TTS:
         return False
     try:
         clean_prompt = re.sub(r'[*_~`#>]', '', text).strip()
         if not clean_prompt:
             clean_prompt = "Response completed."
+        
+        # en-GB-RyanNeural calibrated to Paul Bettany tone
         communicate = edge_tts.Communicate(clean_prompt[:600], "en-GB-RyanNeural", pitch=voice_pitch, rate=voice_rate)
         await communicate.save(filename)
         return True
     except Exception:
         return False
 
-def generate_voice_sync(text, voice_rate="+2%", voice_pitch="-3Hz"):
+def generate_voice_sync(text, voice_rate="+0%", voice_pitch="-4Hz"):
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -239,9 +233,6 @@ def run_network_speedtest():
     except Exception as e:
         return f"Network test failed: {e}"
 
-# ---------------------------------------------------------
-# AUTHENTICATION & USER MANAGEMENT ROUTES
-# ---------------------------------------------------------
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     data = request.json or {}
@@ -311,9 +302,6 @@ def logout():
     session.pop('username', None)
     return jsonify({'message': 'Logged out successfully'})
 
-# ---------------------------------------------------------
-# CORE AI WORKSPACE ROUTE
-# ---------------------------------------------------------
 @app.route('/')
 def home():
     if os.path.exists('index.html'):
@@ -366,8 +354,8 @@ def ask():
     user_prompt = data.get('prompt', '').strip()
     settings = data.get('settings', {})
     honorific = settings.get('honorific', 'Sir')
-    voice_rate = settings.get('voice_rate', '+2%')
-    voice_pitch = settings.get('voice_pitch', '-3Hz')
+    voice_rate = settings.get('voice_rate', '+0%')
+    voice_pitch = settings.get('voice_pitch', '-4Hz')
     custom_prefix = settings.get('custom_prefix', '').strip()
     enable_search = settings.get('enable_search', True)
 
@@ -409,7 +397,7 @@ def ask():
 
     if not reply:
         google_search_data = perform_google_search(user_prompt) if enable_search else None
-        system_prompt = f"You are E.V.A.S., an advanced AI assistant. Provide verified solutions. Address user as '{honorific}'."
+        system_prompt = f"You are E.V.A.S. (Eventually Very Advanced System), an AI assistant styled after J.A.R.V.I.S. Provide clear solutions politely and concisely. Address user as '{honorific}'."
 
         if HAS_OLLAMA:
             try:
@@ -433,7 +421,6 @@ def ask():
     clean_reply = re.sub(r'[*_~`#>]', '', reply).strip()
     has_audio = generate_voice_sync(clean_reply, voice_rate, voice_pitch)
 
-    # Save to user persistent memory
     if username != 'guest':
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()

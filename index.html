@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>E.V.A.S. // ACCOUNT SECURITY SYSTEM</title>
+    <title>E.V.A.S. // AUDIO-REACTIVE 3D ORB HUD</title>
     
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#00f3ff">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
             --hud-cyan: #00f3ff;
@@ -37,7 +38,7 @@
         }
 
         .hud-workspace {
-            display: grid; grid-template-columns: 280px 1fr 260px;
+            display: grid; grid-template-columns: 320px 1fr 260px;
             gap: 8px; flex: 1; overflow: hidden; margin-top: 6px; padding-bottom: 80px;
         }
 
@@ -46,6 +47,16 @@
             border-radius: 4px; padding: 8px; box-shadow: inset 0 0 10px var(--hud-glow);
             display: flex; flex-direction: column; gap: 6px; overflow-y: auto;
         }
+
+        .core-orb-widget {
+            position: relative; width: 100%; height: 230px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 4px 0; border: 1px solid var(--hud-border);
+            border-radius: 6px; background: rgba(0, 4, 10, 0.95);
+            overflow: hidden; box-shadow: inset 0 0 15px var(--hud-glow);
+        }
+
+        #webglCanvas { position: absolute; width: 100%; height: 100%; z-index: 1; }
 
         .panel-header { font-size: 0.65rem; font-weight: bold; opacity: 0.8; border-bottom: 1px dashed var(--hud-border); padding-bottom: 3px; }
 
@@ -73,7 +84,7 @@
         }
 
         textarea { flex: 1; height: 38px; background: transparent; border: none; color: var(--hud-cyan); font-family: inherit; resize: none; font-size: 0.85rem; outline: none; }
-        button, select, input[type="text"], input[type="password"], input[type="range"] {
+        button, select, input[type="text"], input[type="password"] {
             background: rgba(0, 243, 255, 0.12); border: 1px solid var(--hud-cyan);
             color: var(--hud-cyan); border-radius: 12px; font-weight: bold; cursor: pointer; padding: 6px 10px; font-size: 0.72rem; outline: none;
         }
@@ -86,8 +97,6 @@
             z-index: 2500; flex-direction: column; padding: 16px; color: var(--hud-cyan); backdrop-filter: blur(10px);
         }
 
-        .setting-row { display: flex; flex-direction: column; gap: 4px; font-size: 0.75rem; border-bottom: 1px dashed rgba(0, 243, 255, 0.2); padding-bottom: 8px; margin-bottom: 8px; }
-        
         #securityLockOverlay {
             display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0, 3, 8, 0.98); z-index: 5000; flex-direction: column;
@@ -97,46 +106,49 @@
 </head>
 <body>
 
-    <!-- LOCK OVERLAY -->
     <div id="securityLockOverlay">
         <div style="font-size: 3rem;">🔒</div>
         <div style="font-size: 1.2rem; font-weight: bold;">E.V.A.S. SECURITY LOCK ACTIVE</div>
-        <div>Anomalous / rapid activity detected on your workspace.</div>
+        <div>Anomalous activity detected. Please re-enter account password.</div>
         <div style="display: flex; gap: 6px; margin-top: 10px;">
-            <input type="password" id="unlockPassInput" placeholder="Enter account password..." style="border-color:#ff2200; color:#ff2200;">
+            <input type="password" id="unlockPassInput" placeholder="Password..." style="border-color:#ff2200; color:#ff2200;">
             <button onclick="submitUnlockRequest()" style="border-color:#ff2200; color:#ff2200;">UNLOCK</button>
         </div>
     </div>
 
-    <!-- TOP BAR -->
     <div class="hud-top-bar">
-        <div>E.V.A.S. // USER: <span id="currentUserTag">GUEST</span></div>
+        <div>E.V.A.S. // VOICE: PAUL BETTANY (J.A.R.V.I.S.)</div>
         <div id="liveClock">00:00:00</div>
-        <button id="authModalBtn" onclick="openAuthHUD()">ACCOUNT</button>
+        <button onclick="openAuthHUD()">ACCOUNT</button>
         <button onclick="openSettingsHUD()">⚙️ SETTINGS</button>
         <button onclick="stopAudioImmediate()">⏹️ STOP VOICE</button>
     </div>
 
     <div class="hud-workspace">
         <div class="hud-panel">
-            <div class="panel-header">ACCOUNT TELEMETRY</div>
-            <div style="font-size: 0.7rem; margin-top: 4px;">
-                STATUS: <span id="userStatusTag">UNAUTHENTICATED</span><br>
-                BUILD: 19.0.0-ACCOUNT-CORE<br>
-                AUTO-LOCK: ACTIVE
+            <div class="panel-header">3D AUDIO-REACTIVE CORE</div>
+            <div class="core-orb-widget">
+                <canvas id="webglCanvas"></canvas>
+            </div>
+            <div style="font-size: 0.68rem; margin-top: 4px;">
+                SPEECH REACTOR: <span id="orbStateTag" style="color:var(--hud-cyan)">STANDBY</span>
             </div>
         </div>
 
         <div class="hud-panel" id="terminalPanel" style="flex: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-evas">E.V.A.S.: Workspace Ready. Log in to save your settings, preferences, and chat history persistently across devices.</div>
+                <div class="msg-line msg-evas">E.V.A.S.: Universal AI Workspace active. Speak or type a request to observe real-time 3D orb audio response.</div>
             </div>
         </div>
 
         <div class="hud-panel">
-            <div class="panel-header">ACTIONS</div>
-            <button onclick="openAuthHUD()">🔑 USER ACCOUNT</button>
-            <button onclick="openSettingsHUD()">⚙️ PREFERENCES</button>
+            <div class="panel-header">TELEMETRY</div>
+            <div style="font-size: 0.7rem; margin-top: 4px;">
+                PERSONA: J.A.R.V.I.S.<br>
+                BUILD: 20.0.0-AUDIO-REACTIVE<br>
+                USER: <span id="currentUserTag">GUEST</span>
+            </div>
+            <button onclick="openAuthHUD()" style="margin-top:8px;">🔑 LOGIN / REGISTER</button>
         </div>
     </div>
 
@@ -148,7 +160,6 @@
         <button onclick="sendCommand()">SEND</button>
     </div>
 
-    <!-- AUTH MODAL -->
     <div class="hud-modal" id="authModal">
         <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--hud-cyan); padding-bottom:6px;">
             <div style="font-weight:bold;">ACCOUNT AUTHENTICATION</div>
@@ -161,40 +172,27 @@
                 <button style="flex:1;" onclick="submitAuth('login')">LOGIN</button>
                 <button style="flex:1;" onclick="submitAuth('register')">REGISTER</button>
             </div>
-            <button style="margin-top:6px; border-color:#ff2200; color:#ff2200;" onclick="logoutUser()">LOGOUT</button>
         </div>
     </div>
 
-    <!-- SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--hud-cyan); padding-bottom:6px;">
             <div style="font-weight:bold;">⚙️ PREFERENCES</div>
             <button onclick="closeSettingsHUD()">✕</button>
         </div>
-        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px;">
-            <div class="setting-row">
-                <label>Theme Color:</label>
-                <select id="settingThemeColor" onchange="applyCustomSettings()">
-                    <option value="#00f3ff">Cyan Blue</option>
-                    <option value="#ff2200">Crimson Red</option>
-                    <option value="#bd00ff">Neon Purple</option>
-                    <option value="#10b981">Emerald Green</option>
-                </select>
-            </div>
-            <div class="setting-row">
-                <label>Honorific Title:</label>
-                <select id="settingHonorific" onchange="applyCustomSettings()">
-                    <option value="Sir">Sir</option>
-                    <option value="Ma'am">Ma'am</option>
-                    <option value="Commander">Commander</option>
-                </select>
-            </div>
+        <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 4px; font-size:0.75rem;">
+            <label>Honorific Title:</label>
+            <select id="settingHonorific">
+                <option value="Sir">Sir</option>
+                <option value="Ma'am">Ma'am</option>
+            </select>
         </div>
     </div>
 
     <script>
         const EVAS_SECRET_KEY = "DefaultSecureKey123";
-        let currentAudio = null, pendingFileB64 = null, pendingFileType = "", userLat = null, userLon = null;
+        let currentAudio = null, audioCtx = null, analyser = null, audioSource = null;
+        let pendingFileB64 = null, pendingFileType = "", userLat = null, userLon = null;
         let loggedInUser = localStorage.getItem('evas_username') || "guest";
 
         setInterval(() => { document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0]; }, 1000);
@@ -222,24 +220,8 @@
                 loggedInUser = data.username || u;
                 localStorage.setItem('evas_username', loggedInUser);
                 document.getElementById('currentUserTag').innerText = loggedInUser.toUpperCase();
-                document.getElementById('userStatusTag').innerText = "AUTHENTICATED";
                 closeAuthHUD();
-                
-                if (data.chat_history && data.chat_history.length > 0) {
-                    const term = document.getElementById('chat-terminal');
-                    term.innerHTML = "";
-                    data.chat_history.forEach(item => {
-                        appendMessage("YOU: " + item.user, "msg-user");
-                        appendMessage("E.V.A.S.:\n" + item.evas, "msg-evas");
-                    });
-                }
             });
-        }
-
-        function logoutUser() {
-            fetch('/api/auth/logout', { method: 'POST' });
-            localStorage.removeItem('evas_username');
-            location.reload();
         }
 
         function submitUnlockRequest() {
@@ -281,10 +263,7 @@
             const payload = {
                 prompt: txt,
                 username: loggedInUser,
-                settings: {
-                    honorific: document.getElementById('settingHonorific').value,
-                    voice_rate: "+2%", voice_pitch: "-3Hz", enable_search: true
-                },
+                settings: { honorific: document.getElementById('settingHonorific').value, voice_rate: "+0%", voice_pitch: "-4Hz", enable_search: true },
                 latitude: userLat, longitude: userLon,
                 file_b64: pendingFileB64, file_type: pendingFileType
             };
@@ -298,9 +277,7 @@
                 body: JSON.stringify(payload)
             })
             .then(res => {
-                if (res.status === 423) {
-                    document.getElementById('securityLockOverlay').style.display = 'flex';
-                }
+                if (res.status === 423) document.getElementById('securityLockOverlay').style.display = 'flex';
                 return res.json();
             })
             .then(data => {
@@ -319,19 +296,90 @@
             term.scrollTop = term.scrollHeight;
         }
 
-        function applyCustomSettings() {
-            const color = document.getElementById('settingThemeColor').value;
-            document.documentElement.style.setProperty('--hud-cyan', color);
-            document.documentElement.style.setProperty('--hud-glow', color + "80");
+        function stopAudioImmediate() { if (currentAudio) { currentAudio.pause(); currentAudio = null; } }
+
+        function playEvasVoice() {
+            stopAudioImmediate();
+            currentAudio = new Audio('/api/audio?t=' + Date.now());
+            currentAudio.crossOrigin = "anonymous";
+
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 128;
+            audioSource = audioCtx.createMediaElementSource(currentAudio);
+            audioSource.connect(analyser);
+            analyser.connect(audioCtx.destination);
+
+            document.getElementById('orbStateTag').innerText = "TRANSMITTING";
+            document.getElementById('orbStateTag').style.color = "#00f3ff";
+
+            currentAudio.play().catch(console.error);
+            currentAudio.onended = () => {
+                document.getElementById('orbStateTag').innerText = "STANDBY";
+            };
         }
 
-        function stopAudioImmediate() { if (currentAudio) { currentAudio.pause(); currentAudio = null; } }
-        function playEvasVoice() { stopAudioImmediate(); currentAudio = new Audio('/api/audio?t=' + Date.now()); currentAudio.play().catch(console.error); }
+        // THREE.JS AUDIO-REACTIVE 3D ORB
+        let scene, camera, renderer, wireCore, originalPositions;
+
+        function init3DHologramCore() {
+            const container = document.querySelector('.core-orb-widget');
+            const canvas = document.getElementById('webglCanvas');
+            
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.z = 120;
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+
+            const coreGeo = new THREE.IcosahedronGeometry(30, 3);
+            originalPositions = coreGeo.attributes.position.clone();
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.85 });
+            wireCore = new THREE.Mesh(coreGeo, coreMat);
+            scene.add(wireCore);
+
+            function animate() {
+                requestAnimationFrame(animate);
+
+                let avgFrequency = 0;
+                if (analyser && currentAudio && !currentAudio.paused) {
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) { sum += dataArray[i]; }
+                    avgFrequency = sum / dataArray.length;
+                }
+
+                const positionAttribute = wireCore.geometry.attributes.position;
+                const vertex = new THREE.Vector3();
+
+                for (let i = 0; i < positionAttribute.count; i++) {
+                    vertex.fromBufferAttribute(originalPositions, i);
+                    const displacement = 1 + (avgFrequency / 255.0) * 0.45 * Math.sin(i + Date.now() * 0.005);
+                    vertex.multiplyScalar(displacement);
+                    positionAttribute.setXYZ(i, vertex.x, vertex.y, vertex.z);
+                }
+
+                positionAttribute.needsUpdate = true;
+                wireCore.rotation.x += 0.004;
+                wireCore.rotation.y += 0.007;
+
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
 
         window.onload = () => {
+            init3DHologramCore();
             if (loggedInUser !== "guest") {
                 document.getElementById('currentUserTag').innerText = loggedInUser.toUpperCase();
-                document.getElementById('userStatusTag').innerText = "AUTHENTICATED";
             }
         };
     </script>
