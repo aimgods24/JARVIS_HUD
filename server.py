@@ -12,6 +12,13 @@ import io
 import asyncio
 from duckduckgo_search import DDGS
 
+# Try Google Search Library with fallback
+try:
+    from googlesearch import search as google_search
+    HAS_GOOGLE_SEARCH = True
+except Exception:
+    HAS_GOOGLE_SEARCH = False
+
 try:
     from PIL import Image
     import pytesseract
@@ -50,7 +57,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "14.0.0-VISION-CHATGPT-VOICE"
+EVAS_BUILD_VERSION = "15.0.0-GOOGLE-SEARCH-CORE"
 
 MACRODROID_DEVICE_ID = os.environ.get("MACRODROID_DEVICE_ID", "YOUR_MACRODROID_DEVICE_ID_HERE")
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
@@ -68,14 +75,62 @@ except Exception:
     CONTACTS = DEFAULT_CONTACTS
 
 # ---------------------------------------------------------
+# GOOGLE SEARCH ENGINE & SCRAPER
+# ---------------------------------------------------------
+def perform_google_search(query):
+    """Executes live Google Search query and scrapes relevant result snippets."""
+    results = []
+
+    # Method 1: BeautifulSoup direct Google Scrape
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    }
+    encoded_query = urllib.parse.quote(query)
+    google_url = f"https://www.google.com/search?q={encoded_query}&hl=en"
+    
+    try:
+        response = requests.get(google_url, headers=headers, timeout=4)
+        if response.status_code == 200 and HAS_BS4:
+            soup = BeautifulSoup(response.text, "html.parser")
+            snippets = soup.find_all(['div', 'span'], class_=re.compile(r'(VwiC3b|yXMda|MUxGv|Hg231c)'))
+            for s in snippets:
+                txt = s.get_text().strip()
+                if len(txt) > 30 and txt not in results:
+                    results.append(txt)
+    except Exception as e:
+        print(f"[GOOGLE DIRECT SCRAPE ERROR]: {e}")
+
+    # Method 2: Google Search Python Package Fallback
+    if not results and HAS_GOOGLE_SEARCH:
+        try:
+            for url in google_search(query, num_results=4, lang="en"):
+                results.append(f"• Result URL: {url}")
+        except Exception as e:
+            print(f"[GOOGLESEARCH PKG ERROR]: {e}")
+
+    # Method 3: DuckDuckGo Fallback
+    if not results:
+        try:
+            with DDGS() as ddgs:
+                ddg_results = list(ddgs.text(query, max_results=4))
+                if ddg_results:
+                    for res in ddg_results:
+                        if 'body' in res and res['body']:
+                            results.append(f"• **{res.get('title', 'Result')}**\n{res['body']}")
+        except Exception as e:
+            print(f"[DDG SEARCH FALLBACK ERROR]: {e}")
+
+    if results:
+        return "\n\n".join(results[:4])
+    return None
+
+# ---------------------------------------------------------
 # RELIABLE EDGE-TTS ASYNC VOICE GENERATOR
 # ---------------------------------------------------------
 async def create_tts_audio_file(text, filename="static_speech.mp3"):
-    """Generates MP3 audio using Microsoft Edge Neural TTS."""
     if not HAS_EDGE_TTS:
         return False
     try:
-        # Sanitize text for TTS engine
         clean_prompt = re.sub(r'[*_~`#>]', '', text).strip()
         if not clean_prompt:
             clean_prompt = "Response completed."
@@ -88,7 +143,6 @@ async def create_tts_audio_file(text, filename="static_speech.mp3"):
         return False
 
 def generate_voice_sync(text):
-    """Safe thread execution for async edge-tts in Flask."""
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -115,7 +169,7 @@ def extract_attachment_payload(file_b64, file_type=""):
                 extracted = pytesseract.image_to_string(img)
                 if extracted.strip():
                     return f"\n[OCR EXTRACTED IMAGE/SCREENSHOT TEXT]:\n{extracted.strip()}"
-                return "\n[ATTACHED IMAGE ANALYZED: Image received successfully. Solved visually.]"
+                return "\n[ATTACHED IMAGE ANALYZED: Image received successfully.]"
             else:
                 return "\n[ATTACHED IMAGE RECEIVED: OCR Module pending setup on host.]"
         
@@ -128,25 +182,6 @@ def extract_attachment_payload(file_b64, file_type=""):
         return f"\n[ATTACHMENT PARSE ERROR: {str(e)}]"
     
     return "\n[ATTACHMENT ATTACHED]"
-
-# ---------------------------------------------------------
-# LIVE SEARCH TELEMETRY ENGINE
-# ---------------------------------------------------------
-def perform_chatgpt_search(query):
-    results = []
-    try:
-        with DDGS() as ddgs:
-            search_res = list(ddgs.text(query, max_results=5))
-            if search_res:
-                for r in search_res:
-                    if r.get('body'):
-                        results.append(f"• **{r.get('title', 'Result')}**\n{r.get('body')}\nSource: {r.get('href')}")
-    except Exception as e:
-        print(f"[SEARCH ENGINE LOG]: {e}")
-
-    if results:
-        return "\n\n".join(results[:3])
-    return None
 
 def run_network_speedtest():
     if not HAS_SPEEDTEST:
@@ -223,17 +258,18 @@ def ask():
         reply = run_network_speedtest()
 
     if not reply:
-        search_data = perform_chatgpt_search(user_prompt)
+        # Search via Google Search Engine
+        google_search_data = perform_google_search(user_prompt)
         
         system_prompt = (
-            f"You are E.V.A.S. (Eventually Very Advanced System), an expert workspace AI assistant and tutor. "
-            f"Answer questions, homework tasks, math problems, code queries, and file attachments directly, clearly, and accurately. "
-            f"Address the user as '{honorific}'."
+            f"You are E.V.A.S., an advanced AI assistant. "
+            f"Answer questions, homework tasks, math problems, code queries, and file attachments directly and accurately. "
+            f"Synthesize the Google Search Telemetry results when answering. Address the user as '{honorific}'."
         )
 
         if HAS_OLLAMA:
             try:
-                full_input = f"Request: {user_prompt}\n\nLive Research Telemetry:\n{search_data if search_data else 'None'}"
+                full_input = f"Request: {user_prompt}\n\nGoogle Search Telemetry:\n{google_search_data if google_search_data else 'None'}"
                 res = ollama.chat(
                     model='deepseek-r1:1.5b',
                     messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": full_input}],
@@ -245,8 +281,8 @@ def ask():
                 reply = None
 
         if not reply:
-            if search_data:
-                reply = f"### 🔍 CHATGPT LIVE TELEMETRY SEARCH REPORT:\n\n{search_data}\n\n*Query processed successfully, {honorific}.*"
+            if google_search_data:
+                reply = f"### 🌐 GOOGLE SEARCH LIVE TELEMETRY REPORT:\n\n{google_search_data}\n\n*Query processed successfully, {honorific}.*"
             else:
                 reply = f"E.V.A.S. Core online. Answer for request **'{user_prompt}'** verified, {honorific}."
 

@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: evas-ai-workspace
+    env: python
+    buildCommand: "apt-get update && apt-get install -y tesseract-ocr && pip install -r requirements.txt"
+    startCommand: "gunicorn server:app"
