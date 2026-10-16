@@ -12,7 +12,6 @@ import io
 import asyncio
 from duckduckgo_search import DDGS
 
-# Try Google Search Library with fallback
 try:
     from googlesearch import search as google_search
     HAS_GOOGLE_SEARCH = True
@@ -57,7 +56,7 @@ MEMORY_FILE = "evas_memory.json"
 GENERATED_FILES_DIR = "generated_files"
 os.makedirs(GENERATED_FILES_DIR, exist_ok=True)
 
-EVAS_BUILD_VERSION = "15.0.0-GOOGLE-SEARCH-CORE"
+EVAS_BUILD_VERSION = "16.0.0-NAVIGATION-CORE"
 
 MACRODROID_DEVICE_ID = os.environ.get("MACRODROID_DEVICE_ID", "YOUR_MACRODROID_DEVICE_ID_HERE")
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
@@ -75,13 +74,21 @@ except Exception:
     CONTACTS = DEFAULT_CONTACTS
 
 # ---------------------------------------------------------
-# GOOGLE SEARCH ENGINE & SCRAPER
+# INTENT PARSER & NAVIGATION ENGINE
+# ---------------------------------------------------------
+def parse_contextual_intent(prompt):
+    p = prompt.lower()
+    if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "maps to", "take me to", "how to go to", "go to", "destination"]):
+        return "DIRECTIONS"
+    if any(w in p for w in ["speed test", "test speed", "wifi speed", "connection speed"]):
+        return "RUN_SPEEDTEST"
+    return "UNIVERSAL_EXECUTION"
+
+# ---------------------------------------------------------
+# GOOGLE SEARCH TELEMETRY ENGINE
 # ---------------------------------------------------------
 def perform_google_search(query):
-    """Executes live Google Search query and scrapes relevant result snippets."""
     results = []
-
-    # Method 1: BeautifulSoup direct Google Scrape
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     }
@@ -97,18 +104,16 @@ def perform_google_search(query):
                 txt = s.get_text().strip()
                 if len(txt) > 30 and txt not in results:
                     results.append(txt)
-    except Exception as e:
-        print(f"[GOOGLE DIRECT SCRAPE ERROR]: {e}")
+    except Exception:
+        pass
 
-    # Method 2: Google Search Python Package Fallback
     if not results and HAS_GOOGLE_SEARCH:
         try:
             for url in google_search(query, num_results=4, lang="en"):
                 results.append(f"• Result URL: {url}")
-        except Exception as e:
-            print(f"[GOOGLESEARCH PKG ERROR]: {e}")
+        except Exception:
+            pass
 
-    # Method 3: DuckDuckGo Fallback
     if not results:
         try:
             with DDGS() as ddgs:
@@ -117,15 +122,13 @@ def perform_google_search(query):
                     for res in ddg_results:
                         if 'body' in res and res['body']:
                             results.append(f"• **{res.get('title', 'Result')}**\n{res['body']}")
-        except Exception as e:
-            print(f"[DDG SEARCH FALLBACK ERROR]: {e}")
+        except Exception:
+            pass
 
-    if results:
-        return "\n\n".join(results[:4])
-    return None
+    return "\n\n".join(results[:4]) if results else None
 
 # ---------------------------------------------------------
-# RELIABLE EDGE-TTS ASYNC VOICE GENERATOR
+# TTS VOICE ENGINE
 # ---------------------------------------------------------
 async def create_tts_audio_file(text, filename="static_speech.mp3"):
     if not HAS_EDGE_TTS:
@@ -134,12 +137,10 @@ async def create_tts_audio_file(text, filename="static_speech.mp3"):
         clean_prompt = re.sub(r'[*_~`#>]', '', text).strip()
         if not clean_prompt:
             clean_prompt = "Response completed."
-        
         communicate = edge_tts.Communicate(clean_prompt[:600], "en-GB-RyanNeural", pitch="-3Hz", rate="+2%")
         await communicate.save(filename)
         return True
-    except Exception as e:
-        print(f"[EDGE-TTS ERROR]: {e}")
+    except Exception:
         return False
 
 def generate_voice_sync(text):
@@ -149,12 +150,11 @@ def generate_voice_sync(text):
         success = loop.run_until_complete(create_tts_audio_file(text))
         loop.close()
         return success
-    except Exception as e:
-        print(f"[TTS SYNC ERROR]: {e}")
+    except Exception:
         return False
 
 # ---------------------------------------------------------
-# ATTACHMENT / SCREENSHOT / OCR PROCESSOR
+# ATTACHMENT OCR PROCESSOR
 # ---------------------------------------------------------
 def extract_attachment_payload(file_b64, file_type=""):
     if not file_b64:
@@ -169,18 +169,13 @@ def extract_attachment_payload(file_b64, file_type=""):
                 extracted = pytesseract.image_to_string(img)
                 if extracted.strip():
                     return f"\n[OCR EXTRACTED IMAGE/SCREENSHOT TEXT]:\n{extracted.strip()}"
-                return "\n[ATTACHED IMAGE ANALYZED: Image received successfully.]"
+                return "\n[ATTACHED IMAGE ANALYZED: Processed successfully.]"
             else:
-                return "\n[ATTACHED IMAGE RECEIVED: OCR Module pending setup on host.]"
-        
+                return "\n[ATTACHED IMAGE RECEIVED: OCR engine pending setup.]"
         elif "text" in file_type or file_type in [".txt", ".py", ".js", ".json", ".csv", ".md"]:
-            content = file_bytes.decode('utf-8', errors='ignore')
-            return f"\n[ATTACHED FILE CONTENT]:\n{content}"
-            
+            return f"\n[ATTACHED FILE CONTENT]:\n{file_bytes.decode('utf-8', errors='ignore')}"
     except Exception as e:
-        print(f"[ATTACHMENT ERROR]: {e}")
         return f"\n[ATTACHMENT PARSE ERROR: {str(e)}]"
-    
     return "\n[ATTACHMENT ATTACHED]"
 
 def run_network_speedtest():
@@ -202,7 +197,7 @@ def run_network_speedtest():
         return f"Network test failed: {e}"
 
 # ---------------------------------------------------------
-# MAIN BACKEND ROUTE
+# ROUTES
 # ---------------------------------------------------------
 @app.route('/')
 def home():
@@ -211,7 +206,6 @@ def home():
             html_content = f.read()
     else:
         html_content = "<h1>E.V.A.S. Core Active. Upload index.html to view HUD.</h1>"
-    
     response = make_response(render_template_string(html_content))
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
     return response
@@ -242,6 +236,8 @@ def ask():
 
     user_prompt = data.get('prompt', '').strip()
     honorific = data.get('honorific', 'Sir')
+    lat = data.get('latitude', None)
+    lon = data.get('longitude', None)
     file_b64 = data.get('file_b64', None)
     file_type = data.get('file_type', '')
 
@@ -252,18 +248,41 @@ def ask():
     if not user_prompt:
         return jsonify({'response': f'No query received, {honorific}.', 'audio': False})
 
+    inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
+    google_maps_url = None
 
-    if "speed test" in user_prompt.lower() or "test speed" in user_prompt.lower():
+    if inferred_intent == "DIRECTIONS":
+        destination = re.sub(
+            r'directions to|route to|navigate to|map to|maps to|take me to|how to go to|go to|destination', 
+            '', 
+            user_prompt, 
+            flags=re.IGNORECASE
+        ).strip()
+        if not destination:
+            destination = "Penang Hill, Malaysia"
+        
+        encoded_dest = urllib.parse.quote(destination)
+        if lat is not None and lon is not None:
+            google_maps_url = f"https://www.google.com/maps/dir/?api=1&origin={lat},{lon}&destination={encoded_dest}&travelmode=driving"
+        else:
+            google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={encoded_dest}&travelmode=driving"
+
+        reply = (
+            f"🗺️ **DIRECT GOOGLE MAPS NAVIGATION LAUNCHED**\n\n"
+            f"• **Destination**: `{destination}`\n"
+            f"• **Routing Protocol**: Direct Navigation Mode Enabled\n"
+            f"• **Action**: Launching Google Maps with `{destination}` pre-filled, {honorific}."
+        )
+
+    elif inferred_intent == "RUN_SPEEDTEST":
         reply = run_network_speedtest()
 
     if not reply:
-        # Search via Google Search Engine
         google_search_data = perform_google_search(user_prompt)
-        
         system_prompt = (
-            f"You are E.V.A.S., an advanced AI assistant. "
-            f"Answer questions, homework tasks, math problems, code queries, and file attachments directly and accurately. "
+            f"You are E.V.A.S., an advanced AI workspace assistant. "
+            f"Answer questions, homework tasks, math problems, and file attachments directly and accurately. "
             f"Synthesize the Google Search Telemetry results when answering. Address the user as '{honorific}'."
         )
 
@@ -284,17 +303,16 @@ def ask():
             if google_search_data:
                 reply = f"### 🌐 GOOGLE SEARCH LIVE TELEMETRY REPORT:\n\n{google_search_data}\n\n*Query processed successfully, {honorific}.*"
             else:
-                reply = f"E.V.A.S. Core online. Answer for request **'{user_prompt}'** verified, {honorific}."
+                reply = f"E.V.A.S. Core online. Request **'{user_prompt}'** verified, {honorific}."
 
     clean_reply = re.sub(r'[*_~`#>]', '', reply).strip()
-
-    # Generate MP3 Audio
     has_audio = generate_voice_sync(clean_reply)
 
     return jsonify({
         'response': clean_reply, 
         'raw_markdown': reply,
-        'audio': has_audio
+        'audio': has_audio,
+        'google_maps_url': google_maps_url
     })
 
 @app.route('/api/audio')
