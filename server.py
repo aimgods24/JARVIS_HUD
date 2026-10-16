@@ -56,7 +56,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "21.0.0-JARVIS-MASTER-HUD"
+EVAS_BUILD_VERSION = "22.0.0-JARVIS-HUD-DEBUGGED"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
 USER_REQUEST_TIMESTAMPS = {}
@@ -97,9 +97,6 @@ def check_for_anomalies(username, sensitivity=6):
         return True
     return False
 
-# ---------------------------------------------------------
-# LIVE WEATHER TELEMETRY ENGINE (OPEN-METEO)
-# ---------------------------------------------------------
 def get_live_weather(lat=5.2971, lon=100.2588):
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m,weather_code&daily=sunrise,sunset&timezone=auto"
@@ -123,9 +120,6 @@ def get_live_weather(lat=5.2971, lon=100.2588):
     except Exception as e:
         return f"Weather telemetry request failed: {e}"
 
-# ---------------------------------------------------------
-# TRAVEL PROTOCOL & GEOLOCATION ADVISORY ENGINE
-# ---------------------------------------------------------
 def get_travel_recommendations(prompt, lat=5.2971, lon=100.2588):
     try:
         geo_url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
@@ -157,9 +151,6 @@ def get_travel_recommendations(prompt, lat=5.2971, lon=100.2588):
         f"📜 **REGIONAL CULTURAL GUIDELINES ({country.upper()})**:\n{dos_and_donts}"
     )
 
-# ---------------------------------------------------------
-# ATTACHMENT ANALYZER
-# ---------------------------------------------------------
 def process_and_analyze_attachment(file_b64, file_type=""):
     if not file_b64:
         return "", None
@@ -248,9 +239,6 @@ def perform_google_search(query):
 
     return "\n\n".join(results[:4]) if results else None
 
-# ---------------------------------------------------------
-# PAUL BETTANY VOICE GENERATOR
-# ---------------------------------------------------------
 async def create_tts_audio_file(text, voice_rate="+0%", voice_pitch="-4Hz", filename="static_speech.mp3"):
     if not HAS_EDGE_TTS:
         return False
@@ -493,6 +481,7 @@ def get_audio():
     if os.path.exists('static_speech.mp3'):
         response = make_response(send_file('static_speech.mp3', mimetype='audio/mpeg'))
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Access-Control-Allow-Origin'] = '*'
         return response
     return ("", 404)
 

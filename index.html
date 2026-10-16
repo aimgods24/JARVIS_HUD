@@ -137,7 +137,7 @@
             <div class="panel-header">LIVE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 USER: <span id="currentUserTag">GUEST</span><br>
-                BUILD: 21.0.0-JARVIS-HUD<br>
+                BUILD: 22.0.0-DEBUGGED<br>
                 GPS TELEMETRY: ACTIVE
             </div>
             <button onclick="sendCommandCustom('weather telemetry')" style="margin-top:6px;">🌤️ LIVE WEATHER</button>
@@ -169,7 +169,6 @@
         </div>
     </div>
 
-    <!-- 20-OPTION CUSTOMIZATION SETTINGS MODAL -->
     <div class="hud-modal" id="settingsModal">
         <div style="display:flex; justify-content:space-between; border-bottom:1px solid var(--hud-cyan); padding-bottom:6px;">
             <div style="font-weight:bold;">⚙️ MASTER CONFIGURATION (20 CUSTOMIZATIONS)</div>
@@ -216,11 +215,26 @@
             );
         }
 
-        function handleKeyPress(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCommand(); } }
+        function unlockAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
 
-        function openAuthHUD() { document.getElementById('authModal').style.display = 'flex'; }
+        function handleKeyPress(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                unlockAudioContext();
+                sendCommand();
+            }
+        }
+
+        function openAuthHUD() { unlockAudioContext(); document.getElementById('authModal').style.display = 'flex'; }
         function closeAuthHUD() { document.getElementById('authModal').style.display = 'none'; }
-        function openSettingsHUD() { document.getElementById('settingsModal').style.display = 'flex'; }
+        function openSettingsHUD() { unlockAudioContext(); document.getElementById('settingsModal').style.display = 'flex'; }
         function closeSettingsHUD() { document.getElementById('settingsModal').style.display = 'none'; }
         function triggerEmergencyLock() { document.getElementById('securityLockOverlay').style.display = 'flex'; }
 
@@ -265,6 +279,7 @@
         }
 
         function syncSpotifyJam() {
+            unlockAudioContext();
             document.getElementById('jamSongTitle').innerText = "Track: Synchronizing...";
             setTimeout(() => {
                 document.getElementById('jamSongTitle').innerText = "Track: Midnight City";
@@ -294,11 +309,13 @@
         }
 
         function sendCommandCustom(cmd) {
+            unlockAudioContext();
             document.getElementById('userInput').value = cmd;
             sendCommand();
         }
 
         function sendCommand() {
+            unlockAudioContext();
             const input = document.getElementById('userInput');
             const txt = input.value.trim();
             if (!txt && !pendingFileB64) return;
@@ -343,7 +360,7 @@
             const term = document.getElementById('chat-terminal');
             const div = document.createElement('div');
             div.className = "msg-line " + className;
-            div.innerText = text;
+            div.appendChild(document.createTextNode(text));
             term.appendChild(div);
             term.scrollTop = term.scrollHeight;
         }
@@ -361,14 +378,15 @@
             currentAudio = new Audio('/api/audio?t=' + Date.now());
             currentAudio.crossOrigin = "anonymous";
 
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
+            unlockAudioContext();
 
-            analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 128;
-            audioSource = audioCtx.createMediaElementSource(currentAudio);
-            audioSource.connect(analyser);
-            analyser.connect(audioCtx.destination);
+            if (!audioSource) {
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 128;
+                audioSource = audioCtx.createMediaElementSource(currentAudio);
+                audioSource.connect(analyser);
+                analyser.connect(audioCtx.destination);
+            }
 
             document.getElementById('orbStateTag').innerText = "TRANSMITTING";
             document.getElementById('orbStateTag').style.color = "#00f3ff";
