@@ -56,7 +56,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "24.0.0-EVERYTHING-INTEGRATED-HUD"
+EVAS_BUILD_VERSION = "25.0.0-BLUEPRINT-ENGINE-CORE"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
 SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", "YOUR_SPOTIFY_CLIENT_ID")
@@ -101,6 +101,64 @@ def check_for_anomalies(username, sensitivity=6):
         conn.close()
         return True
     return False
+
+# ---------------------------------------------------------
+# TECHNICAL BLUEPRINT & SCHEMATIC GENERATOR
+# ---------------------------------------------------------
+def generate_technical_blueprint(prompt):
+    cleaned = re.sub(r'blueprint|design|schematic|create|draw|generate', '', prompt, flags=re.IGNORECASE).strip() or "Custom Structural Design"
+    
+    # Extract materials from prompt or apply defaults
+    materials = ["Reinforced Titanium Alloy", "Carbon Fiber Composite", "Tempered Borosilicate Glass", "Structural Steel"]
+    found_materials = [m for m in materials if m.lower() in prompt.lower()]
+    if not found_materials:
+        found_materials = ["Aerospace Titanium Alloy", "Carbon Composite Matrix", "High-Tensile Steel"]
+
+    mat_specs = "\n".join([f"  • Material {i+1}: {m}" for i, m in enumerate(found_materials)])
+
+    # Generate Vector SVG Rendering
+    svg_blueprint = f'''
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 350" style="width:100%; height:auto; background:#001020; border:1px solid #00f3ff; border-radius:6px; margin-top:8px;">
+        <defs>
+            <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#00f3ff" stroke-width="0.3" opacity="0.2"/>
+            </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#grid)" />
+        <rect x="20" y="20" width="560" height="310" fill="none" stroke="#00f3ff" stroke-width="1.5" opacity="0.8"/>
+        
+        <!-- Header Annotation -->
+        <text x="35" y="45" fill="#00f3ff" font-family="monospace" font-size="12" font-weight="bold">SCHEMATIC: {cleaned.upper()[:35]}</text>
+        <text x="35" y="60" fill="#00f3ff" font-family="monospace" font-size="9" opacity="0.7">CLASSIFICATION: ARCHITECTURAL VECTOR BLUEPRINT // SCALE 1:50</text>
+        
+        <!-- Technical Drawing Shapes -->
+        <rect x="120" y="90" width="360" height="180" fill="none" stroke="#00f3ff" stroke-width="2" stroke-dasharray="5,5"/>
+        <circle cx="300" cy="180" r="65" fill="none" stroke="#00f3ff" stroke-width="1.5"/>
+        <line x1="120" y1="90" x2="480" y2="270" stroke="#00f3ff" stroke-width="0.8" opacity="0.5"/>
+        <line x1="480" y1="90" x2="120" y2="270" stroke="#00f3ff" stroke-width="0.8" opacity="0.5"/>
+        
+        <!-- Dimensions Overlays -->
+        <line x1="120" y1="285" x2="480" y2="285" stroke="#00f3ff" stroke-width="1"/>
+        <text x="280" y="298" fill="#00f3ff" font-family="monospace" font-size="10">DIMENSION: 12.50m</text>
+        
+        <line x1="495" y1="90" x2="495" y2="270" stroke="#00f3ff" stroke-width="1"/>
+        <text x="502" y="185" fill="#00f3ff" font-family="monospace" font-size="10">6.25m</text>
+    </svg>
+    '''
+
+    text_report = (
+        f"📐 **E.V.A.S. ARCHITECTURAL BLUEPRINT ENGINE GENERATED**\n\n"
+        f"• **Project Subject**: `{cleaned.title()}`\n"
+        f"• **Rendering Standard**: High-Precision Vector CAD Overlay\n\n"
+        f"🛠️ **SPECIFIED MATERIAL MATRIX**:\n{mat_specs}\n\n"
+        f"📐 **CAD TECHNICAL SPECIFICATIONS**:\n"
+        f"  • Primary Axis Length: `12.50 meters`\n"
+        f"  • Secondary Transverse Span: `6.25 meters`\n"
+        f"  • Structural Load Factor: `Safety Class Alpha (1.8x)`\n"
+        f"  • Tolerances: `±0.05 mm`"
+    )
+
+    return text_report, svg_blueprint
 
 # ---------------------------------------------------------
 # SPOTIFY OAUTH & PLAYER ENGINE
@@ -185,9 +243,6 @@ def fetch_song_lyrics(song, artist):
         pass
     return f"Lyrics preview for '{song}' by {artist} loaded successfully."
 
-# ---------------------------------------------------------
-# LOCATION RECOMMENDATIONS WITH ESTIMATED PRICING
-# ---------------------------------------------------------
 def get_location_recommendations_with_prices(prompt, lat=5.2971, lon=100.2588):
     try:
         geo_url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
@@ -290,6 +345,8 @@ def process_and_analyze_attachment(file_b64, file_type=""):
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
+    if any(w in p for w in ["blueprint", "schematic", "cad drawing", "design blueprint"]):
+        return "GENERATE_BLUEPRINT"
     if any(w in p for w in ["gsc", "golden screen cinema", "cinema app", "movie tickets"]):
         return "GSC_APP"
     if any(w in p for w in ["open spotify", "connect spotify", "launch spotify"]):
@@ -520,10 +577,14 @@ def ask():
 
     inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
+    svg_blueprint = None
     google_maps_url = None
     action_type = None
 
-    if inferred_intent == "GSC_APP":
+    if inferred_intent == "GENERATE_BLUEPRINT":
+        reply, svg_blueprint = generate_technical_blueprint(user_prompt)
+
+    elif inferred_intent == "GSC_APP":
         action_type = "GSC_DISPATCH"
         reply = f"🎬 **GSC APP PROTOCOL LAUNCHED**\n\n• **Action**: Dispatching Golden Screen Cinemas App, {honorific}."
 
@@ -588,6 +649,7 @@ def ask():
         'response': clean_reply, 
         'raw_markdown': reply,
         'audio': has_audio,
+        'svg_blueprint': svg_blueprint,
         'google_maps_url': google_maps_url,
         'action_type': action_type
     })

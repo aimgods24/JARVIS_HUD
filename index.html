@@ -133,7 +133,7 @@
 
         <div class="hud-panel" id="terminalPanel" style="flex: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-evas">E.V.A.S.: Universal Workspace online. Type, speak, attach files, or request live Weather, Places, and GSC cinema bookings.</div>
+                <div class="msg-line msg-evas">E.V.A.S.: Universal Workspace online. Type, speak, attach files, request blueprints, or trigger travel recommendations.</div>
             </div>
         </div>
 
@@ -141,12 +141,12 @@
             <div class="panel-header">LIVE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 USER: <span id="currentUserTag">GUEST</span><br>
-                BUILD: 24.0.0-INTEGRATED<br>
+                BUILD: 25.0.0-BLUEPRINT-ENGINE<br>
                 GPS TELEMETRY: ACTIVE
             </div>
-            <button onclick="launchGSCApp()" style="margin-top:6px;">🎬 OPEN GSC APP</button>
+            <button onclick="sendCommandCustom('create blueprint schematic for titanium frame')" style="margin-top:6px;">📐 DRAW BLUEPRINT</button>
+            <button onclick="launchGSCApp()" style="margin-top:4px;">🎬 OPEN GSC APP</button>
             <button onclick="sendCommandCustom('recommend places to visit and prices')" style="margin-top:4px;">🌍 PLACES & PRICES</button>
-            <button onclick="sendCommandCustom('weather telemetry')" style="margin-top:4px;">🌤️ LIVE WEATHER</button>
             <button onclick="openAuthHUD()" style="margin-top:4px;">🔑 LOGIN / REGISTER</button>
         </div>
     </div>
@@ -383,7 +383,7 @@
                 return res.json();
             })
             .then(data => {
-                appendMessage("E.V.A.S.:\n" + data.response, "msg-evas");
+                appendMessage("E.V.A.S.:\n" + data.response, "msg-evas", data.svg_blueprint);
                 if (data.action_type === "SPOTIFY_DISPATCH") {
                     launchSpotifyAppOrWeb();
                 } else if (data.action_type === "GSC_DISPATCH") {
@@ -397,11 +397,18 @@
             });
         }
 
-        function appendMessage(text, className) {
+        function appendMessage(text, className, svgContent = null) {
             const term = document.getElementById('chat-terminal');
             const div = document.createElement('div');
             div.className = "msg-line " + className;
             div.appendChild(document.createTextNode(text));
+            
+            if (svgContent) {
+                const svgContainer = document.createElement('div');
+                svgContainer.innerHTML = svgContent;
+                div.appendChild(svgContainer);
+            }
+
             term.appendChild(div);
             term.scrollTop = term.scrollHeight;
         }
