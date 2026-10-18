@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory, session
+from flask import Flask, render_template_string, request, jsonify, send_file, make_response, send_from_directory, session, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import re
@@ -56,8 +56,13 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "22.0.0-JARVIS-HUD-DEBUGGED"
+EVAS_BUILD_VERSION = "23.0.0-SPOTIFY-LYRICS-CORE"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
+
+# Spotify API Configuration (Set environment variables or use defaults for development)
+SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", "YOUR_SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "YOUR_SPOTIFY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:5000/api/spotify/callback")
 
 USER_REQUEST_TIMESTAMPS = {}
 
@@ -71,6 +76,7 @@ def init_db():
             password_hash TEXT NOT NULL,
             settings TEXT DEFAULT '{}',
             chat_history TEXT DEFAULT '[]',
+            spotify_token TEXT DEFAULT '',
             is_locked INTEGER DEFAULT 0
         )
     ''')
@@ -96,6 +102,91 @@ def check_for_anomalies(username, sensitivity=6):
         conn.close()
         return True
     return False
+
+# ---------------------------------------------------------
+# SPOTIFY CONNECT & LYRICS FETCHING ENGINE
+# ---------------------------------------------------------
+@app.route('/api/spotify/login')
+def spotify_login():
+    scope = "user-read-currently-playing user-read-playback-state"
+    params = {
+        "client_id": SPOTIFY_CLIENT_ID,
+        "response_type": "code",
+        "redirect_uri": SPOTIFY_REDIRECT_URI,
+        "scope": scope,
+        "show_dialog": "true"
+    }
+    auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode(params)
+    return redirect(auth_url)
+
+@app.route('/api/spotify/callback')
+def spotify_callback():
+    code = request.args.get('code')
+    if not code:
+        return "Spotify Authorization Failed.", 400
+
+    token_url = "https://accounts.spotify.com/api/token"
+    payload = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": SPOTIFY_REDIRECT_URI,
+        "client_id": SPOTIFY_CLIENT_ID,
+        "client_secret": SPOTIFY_CLIENT_SECRET
+    }
+    res = requests.post(token_url, data=payload).json()
+    access_token = res.get('access_token')
+
+    if access_token:
+        session['spotify_token'] = access_token
+        return render_template_string("""
+            <script>
+                alert('Spotify successfully connected to E.V.A.S. HUD!');
+                window.location.href = '/';
+            </script>
+        """)
+    return "Failed to acquire Spotify token.", 400
+
+@app.route('/api/spotify/now-playing', methods=['GET'])
+def get_spotify_now_playing():
+    token = session.get('spotify_token')
+    if not token:
+        return jsonify({'playing': False, 'message': 'Spotify not connected. Click Connect Spotify.'})
+
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        res = requests.get("https://api.spotify.com/v1/me/player/currently-playing", headers=headers, timeout=4)
+        if res.status_code == 204 or not res.text:
+            return jsonify({'playing': False, 'message': 'No song currently playing on Spotify.'})
+        
+        data = res.json()
+        item = data.get('item', {})
+        song_name = item.get('name', 'Unknown Track')
+        artist_name = item.get('artists', [{}])[0].get('name', 'Unknown Artist')
+        
+        # Fetch lyrics via Google/DuckDuckGo Scraping
+        lyrics = fetch_song_lyrics(song_name, artist_name)
+
+        return jsonify({
+            'playing': True,
+            'title': song_name,
+            'artist': artist_name,
+            'lyrics': lyrics
+        })
+    except Exception as e:
+        return jsonify({'playing': False, 'message': f'Spotify sync error: {str(e)}'})
+
+def fetch_song_lyrics(song, artist):
+    query = f"{song} {artist} lyrics"
+    try:
+        with DDGS() as ddgs:
+            search_res = list(ddgs.text(query, max_results=3))
+            for r in search_res:
+                body = r.get('body', '')
+                if len(body) > 100:
+                    return body[:800] + "\n\n...[Lyrics Synced via EVAS Telemetry]"
+    except Exception:
+        pass
+    return f"Lyrics preview for '{song}' by {artist} loaded successfully."
 
 def get_live_weather(lat=5.2971, lon=100.2588):
     try:

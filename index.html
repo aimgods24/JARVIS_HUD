@@ -121,9 +121,12 @@
 
             <div class="panel-header" style="margin-top:6px;">🎵 SPOTIFY JAM MODE</div>
             <div style="font-size: 0.68rem; background:rgba(0,0,0,0.5); padding:6px; border-radius:4px;">
-                <div id="jamSongTitle">Track: Standing By...</div>
-                <div id="jamSongArtist">Artist: Connect Spotify</div>
-                <button style="width:100%; margin-top:4px;" onclick="syncSpotifyJam()">🔄 SYNC JAM LYRICS</button>
+                <div id="jamSongTitle">Track: Connect Spotify</div>
+                <div id="jamSongArtist">Artist: Idle</div>
+                <div style="display:flex; gap:4px; margin-top:4px;">
+                    <a href="/api/spotify/login" style="flex:1; text-align:center; text-decoration:none;" class="button-link"><button style="width:100%;">🟢 CONNECT SPOTIFY</button></a>
+                    <button style="flex:1;" onclick="syncSpotifyJam()">🔄 SYNC LYRICS</button>
+                </div>
             </div>
         </div>
 
@@ -137,7 +140,7 @@
             <div class="panel-header">LIVE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 USER: <span id="currentUserTag">GUEST</span><br>
-                BUILD: 22.0.0-DEBUGGED<br>
+                BUILD: 23.0.0-SPOTIFY-CORE<br>
                 GPS TELEMETRY: ACTIVE
             </div>
             <button onclick="sendCommandCustom('weather telemetry')" style="margin-top:6px;">🌤️ LIVE WEATHER</button>
@@ -211,17 +214,13 @@
             navigator.geolocation.getCurrentPosition(
                 pos => { userLat = pos.coords.latitude; userLon = pos.coords.longitude; },
                 err => console.log("GPS Telemetry optional"),
-                { enableHighAccuracy: true, timeout: 5000 }
+                { enableHighAccuracy: false, timeout: 3000 }
             );
         }
 
         function unlockAudioContext() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
         function handleKeyPress(e) {
@@ -280,12 +279,22 @@
 
         function syncSpotifyJam() {
             unlockAudioContext();
-            document.getElementById('jamSongTitle').innerText = "Track: Synchronizing...";
-            setTimeout(() => {
-                document.getElementById('jamSongTitle').innerText = "Track: Midnight City";
-                document.getElementById('jamSongArtist').innerText = "Artist: M83 [Lyrics Synced]";
-                appendMessage("E.V.A.S.: 🎵 [JAM MODE ACTIVE] Lyrics loaded for 'Midnight City' by M83.", "msg-evas");
-            }, 1000);
+            document.getElementById('jamSongTitle').innerText = "Track: Checking Spotify...";
+            fetch('/api/spotify/now-playing')
+            .then(res => res.json())
+            .then(data => {
+                if (data.playing) {
+                    document.getElementById('jamSongTitle').innerText = "Track: " + data.title;
+                    document.getElementById('jamSongArtist').innerText = "Artist: " + data.artist;
+                    appendMessage(`E.V.A.S.: 🎵 [JAM MODE ACTIVE] Currently Playing: "${data.title}" by ${data.artist}.\n\n📄 LYRICS TELEMETRY:\n${data.lyrics}`, "msg-evas");
+                } else {
+                    document.getElementById('jamSongTitle').innerText = "Track: No Active Player";
+                    appendMessage("E.V.A.S.: " + data.message, "msg-evas");
+                }
+            })
+            .catch(err => {
+                appendMessage("E.V.A.S.: Failed to reach Spotify service.", "msg-evas");
+            });
         }
 
         function routeAudioOutput(deviceId) {
@@ -353,6 +362,9 @@
                 appendMessage("E.V.A.S.:\n" + data.response, "msg-evas");
                 if (data.google_maps_url) window.open(data.google_maps_url, '_blank');
                 if (data.audio) playEvasVoice();
+            })
+            .catch(err => {
+                appendMessage("E.V.A.S.: Telemetry communication error.", "msg-evas");
             });
         }
 
