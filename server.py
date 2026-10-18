@@ -56,10 +56,9 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "23.0.0-SPOTIFY-LYRICS-CORE"
+EVAS_BUILD_VERSION = "24.0.0-EVERYTHING-INTEGRATED-HUD"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
-# Spotify API Configuration (Set environment variables or use defaults for development)
 SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", "YOUR_SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "YOUR_SPOTIFY_CLIENT_SECRET")
 SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:5000/api/spotify/callback")
@@ -104,7 +103,7 @@ def check_for_anomalies(username, sensitivity=6):
     return False
 
 # ---------------------------------------------------------
-# SPOTIFY CONNECT & LYRICS FETCHING ENGINE
+# SPOTIFY OAUTH & PLAYER ENGINE
 # ---------------------------------------------------------
 @app.route('/api/spotify/login')
 def spotify_login():
@@ -162,8 +161,6 @@ def get_spotify_now_playing():
         item = data.get('item', {})
         song_name = item.get('name', 'Unknown Track')
         artist_name = item.get('artists', [{}])[0].get('name', 'Unknown Artist')
-        
-        # Fetch lyrics via Google/DuckDuckGo Scraping
         lyrics = fetch_song_lyrics(song_name, artist_name)
 
         return jsonify({
@@ -188,6 +185,48 @@ def fetch_song_lyrics(song, artist):
         pass
     return f"Lyrics preview for '{song}' by {artist} loaded successfully."
 
+# ---------------------------------------------------------
+# LOCATION RECOMMENDATIONS WITH ESTIMATED PRICING
+# ---------------------------------------------------------
+def get_location_recommendations_with_prices(prompt, lat=5.2971, lon=100.2588):
+    try:
+        geo_url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
+        headers = {"User-Agent": "EVAS_HUD_System/1.0"}
+        geo_res = requests.get(geo_url, headers=headers, timeout=4).json()
+        
+        address = geo_res.get('address', {})
+        city = address.get('city') or address.get('town') or address.get('state') or "Penang"
+        country = address.get('country', 'Malaysia')
+    except Exception:
+        city = "Penang"
+        country = "Malaysia"
+
+    if country == "Malaysia":
+        places = [
+            {"name": f"{city} Cultural Heritage Street / UNESCO Zone", "price": "FREE Entry (Street Dining: RM 10 – RM 30)"},
+            {"name": "Scenic Hill / Cable Car Tram Station", "price": "RM 12 – RM 30 (Local Standard Rate)"},
+            {"name": "Popular Local Night Market", "price": "FREE Admission (Food Snacks: RM 5 – RM 20)"},
+            {"name": "Coastal Waterfront Esplanade", "price": "FREE Entry"}
+        ]
+        dos_and_donts = "• **DO**: Try local hawker food and respect religious heritage sites.\n• **DON'T**: Litter or disrespect local traditions."
+    else:
+        places = [
+            {"name": f"{city} Downtown Square & Historic Quarter", "price": "FREE Entry"},
+            {"name": "City Landmark Observatory / Museum", "price": "$10 – $25 USD"},
+            {"name": "Central Market & Artisanal Stalls", "price": "FREE Entry"}
+        ]
+        dos_and_donts = "• **DO**: Carry standard ID and adhere to local municipal laws.\n• **DON'T**: Ignore safety signs near restricted areas."
+
+    places_text = "\n".join([f"• **{p['name']}**: `Estimated Price: {p['price']}`" for p in places])
+
+    return (
+        f"🌍 **EVAS LOCATION & TRAVEL RECOMMENDATIONS (DETECTED: {city.upper()}, {country.upper()})**\n\n"
+        f"📍 **RECOMMENDED PLACES TO VISIT & ENTRY PRICES**:\n{places_text}\n\n"
+        f"⏰ **Best Visiting Hours**: Morning (08:00–11:00) & Evening (17:30–20:30)\n"
+        f"⚠️ **Times to Avoid**: Peak afternoon heat (12:00–15:00)\n\n"
+        f"📜 **REGIONAL GUIDELINES ({country.upper()})**:\n{dos_and_donts}"
+    )
+
 def get_live_weather(lat=5.2971, lon=100.2588):
     try:
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m,weather_code&daily=sunrise,sunset&timezone=auto"
@@ -210,37 +249,6 @@ def get_live_weather(lat=5.2971, lon=100.2588):
         )
     except Exception as e:
         return f"Weather telemetry request failed: {e}"
-
-def get_travel_recommendations(prompt, lat=5.2971, lon=100.2588):
-    try:
-        geo_url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
-        headers = {"User-Agent": "EVAS_HUD_System/1.0"}
-        geo_res = requests.get(geo_url, headers=headers, timeout=4).json()
-        
-        address = geo_res.get('address', {})
-        city = address.get('city') or address.get('town') or address.get('state') or "Location"
-        country = address.get('country', 'Malaysia')
-    except Exception:
-        city = "Penang"
-        country = "Malaysia"
-
-    dos_and_donts = (
-        f"• **DO**: Respect local customs, dress modestly at religious sites, and try famous street delicacies.\n"
-        f"• **DON'T**: Disrespect local heritage, litter, or ignore safety warnings near beaches/highways."
-    ) if country == "Malaysia" else (
-        f"• **DO**: Follow regional laws, carry ID copies, and tip according to local standards.\n"
-        f"• **DON'T**: Engage in unpermitted photography near official structures."
-    )
-
-    return (
-        f"🌍 **EVAS GLOBAL TRAVEL PROTOCOL (DETECTED: {city.upper()}, {country.upper()})**\n\n"
-        f"📍 **Top Places to Visit**: Historical UNESCO heritage sites, local beachfronts, and night markets.\n"
-        f"🍲 **Recommended Gastronomy**: Signature regional dishes, street food, and artisanal brews.\n"
-        f"⏰ **Optimal Visiting Window**: Morning (08:00–11:00) & Dusk (17:30–20:00) for ideal climate.\n"
-        f"⚠️ **Times to Avoid**: Peak midday heat (12:00–15:00) & heavy rush-hour traffic.\n"
-        f"🏛️ **Brief Overview**: {city} is a vibrant cultural hub renowned for its culinary scene and architecture.\n\n"
-        f"📜 **REGIONAL CULTURAL GUIDELINES ({country.upper()})**:\n{dos_and_donts}"
-    )
 
 def process_and_analyze_attachment(file_b64, file_type=""):
     if not file_b64:
@@ -282,14 +290,18 @@ def process_and_analyze_attachment(file_b64, file_type=""):
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
+    if any(w in p for w in ["gsc", "golden screen cinema", "cinema app", "movie tickets"]):
+        return "GSC_APP"
+    if any(w in p for w in ["open spotify", "connect spotify", "launch spotify"]):
+        return "OPEN_SPOTIFY"
     if any(w in p for w in ["directions to", "route to", "navigate to", "map to", "take me to", "go to"]):
         return "DIRECTIONS"
     if any(w in p for w in ["speed test", "wifi speed", "connection speed"]):
         return "RUN_SPEEDTEST"
     if any(w in p for w in ["weather", "temperature", "sunrise", "sunset", "wind speed"]):
         return "WEATHER"
-    if any(w in p for w in ["travel", "places to visit", "food to eat", "do's and don'ts"]):
-        return "TRAVEL"
+    if any(w in p for w in ["recommend", "places to visit", "how much", "price", "entry fee", "travel"]):
+        return "PLACES_RECOMMENDATION"
     return "UNIVERSAL_EXECUTION"
 
 def perform_google_search(query):
@@ -509,16 +521,28 @@ def ask():
     inferred_intent = parse_contextual_intent(user_prompt)
     reply = None
     google_maps_url = None
+    action_type = None
 
-    if inferred_intent == "WEATHER":
+    if inferred_intent == "GSC_APP":
+        action_type = "GSC_DISPATCH"
+        reply = f"🎬 **GSC APP PROTOCOL LAUNCHED**\n\n• **Action**: Dispatching Golden Screen Cinemas App, {honorific}."
+
+    elif inferred_intent == "OPEN_SPOTIFY":
+        action_type = "SPOTIFY_DISPATCH"
+        reply = f"🎵 **SPOTIFY DISPATCH PROTOCOL LAUNCHED**\n\n• **Action**: Opening Spotify player, {honorific}."
+
+    elif inferred_intent == "WEATHER":
         reply = get_live_weather(lat, lon)
-    elif inferred_intent == "TRAVEL":
-        reply = get_travel_recommendations(user_prompt, lat, lon)
+
+    elif inferred_intent == "PLACES_RECOMMENDATION":
+        reply = get_location_recommendations_with_prices(user_prompt, lat, lon)
+
     elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|route to|navigate to|map to|take me to|go to', '', user_prompt, flags=re.IGNORECASE).strip() or "Penang Hill, Malaysia"
         encoded_dest = urllib.parse.quote(destination)
         google_maps_url = f"https://www.google.com/maps/dir/?api=1&origin={lat},{lon}&destination={encoded_dest}&travelmode=driving"
         reply = f"🗺️ **GOOGLE MAPS NAVIGATION DISPATCHED**\n\n• **Destination**: `{destination}`\n• **Status**: Direct routing mode active, {honorific}."
+
     elif inferred_intent == "RUN_SPEEDTEST":
         reply = run_network_speedtest()
 
@@ -564,7 +588,8 @@ def ask():
         'response': clean_reply, 
         'raw_markdown': reply,
         'audio': has_audio,
-        'google_maps_url': google_maps_url
+        'google_maps_url': google_maps_url,
+        'action_type': action_type
     })
 
 @app.route('/api/audio')

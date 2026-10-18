@@ -124,15 +124,16 @@
                 <div id="jamSongTitle">Track: Connect Spotify</div>
                 <div id="jamSongArtist">Artist: Idle</div>
                 <div style="display:flex; gap:4px; margin-top:4px;">
-                    <a href="/api/spotify/login" style="flex:1; text-align:center; text-decoration:none;" class="button-link"><button style="width:100%;">🟢 CONNECT SPOTIFY</button></a>
-                    <button style="flex:1;" onclick="syncSpotifyJam()">🔄 SYNC LYRICS</button>
+                    <a href="/api/spotify/login" style="flex:1; text-align:center; text-decoration:none;"><button style="width:100%;">🟢 CONNECT</button></a>
+                    <button style="flex:1;" onclick="launchSpotifyAppOrWeb()">🎧 OPEN APP</button>
+                    <button style="flex:1;" onclick="syncSpotifyJam()">🔄 SYNC</button>
                 </div>
             </div>
         </div>
 
         <div class="hud-panel" id="terminalPanel" style="flex: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-evas">E.V.A.S.: Universal Workspace online. Type, speak, attach files, or request live Weather and Travel recommendations.</div>
+                <div class="msg-line msg-evas">E.V.A.S.: Universal Workspace online. Type, speak, attach files, or request live Weather, Places, and GSC cinema bookings.</div>
             </div>
         </div>
 
@@ -140,11 +141,12 @@
             <div class="panel-header">LIVE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 USER: <span id="currentUserTag">GUEST</span><br>
-                BUILD: 23.0.0-SPOTIFY-CORE<br>
+                BUILD: 24.0.0-INTEGRATED<br>
                 GPS TELEMETRY: ACTIVE
             </div>
-            <button onclick="sendCommandCustom('weather telemetry')" style="margin-top:6px;">🌤️ LIVE WEATHER</button>
-            <button onclick="sendCommandCustom('travel protocol')" style="margin-top:4px;">🌍 TRAVEL MODE</button>
+            <button onclick="launchGSCApp()" style="margin-top:6px;">🎬 OPEN GSC APP</button>
+            <button onclick="sendCommandCustom('recommend places to visit and prices')" style="margin-top:4px;">🌍 PLACES & PRICES</button>
+            <button onclick="sendCommandCustom('weather telemetry')" style="margin-top:4px;">🌤️ LIVE WEATHER</button>
             <button onclick="openAuthHUD()" style="margin-top:4px;">🔑 LOGIN / REGISTER</button>
         </div>
     </div>
@@ -216,6 +218,28 @@
                 err => console.log("GPS Telemetry optional"),
                 { enableHighAccuracy: false, timeout: 3000 }
             );
+        }
+
+        function launchSpotifyAppOrWeb() {
+            unlockAudioContext();
+            const start = Date.now();
+            window.location.href = "spotify://";
+            setTimeout(() => {
+                if (Date.now() - start < 1500) {
+                    window.open("https://open.spotify.com", "_blank");
+                }
+            }, 1200);
+        }
+
+        function launchGSCApp() {
+            unlockAudioContext();
+            const start = Date.now();
+            window.location.href = "gsc://";
+            setTimeout(() => {
+                if (Date.now() - start < 1500) {
+                    window.open("https://www.gsc.com.my", "_blank");
+                }
+            }, 1200);
         }
 
         function unlockAudioContext() {
@@ -360,6 +384,11 @@
             })
             .then(data => {
                 appendMessage("E.V.A.S.:\n" + data.response, "msg-evas");
+                if (data.action_type === "SPOTIFY_DISPATCH") {
+                    launchSpotifyAppOrWeb();
+                } else if (data.action_type === "GSC_DISPATCH") {
+                    launchGSCApp();
+                }
                 if (data.google_maps_url) window.open(data.google_maps_url, '_blank');
                 if (data.audio) playEvasVoice();
             })
