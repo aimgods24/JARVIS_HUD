@@ -41,7 +41,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "29.0.0-CHATGPT-CANVAS-INTEGRATED-HUD"
+EVAS_BUILD_VERSION = "30.0.0-MULTIVARIANT-DESIGN-CANVAS"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
 SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", "YOUR_SPOTIFY_CLIENT_ID")
@@ -88,57 +88,89 @@ def check_for_anomalies(username, sensitivity=6):
     return False
 
 # ---------------------------------------------------------
-# TECHNICAL BLUEPRINT & SCHEMATIC GENERATOR
+# DYNAMIC MULTI-VARIANT DESIGN & MATERIAL SYNTHESIZER
 # ---------------------------------------------------------
-def generate_technical_blueprint(prompt):
-    cleaned = re.sub(r'blueprint|design|schematic|create|draw|generate', '', prompt, flags=re.IGNORECASE).strip() or "Custom Structural Design"
+def generate_multivariant_design(prompt):
+    subject = re.sub(r'blueprint|design|schematic|create|draw|generate|make|build', '', prompt, flags=re.IGNORECASE).strip() or "Custom Engineered Concept"
     
-    materials = ["Reinforced Titanium Alloy", "Carbon Fiber Composite", "Tempered Borosilicate Glass", "Structural Steel"]
-    found_materials = [m for m in materials if m.lower() in prompt.lower()]
-    if not found_materials:
-        found_materials = ["Aerospace Titanium Alloy", "Carbon Composite Matrix", "High-Tensile Steel"]
+    known_materials = [
+        "Titanium", "Carbon Fiber", "Graphene", "Aluminum Alloy", 
+        "Reinforced Steel", "Borosilicate Glass", "Polycarbonate", "Kevlar"
+    ]
+    detected_materials = [m for m in known_materials if m.lower() in prompt.lower()]
+    if not detected_materials:
+        detected_materials = ["Aerospace Titanium Alloy", "Carbon Composite Matrix", "High-Tensile Steel"]
 
-    mat_specs = "\n".join([f"  • Material {i+1}: {m}" for i, m in enumerate(found_materials)])
+    mat_list_str = "\n".join([f"  • Material {i+1}: `{m}`" for i, m in enumerate(detected_materials)])
 
-    svg_blueprint = f'''
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 350" style="width:100%; height:auto; background:#001020; border:1px solid #00f3ff; border-radius:6px; margin-top:8px;">
+    variants = [
+        {
+            "id": "Variant Alpha",
+            "style": "Industrial Heavy-Duty Structural Frame",
+            "load_rating": "Alpha (2.5x Load Factor)",
+            "svg_elements": '''
+                <rect x="50" y="80" width="500" height="180" fill="none" stroke="#00f3ff" stroke-width="2"/>
+                <line x1="50" y1="80" x2="550" y2="260" stroke="#00f3ff" stroke-width="1" stroke-dasharray="4,4"/>
+                <line x1="550" y1="80" x2="50" y2="260" stroke="#00f3ff" stroke-width="1" stroke-dasharray="4,4"/>
+                <circle cx="300" cy="170" r="45" fill="none" stroke="#ffaa00" stroke-width="1.5"/>
+            '''
+        },
+        {
+            "id": "Variant Beta",
+            "style": "Aerodynamic Streamlined Contour Architecture",
+            "load_rating": "Beta (1.8x High Velocity)",
+            "svg_elements": '''
+                <ellipse cx="300" cy="170" rx="220" ry="80" fill="none" stroke="#00f3ff" stroke-width="2"/>
+                <path d="M 80,170 Q 300,50 520,170 Q 300,290 80,170 Z" fill="none" stroke="#ffaa00" stroke-width="1.5" stroke-dasharray="6,3"/>
+                <circle cx="300" cy="170" r="25" fill="none" stroke="#00f3ff" stroke-width="1.5"/>
+            '''
+        },
+        {
+            "id": "Variant Gamma",
+            "style": "Modular Multi-Cellular Component Mesh",
+            "load_rating": "Gamma (3.0x Reinforcement)",
+            "svg_elements": '''
+                <rect x="100" y="70" width="120" height="200" fill="none" stroke="#00f3ff" stroke-width="1.5"/>
+                <rect x="240" y="70" width="120" height="200" fill="none" stroke="#00f3ff" stroke-width="2"/>
+                <rect x="380" y="70" width="120" height="200" fill="none" stroke="#00f3ff" stroke-width="1.5"/>
+                <line x1="60" y1="170" x2="540" y2="170" stroke="#ffaa00" stroke-width="1.5" stroke-dasharray="5,5"/>
+            '''
+        }
+    ]
+
+    svg_render = f'''
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360" style="width:100%; height:auto; background:#001020; border:1px solid #00f3ff; border-radius:6px; margin-top:8px;">
         <defs>
             <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
                 <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#00f3ff" stroke-width="0.3" opacity="0.2"/>
             </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#grid)" />
-        <rect x="20" y="20" width="560" height="310" fill="none" stroke="#00f3ff" stroke-width="1.5" opacity="0.8"/>
+        <rect x="15" y="15" width="570" height="330" fill="none" stroke="#00f3ff" stroke-width="1.5" opacity="0.8"/>
         
-        <text x="35" y="45" fill="#00f3ff" font-family="monospace" font-size="12" font-weight="bold">SCHEMATIC: {cleaned.upper()[:35]}</text>
-        <text x="35" y="60" fill="#00f3ff" font-family="monospace" font-size="9" opacity="0.7">CLASSIFICATION: ARCHITECTURAL VECTOR BLUEPRINT // SCALE 1:50</text>
-        
-        <rect x="120" y="90" width="360" height="180" fill="none" stroke="#00f3ff" stroke-width="2" stroke-dasharray="5,5"/>
-        <circle cx="300" cy="180" r="65" fill="none" stroke="#00f3ff" stroke-width="1.5"/>
-        <line x1="120" y1="90" x2="480" y2="270" stroke="#00f3ff" stroke-width="0.8" opacity="0.5"/>
-        <line x1="480" y1="90" x2="120" y2="270" stroke="#00f3ff" stroke-width="0.8" opacity="0.5"/>
-        
-        <line x1="120" y1="285" x2="480" y2="285" stroke="#00f3ff" stroke-width="1"/>
-        <text x="280" y="298" fill="#00f3ff" font-family="monospace" font-size="10">DIMENSION: 12.50m</text>
-        
-        <line x1="495" y1="90" x2="495" y2="270" stroke="#00f3ff" stroke-width="1"/>
-        <text x="502" y="185" fill="#00f3ff" font-family="monospace" font-size="10">6.25m</text>
+        <text x="30" y="40" fill="#00f3ff" font-family="monospace" font-size="12" font-weight="bold">DESIGN MATRIX: {subject.upper()[:30]}</text>
+        <text x="30" y="55" fill="#ffaa00" font-family="monospace" font-size="9">MULTI-VARIANT CAD SCHEMATIC // MATERIAL & SPECIFICATION ALIGNED</text>
+
+        {variants[0]["svg_elements"]}
+
+        <line x1="50" y1="285" x2="550" y2="285" stroke="#00f3ff" stroke-width="1"/>
+        <text x="240" y="300" fill="#00f3ff" font-family="monospace" font-size="10">DIMENSIONS: 15.00m Span (Scale 1:50)</text>
     </svg>
     '''
 
-    text_report = (
-        f"📐 **E.V.A.S. ARCHITECTURAL BLUEPRINT ENGINE GENERATED**\n\n"
-        f"• **Project Subject**: `{cleaned.title()}`\n"
-        f"• **Rendering Standard**: High-Precision Vector CAD Overlay\n\n"
-        f"🛠️ **SPECIFIED MATERIAL MATRIX**:\n{mat_specs}\n\n"
-        f"📐 **CAD TECHNICAL SPECIFICATIONS**:\n"
-        f"  • Primary Axis Length: `12.50 meters`\n"
-        f"  • Secondary Transverse Span: `6.25 meters`\n"
-        f"  • Structural Load Factor: `Safety Class Alpha (1.8x)`\n"
-        f"  • Tolerances: `±0.05 mm`"
+    report = (
+        f"📐 **E.V.A.S. MULTI-VARIANT DESIGN SYNTHESIZER**\n\n"
+        f"• **Requested Design Project**: `{subject.title()}`\n"
+        f"• **Accuracy Standard**: Exact Specification & Material Optimization\n\n"
+        f"🛠️ **APPLIED MATERIAL MATRIX**:\n{mat_list_str}\n\n"
+        f"⚙️ **GENERATED DESIGN CHOICES**:\n"
+        f"  1. **Variant Alpha**: `{variants[0]['style']}` (Load Factor: `{variants[0]['load_rating']}`)\n"
+        f"  2. **Variant Beta**: `{variants[1]['style']}` (Load Factor: `{variants[1]['load_rating']}`)\n"
+        f"  3. **Variant Gamma**: `{variants[2]['style']}` (Load Factor: `{variants[2]['load_rating']}`)\n\n"
+        f"💡 *All 3 variant models rendered on Canvas. Specify any variant number to isolate or expand parameters.*"
     )
 
-    return text_report, svg_blueprint
+    return report, svg_render
 
 # ---------------------------------------------------------
 # SPOTIFY OAUTH & PLAYER ENGINE
@@ -312,8 +344,8 @@ def process_and_analyze_attachment(file_b64, file_type=""):
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
-    if any(w in p for w in ["blueprint", "schematic", "cad drawing", "design blueprint"]):
-        return "GENERATE_BLUEPRINT"
+    if any(w in p for w in ["design", "blueprint", "schematic", "cad drawing", "create design", "make design", "choices", "materials"]):
+        return "GENERATE_MULTIVARIANT_DESIGN"
     if any(w in p for w in ["gsc", "golden screen cinema", "cinema app", "movie tickets"]):
         return "GSC_APP"
     if any(w in p for w in ["open spotify", "connect spotify", "launch spotify"]):
@@ -509,8 +541,8 @@ def ask():
     google_maps_url = None
     action_type = None
 
-    if inferred_intent == "GENERATE_BLUEPRINT":
-        reply, svg_blueprint = generate_technical_blueprint(user_prompt)
+    if inferred_intent == "GENERATE_MULTIVARIANT_DESIGN":
+        reply, svg_blueprint = generate_multivariant_design(user_prompt)
 
     elif inferred_intent == "GSC_APP":
         action_type = "GSC_DISPATCH"

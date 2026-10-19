@@ -118,7 +118,6 @@
     </div>
 
     <div class="hud-workspace">
-        <!-- Panel 1: Audio Core & Spotify -->
         <div class="hud-panel">
             <div class="panel-header">3D AUDIO-REACTIVE CORE (TAP ORB TO SPEAK)</div>
             <div class="core-orb-widget" onclick="activateVoiceMicrophoneEngine(event)">
@@ -147,7 +146,6 @@
             </div>
         </div>
 
-        <!-- Panel 2: Chat Terminal -->
         <div class="hud-panel" style="flex: 1;">
             <div class="panel-header">E.V.A.S. CHAT TERMINAL</div>
             <div id="chat-terminal">
@@ -155,23 +153,21 @@
             </div>
         </div>
 
-        <!-- Panel 3: ChatGPT Interactive Canvas Workspace -->
         <div class="hud-panel" style="flex: 1;">
             <div class="panel-header">📐 E.V.A.S. CANVAS & ARTIFACT WORKSPACE</div>
-            <div id="canvas-editor" contenteditable="true" placeholder="// Canvas Workspace active. Edit documents, code, or refined blueprints here...">// E.V.A.S. Canvas Editor Active
-// Send a request or select content to edit directly alongside chat...</div>
+            <div id="canvas-editor" contenteditable="true" placeholder="// Canvas Workspace active. Multi-variant blueprints render here dynamically...">// E.V.A.S. Canvas Editor Active
+// Request any design with materials to synthesize 3 CAD options dynamically...</div>
         </div>
 
-        <!-- Panel 4: Live Telemetry -->
         <div class="hud-panel">
             <div class="panel-header">LIVE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 USER: <span id="currentUserTag">GUEST</span><br>
-                BUILD: 29.0.0-CHATGPT-CANVAS<br>
+                BUILD: 30.0.0-MULTIVARIANT<br>
                 GPS TELEMETRY: ACTIVE
             </div>
             <button onclick="activateVoiceMicrophoneEngine()" style="margin-top:6px;">🎙️ TAP TO TALK</button>
-            <button onclick="sendCommandCustom('create blueprint schematic for titanium frame')" style="margin-top:4px;">📐 DRAW BLUEPRINT</button>
+            <button onclick="sendCommandCustom('design titanium and carbon fiber chassis with multiple choices')" style="margin-top:4px;">📐 MULTI-CHOICE DESIGN</button>
             <button onclick="launchGSCApp()" style="margin-top:4px;">🎬 OPEN GSC APP</button>
             <button onclick="sendCommandCustom('recommend places to visit and prices')" style="margin-top:4px;">🌍 PLACES & PRICES</button>
             <button onclick="openAuthHUD()" style="margin-top:4px;">🔑 LOGIN / REGISTER</button>
@@ -464,7 +460,6 @@
             .then(data => {
                 appendMessage("E.V.A.S.:\n" + data.response, "msg-evas", data.svg_blueprint);
                 
-                // Update ChatGPT Side-by-Side Canvas Workspace
                 document.getElementById('canvas-editor').innerText = data.response;
 
                 if (data.action_type === "SPOTIFY_DISPATCH") {
