@@ -23,7 +23,7 @@
         html, body {
             background-color: var(--hud-bg); color: var(--hud-cyan); font-family: var(--hud-font);
             margin: 0; padding: 6px; min-height: 100vh; min-height: 100dvh;
-            display: flex; flex-direction: column; overflow-x: hidden;
+            display: flex; flex-direction: column; overflow-x: hidden; touch-action: manipulation;
         }
 
         .hud-top-bar {
@@ -42,7 +42,11 @@
 
         .core-orb-widget {
             position: relative; width: 100%; height: 210px; display: flex; align-items: center; justify-content: center;
-            margin: 4px 0; border: 1px solid var(--hud-border); border-radius: 6px; background: rgba(0, 4, 10, 0.95); overflow: hidden; box-shadow: inset 0 0 15px var(--hud-glow);
+            margin: 4px 0; border: 1px solid var(--hud-border); border-radius: 6px; background: rgba(0, 4, 10, 0.95); overflow: hidden; box-shadow: inset 0 0 15px var(--hud-glow); cursor: pointer;
+        }
+
+        .hud-ring-overlay {
+            position: absolute; width: 100%; height: 100%; pointer-events: none; z-index: 2;
         }
 
         #webglCanvas { position: absolute; width: 100%; height: 100%; z-index: 1; }
@@ -89,7 +93,7 @@
         }
     </style>
 </head>
-<body>
+<body onclick="handleGlobalTouchTrigger(event)">
 
     <div id="securityLockOverlay">
         <div style="font-size: 3rem;">🔒</div>
@@ -111,8 +115,16 @@
 
     <div class="hud-workspace">
         <div class="hud-panel">
-            <div class="panel-header">3D AUDIO-REACTIVE CORE</div>
-            <div class="core-orb-widget">
+            <div class="panel-header">3D AUDIO-REACTIVE CORE (TAP ORB TO SPEAK)</div>
+            <div class="core-orb-widget" onclick="activateVoiceMicrophoneEngine(event)">
+                <svg class="hud-ring-overlay" viewBox="0 0 200 200">
+                    <!-- Concentric HUD Tech Arcs -->
+                    <circle cx="100" cy="100" r="90" fill="none" stroke="#ffaa00" stroke-width="1.5" stroke-dasharray="25, 10, 5, 10" opacity="0.85"/>
+                    <circle cx="100" cy="100" r="82" fill="none" stroke="#00f3ff" stroke-width="1" stroke-dasharray="60, 15, 30, 15" opacity="0.75"/>
+                    <circle cx="100" cy="100" r="72" fill="none" stroke="#00f3ff" stroke-width="2" stroke-dasharray="100, 20" opacity="0.9"/>
+                    <circle cx="100" cy="100" r="50" fill="none" stroke="#00f3ff" stroke-width="1" stroke-dasharray="4, 4" opacity="0.6"/>
+                    <circle cx="100" cy="100" r="35" fill="none" stroke="#ffaa00" stroke-width="1.5" stroke-dasharray="15, 8" opacity="0.8"/>
+                </svg>
                 <canvas id="webglCanvas"></canvas>
             </div>
             <div style="font-size: 0.68rem; margin-top: 2px;">
@@ -133,7 +145,7 @@
 
         <div class="hud-panel" id="terminalPanel" style="flex: 1;">
             <div id="chat-terminal">
-                <div class="msg-line msg-evas">E.V.A.S.: Universal Workspace online. Type, speak, attach files, request blueprints, or trigger travel recommendations.</div>
+                <div class="msg-line msg-evas">E.V.A.S.: Universal Workspace online. Double-tap screen or tap the 3D Orb to speak directly to E.V.A.S.</div>
             </div>
         </div>
 
@@ -141,10 +153,11 @@
             <div class="panel-header">LIVE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 USER: <span id="currentUserTag">GUEST</span><br>
-                BUILD: 25.0.0-BLUEPRINT-ENGINE<br>
+                BUILD: 27.0.0-GRAPHIC-HUD<br>
                 GPS TELEMETRY: ACTIVE
             </div>
-            <button onclick="sendCommandCustom('create blueprint schematic for titanium frame')" style="margin-top:6px;">📐 DRAW BLUEPRINT</button>
+            <button onclick="activateVoiceMicrophoneEngine()" style="margin-top:6px;">🎙️ TAP TO TALK</button>
+            <button onclick="sendCommandCustom('create blueprint schematic for titanium frame')" style="margin-top:4px;">📐 DRAW BLUEPRINT</button>
             <button onclick="launchGSCApp()" style="margin-top:4px;">🎬 OPEN GSC APP</button>
             <button onclick="sendCommandCustom('recommend places to visit and prices')" style="margin-top:4px;">🌍 PLACES & PRICES</button>
             <button onclick="openAuthHUD()" style="margin-top:4px;">🔑 LOGIN / REGISTER</button>
@@ -154,8 +167,9 @@
     <div class="hud-center-pill">
         <input type="file" id="fileAttachmentInput" style="display: none;" onchange="handleFileSelection(event)">
         <button onclick="document.getElementById('fileAttachmentInput').click()">📎</button>
+        <button onclick="activateVoiceMicrophoneEngine()">🎙️</button>
         <span id="filePreviewBadge" style="display:none; font-size:0.65rem;">📎 <span id="filePreviewName"></span></span>
-        <textarea id="userInput" placeholder="Ask E.V.A.S. or attach files..." onkeydown="handleKeyPress(event)"></textarea>
+        <textarea id="userInput" placeholder="Ask E.V.A.S. or tap orb to speak..." onkeydown="handleKeyPress(event)"></textarea>
         <button onclick="sendCommand()">SEND</button>
     </div>
 
@@ -209,6 +223,7 @@
         let currentAudio = null, audioCtx = null, analyser = null, audioSource = null;
         let pendingFileB64 = null, pendingFileType = "", userLat = 5.2971, userLon = 100.2588;
         let loggedInUser = localStorage.getItem('evas_username') || "guest";
+        let lastTapTime = 0, wakeLock = null;
 
         setInterval(() => { document.getElementById('liveClock').innerText = new Date().toTimeString().split(' ')[0]; }, 1000);
 
@@ -218,6 +233,57 @@
                 err => console.log("GPS Telemetry optional"),
                 { enableHighAccuracy: false, timeout: 3000 }
             );
+        }
+
+        async function requestScreenWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            } catch (err) {}
+        }
+
+        function handleGlobalTouchTrigger(e) {
+            const now = Date.now();
+            if (now - lastTapTime < 350) {
+                unlockAudioContext();
+                requestScreenWakeLock();
+                activateVoiceMicrophoneEngine();
+            }
+            lastTapTime = now;
+        }
+
+        function activateVoiceMicrophoneEngine(e) {
+            if (e) e.stopPropagation();
+            unlockAudioContext();
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                return alert("Speech recognition not supported on this browser version.");
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            document.getElementById('orbStateTag').innerText = "LISTENING...";
+            document.getElementById('orbStateTag').style.color = "#ff2200";
+
+            recognition.start();
+
+            recognition.onresult = (event) => {
+                const spokenText = event.results[0][0].transcript;
+                document.getElementById('userInput').value = spokenText;
+                document.getElementById('orbStateTag').innerText = "STANDBY";
+                document.getElementById('orbStateTag').style.color = "#00f3ff";
+                sendCommand();
+            };
+
+            recognition.onerror = () => {
+                document.getElementById('orbStateTag').innerText = "STANDBY";
+                document.getElementById('orbStateTag').style.color = "#00f3ff";
+            };
         }
 
         function launchSpotifyAppOrWeb() {
