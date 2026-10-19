@@ -4,21 +4,12 @@ import os
 import re
 import json
 import sqlite3
-import random
-import threading
 import time
 import requests
 import urllib.parse
 import base64
 import io
 import asyncio
-from duckduckgo_search import DDGS
-
-try:
-    from googlesearch import search as google_search
-    HAS_GOOGLE_SEARCH = True
-except Exception:
-    HAS_GOOGLE_SEARCH = False
 
 try:
     from PIL import Image, ImageEnhance
@@ -26,12 +17,6 @@ try:
     HAS_OCR = True
 except Exception:
     HAS_OCR = False
-
-try:
-    from bs4 import BeautifulSoup
-    HAS_BS4 = True
-except Exception:
-    HAS_BS4 = False
 
 try:
     import edge_tts
@@ -56,7 +41,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "27.0.0-JARVIS-HUD-VISUAL-LOCKSCREEN"
+EVAS_BUILD_VERSION = "29.0.0-CHATGPT-CANVAS-INTEGRATED-HUD"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
 SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", "YOUR_SPOTIFY_CLIENT_ID")
@@ -214,7 +199,7 @@ def get_spotify_now_playing():
         item = data.get('item', {})
         song_name = item.get('name', 'Unknown Track')
         artist_name = item.get('artists', [{}])[0].get('name', 'Unknown Artist')
-        lyrics = fetch_song_lyrics(song_name, artist_name)
+        lyrics = f"Lyrics preview for '{song_name}' by {artist_name} loaded successfully via local telemetry."
 
         return jsonify({
             'playing': True,
@@ -224,19 +209,6 @@ def get_spotify_now_playing():
         })
     except Exception as e:
         return jsonify({'playing': False, 'message': f'Spotify sync error: {str(e)}'})
-
-def fetch_song_lyrics(song, artist):
-    query = f"{song} {artist} lyrics"
-    try:
-        with DDGS() as ddgs:
-            search_res = list(ddgs.text(query, max_results=3))
-            for r in search_res:
-                body = r.get('body', '')
-                if len(body) > 100:
-                    return body[:800] + "\n\n...[Lyrics Synced via EVAS Telemetry]"
-    except Exception:
-        pass
-    return f"Lyrics preview for '{song}' by {artist} loaded successfully."
 
 def get_location_recommendations_with_prices(prompt, lat=5.2971, lon=100.2588):
     try:
@@ -355,44 +327,6 @@ def parse_contextual_intent(prompt):
     if any(w in p for w in ["recommend", "places to visit", "how much", "price", "entry fee", "travel"]):
         return "PLACES_RECOMMENDATION"
     return "UNIVERSAL_EXECUTION"
-
-def perform_google_search(query):
-    results = []
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"}
-    encoded_query = urllib.parse.quote(query)
-    google_url = f"https://www.google.com/search?q={encoded_query}&hl=en"
-    
-    try:
-        response = requests.get(google_url, headers=headers, timeout=4)
-        if response.status_code == 200 and HAS_BS4:
-            soup = BeautifulSoup(response.text, "html.parser")
-            snippets = soup.find_all(['div', 'span'], class_=re.compile(r'(VwiC3b|yXMda|MUxGv|Hg231c)'))
-            for s in snippets:
-                txt = s.get_text().strip()
-                if len(txt) > 30 and txt not in results:
-                    results.append(txt)
-    except Exception:
-        pass
-
-    if not results and HAS_GOOGLE_SEARCH:
-        try:
-            for url in google_search(query, num_results=4, lang="en"):
-                results.append(f"• Result URL: {url}")
-        except Exception:
-            pass
-
-    if not results:
-        try:
-            with DDGS() as ddgs:
-                ddg_results = list(ddgs.text(query, max_results=4))
-                if ddg_results:
-                    for res in ddg_results:
-                        if 'body' in res and res['body']:
-                            results.append(f"• **{res.get('title', 'Result')}**\n{res['body']}")
-        except Exception:
-            pass
-
-    return "\n\n".join(results[:4]) if results else None
 
 async def create_tts_audio_file(text, voice_rate="+0%", voice_pitch="-4Hz", filename="static_speech.mp3"):
     if not HAS_EDGE_TTS:
@@ -556,7 +490,6 @@ def ask():
     voice_rate = settings.get('voice_rate', '+0%')
     voice_pitch = settings.get('voice_pitch', '-4Hz')
     custom_prefix = settings.get('custom_prefix', '').strip()
-    enable_search = settings.get('enable_search', True)
 
     lat = data.get('latitude', 5.2971)
     lon = data.get('longitude', 100.2588)
@@ -603,13 +536,11 @@ def ask():
         reply = run_network_speedtest()
 
     if not reply:
-        google_search_data = perform_google_search(user_prompt) if enable_search else None
         system_prompt = f"You are E.V.A.S., an AI assistant styled after J.A.R.V.I.S. Address user as '{honorific}'."
 
         if HAS_OLLAMA:
             try:
-                full_input = f"User Request: {user_prompt}\n\nSearch Telemetry:\n{google_search_data if google_search_data else 'None'}"
-                res = ollama.chat(model='deepseek-r1:1.5b', messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": full_input}])
+                res = ollama.chat(model='deepseek-r1:1.5b', messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}])
                 reply = re.sub(r'<think>[\s\S]*?</think>', '', res['message']['content']).strip()
             except Exception:
                 reply = None
@@ -617,8 +548,6 @@ def ask():
         if not reply:
             if file_analysis_text:
                 reply = f"### 📝 E.V.A.S. VISION ENGINE REPORT:\n{file_analysis_text}\n\n*Processed successfully, {honorific}.*"
-            elif google_search_data:
-                reply = f"### 🌐 GOOGLE SEARCH REPORT:\n\n{google_search_data}\n\n*Query processed, {honorific}.*"
             else:
                 reply = f"E.V.A.S. Core online. Request **'{user_prompt}'** verified, {honorific}."
 

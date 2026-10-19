@@ -33,7 +33,7 @@
         }
 
         .hud-workspace {
-            display: grid; grid-template-columns: 320px 1fr 280px; gap: 8px; flex: 1; overflow: hidden; margin-top: 6px; padding-bottom: 80px;
+            display: grid; grid-template-columns: 280px 1fr 1fr 240px; gap: 8px; flex: 1; overflow: hidden; margin-top: 6px; padding-bottom: 80px;
         }
 
         .hud-panel {
@@ -41,7 +41,7 @@
         }
 
         .core-orb-widget {
-            position: relative; width: 100%; height: 210px; display: flex; align-items: center; justify-content: center;
+            position: relative; width: 100%; height: 180px; display: flex; align-items: center; justify-content: center;
             margin: 4px 0; border: 1px solid var(--hud-border); border-radius: 6px; background: rgba(0, 4, 10, 0.95); overflow: hidden; box-shadow: inset 0 0 15px var(--hud-glow); cursor: pointer;
         }
 
@@ -53,13 +53,17 @@
 
         .panel-header { font-size: 0.65rem; font-weight: bold; opacity: 0.8; border-bottom: 1px dashed var(--hud-border); padding-bottom: 3px; }
 
-        @media (max-width: 850px) {
+        @media (max-width: 1050px) {
             .hud-workspace { display: flex; flex-direction: column; padding-bottom: 85px; }
             .hud-panel { width: 100%; }
         }
 
         #chat-terminal {
             flex: 1; background: rgba(0, 0, 0, 0.85); border: 1px solid var(--hud-border); border-radius: 4px; padding: 10px; min-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+        }
+
+        #canvas-editor {
+            flex: 1; background: rgba(0, 8, 18, 0.95); border: 1px solid var(--hud-cyan); border-radius: 4px; padding: 10px; color: #fff; font-family: monospace; font-size: 0.8rem; overflow-y: auto; white-space: pre-wrap; outline: none;
         }
 
         .msg-line { line-height: 1.4; font-size: 0.82rem; word-break: break-word; white-space: pre-wrap; }
@@ -114,11 +118,11 @@
     </div>
 
     <div class="hud-workspace">
+        <!-- Panel 1: Audio Core & Spotify -->
         <div class="hud-panel">
             <div class="panel-header">3D AUDIO-REACTIVE CORE (TAP ORB TO SPEAK)</div>
             <div class="core-orb-widget" onclick="activateVoiceMicrophoneEngine(event)">
                 <svg class="hud-ring-overlay" viewBox="0 0 200 200">
-                    <!-- Concentric HUD Tech Arcs -->
                     <circle cx="100" cy="100" r="90" fill="none" stroke="#ffaa00" stroke-width="1.5" stroke-dasharray="25, 10, 5, 10" opacity="0.85"/>
                     <circle cx="100" cy="100" r="82" fill="none" stroke="#00f3ff" stroke-width="1" stroke-dasharray="60, 15, 30, 15" opacity="0.75"/>
                     <circle cx="100" cy="100" r="72" fill="none" stroke="#00f3ff" stroke-width="2" stroke-dasharray="100, 20" opacity="0.9"/>
@@ -143,17 +147,27 @@
             </div>
         </div>
 
-        <div class="hud-panel" id="terminalPanel" style="flex: 1;">
+        <!-- Panel 2: Chat Terminal -->
+        <div class="hud-panel" style="flex: 1;">
+            <div class="panel-header">E.V.A.S. CHAT TERMINAL</div>
             <div id="chat-terminal">
                 <div class="msg-line msg-evas">E.V.A.S.: Universal Workspace online. Double-tap screen or tap the 3D Orb to speak directly to E.V.A.S.</div>
             </div>
         </div>
 
+        <!-- Panel 3: ChatGPT Interactive Canvas Workspace -->
+        <div class="hud-panel" style="flex: 1;">
+            <div class="panel-header">📐 E.V.A.S. CANVAS & ARTIFACT WORKSPACE</div>
+            <div id="canvas-editor" contenteditable="true" placeholder="// Canvas Workspace active. Edit documents, code, or refined blueprints here...">// E.V.A.S. Canvas Editor Active
+// Send a request or select content to edit directly alongside chat...</div>
+        </div>
+
+        <!-- Panel 4: Live Telemetry -->
         <div class="hud-panel">
             <div class="panel-header">LIVE TELEMETRY</div>
             <div style="font-size: 0.7rem; margin-top: 4px;">
                 USER: <span id="currentUserTag">GUEST</span><br>
-                BUILD: 27.0.0-GRAPHIC-HUD<br>
+                BUILD: 29.0.0-CHATGPT-CANVAS<br>
                 GPS TELEMETRY: ACTIVE
             </div>
             <button onclick="activateVoiceMicrophoneEngine()" style="margin-top:6px;">🎙️ TAP TO TALK</button>
@@ -199,7 +213,7 @@
             <div class="setting-row"><label>2. Honorific Title:</label><select id="s2" onchange="applyCustomSettings()"><option value="Sir">Sir</option><option value="Ma'am">Ma'am</option><option value="Commander">Commander</option></select></div>
             <div class="setting-row"><label>3. Speech Rate:</label><select id="s3"><option value="+0%">Normal (+0%)</option><option value="+10%">Fast (+10%)</option></select></div>
             <div class="setting-row"><label>4. Voice Pitch:</label><select id="s4"><option value="-4Hz">J.A.R.V.I.S. (-4Hz)</option><option value="+0Hz">Default (0Hz)</option></select></div>
-            <div class="setting-row"><label>5. Google Search Mode:</label><select id="s5"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
+            <div class="setting-row"><label>5. Engine Pipeline:</label><select id="s5"><option value="local">Local DeepSeek-R1 Core</option></select></div>
             <div class="setting-row"><label>6. Temperature Units:</label><select id="s6"><option value="C">Celsius (°C)</option><option value="F">Fahrenheit (°F)</option></select></div>
             <div class="setting-row"><label>7. Response Verbosity:</label><select id="s7"><option value="concise">Concise</option><option value="detailed">Detailed</option></select></div>
             <div class="setting-row"><label>8. Auto-Lock Sensitivity:</label><select id="s8"><option value="high">High (4 reqs/10s)</option><option value="medium">Medium (6 reqs/10s)</option></select></div>
@@ -429,7 +443,6 @@
                     honorific: document.getElementById('s2').value,
                     voice_rate: document.getElementById('s3').value,
                     voice_pitch: document.getElementById('s4').value,
-                    enable_search: document.getElementById('s5').value === "true",
                     custom_prefix: document.getElementById('s10').value
                 },
                 latitude: userLat, longitude: userLon,
@@ -450,6 +463,10 @@
             })
             .then(data => {
                 appendMessage("E.V.A.S.:\n" + data.response, "msg-evas", data.svg_blueprint);
+                
+                // Update ChatGPT Side-by-Side Canvas Workspace
+                document.getElementById('canvas-editor').innerText = data.response;
+
                 if (data.action_type === "SPOTIFY_DISPATCH") {
                     launchSpotifyAppOrWeb();
                 } else if (data.action_type === "GSC_DISPATCH") {
