@@ -1,5 +1,6 @@
 Flask
 requests
+openai
 edge-tts
 speedtest-cli
 gunicorn

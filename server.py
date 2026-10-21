@@ -11,6 +11,13 @@ import base64
 import io
 import asyncio
 
+# OpenAI SDK Integration
+try:
+    from openai import OpenAI
+    HAS_OPENAI = True
+except Exception:
+    HAS_OPENAI = False
+
 try:
     from PIL import Image, ImageEnhance
     import pytesseract
@@ -41,8 +48,11 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "30.0.0-MULTIVARIANT-DESIGN-CANVAS"
+EVAS_BUILD_VERSION = "31.0.0-OPENAI-API-HUD"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+openai_client = OpenAI(api_key=OPENAI_API_KEY) if (HAS_OPENAI and OPENAI_API_KEY) else None
 
 SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID", "YOUR_SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "YOUR_SPOTIFY_CLIENT_SECRET")
@@ -570,7 +580,23 @@ def ask():
     if not reply:
         system_prompt = f"You are E.V.A.S., an AI assistant styled after J.A.R.V.I.S. Address user as '{honorific}'."
 
-        if HAS_OLLAMA:
+        # Primary LLM Dispatch: OpenAI Cloud API (with Local Ollama Fallback)
+        if openai_client:
+            try:
+                completion = openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.7
+                )
+                reply = completion.choices[0].message.content.strip()
+            except Exception as e:
+                print(f"[E.V.A.S. LOG] OpenAI API fallback triggered: {e}")
+                reply = None
+
+        if not reply and HAS_OLLAMA:
             try:
                 res = ollama.chat(model='deepseek-r1:1.5b', messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}])
                 reply = re.sub(r'<think>[\s\S]*?</think>', '', res['message']['content']).strip()
