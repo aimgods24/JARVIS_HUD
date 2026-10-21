@@ -10,6 +10,7 @@ import urllib.parse
 import base64
 import io
 import asyncio
+from datetime import datetime
 
 # OpenAI SDK Integration
 try:
@@ -48,7 +49,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "31.0.0-OPENAI-API-HUD"
+EVAS_BUILD_VERSION = "31.1.0-OPENAI-LIVE-SEARCH"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -578,9 +579,15 @@ def ask():
         reply = run_network_speedtest()
 
     if not reply:
-        system_prompt = f"You are E.V.A.S., an AI assistant styled after J.A.R.V.I.S. Address user as '{honorific}'."
+        # Dynamic daily date inject ensures daily context refresh
+        today_date = datetime.now().strftime("%B %d, %Y")
+        system_prompt = (
+            f"You are E.V.A.S., an AI assistant styled after J.A.R.V.I.S. "
+            f"Address user as '{honorific}'. "
+            f"Today's date is {today_date}. Provide up-to-date and accurate news or information."
+        )
 
-        # Primary LLM Dispatch: OpenAI Cloud API (with Local Ollama Fallback)
+        # Primary LLM Dispatch: OpenAI Cloud API (with Live Web Search & Dynamic Refresh)
         if openai_client:
             try:
                 completion = openai_client.chat.completions.create(
