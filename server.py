@@ -57,7 +57,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "33.0.0-SHOPPING-RESEARCH"
+EVAS_BUILD_VERSION = "34.0.0-CUSTOM-HUD"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -68,6 +68,35 @@ SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "YOUR_SPOTIFY_CL
 SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:5000/api/spotify/callback")
 
 USER_REQUEST_TIMESTAMPS = {}
+
+# Standard Default Extended Settings Schema (25 Options)
+DEFAULT_EXTENDED_SETTINGS = {
+    "honorific": "Sir",
+    "voice_rate": "+0%",
+    "voice_pitch": "-4Hz",
+    "voice_gender": "Male-British",
+    "hud_theme": "Cyan Matrix",
+    "persona_preset": "JARVIS Protocol",
+    "response_verbosity": "Balanced",
+    "custom_prefix": "",
+    "chat_memory_retention": 15,
+    "orb_sensitivity": "Normal",
+    "audio_feedback": True,
+    "auto_read_responses": True,
+    "lockscreen_wakelock": True,
+    "double_tap_wake": True,
+    "canvas_auto_open": True,
+    "cad_color_scheme": "Holographic Blue",
+    "default_travel_mode": "driving",
+    "location_precision": "High",
+    "ocr_contrast_boost": 2.0,
+    "rate_limit_sensitivity": 6,
+    "secret_key_protection": True,
+    "spotify_auto_lyrics": True,
+    "show_clock_telemetry": True,
+    "show_network_stats": True,
+    "compact_ui_mode": False
+}
 
 def init_db():
     conn = sqlite3.connect(DB_FILE)
@@ -181,25 +210,27 @@ def fetch_recent_gmail_messages(honorific="Sir"):
 # ---------------------------------------------------------
 # DYNAMIC MULTI-VARIANT DESIGN SYNTHESIZER
 # ---------------------------------------------------------
-def generate_multivariant_design(prompt):
+def generate_multivariant_design(prompt, color_scheme="Holographic Blue"):
     subject = re.sub(r'blueprint|design|schematic|create|draw|generate|make|build', '', prompt, flags=re.IGNORECASE).strip() or "Custom Engineered Concept"
     known_materials = ["Titanium", "Carbon Fiber", "Graphene", "Aluminum Alloy", "Reinforced Steel"]
     detected_materials = [m for m in known_materials if m.lower() in prompt.lower()] or ["Aerospace Titanium Alloy", "Carbon Composite"]
 
+    stroke_color = "#ffaa00" if color_scheme == "Amber Warning" else "#00f3ff"
     mat_list_str = "\n".join([f"  • Material {i+1}: `{m}`" for i, m in enumerate(detected_materials)])
 
     svg_render = f'''
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360" style="width:100%; height:auto; background:#001020; border:1px solid #00f3ff; border-radius:6px; margin-top:8px;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 360" style="width:100%; height:auto; background:#001020; border:1px solid {stroke_color}; border-radius:6px; margin-top:8px;">
         <rect width="100%" height="100%" fill="#001020" />
-        <rect x="15" y="15" width="570" height="330" fill="none" stroke="#00f3ff" stroke-width="1.5"/>
-        <text x="30" y="40" fill="#00f3ff" font-family="monospace" font-size="12">DESIGN MATRIX: {subject.upper()[:30]}</text>
-        <circle cx="300" cy="170" r="60" fill="none" stroke="#ffaa00" stroke-width="2"/>
+        <rect x="15" y="15" width="570" height="330" fill="none" stroke="{stroke_color}" stroke-width="1.5"/>
+        <text x="30" y="40" fill="{stroke_color}" font-family="monospace" font-size="12">DESIGN MATRIX: {subject.upper()[:30]}</text>
+        <circle cx="300" cy="170" r="60" fill="none" stroke="{stroke_color}" stroke-width="2"/>
     </svg>
     '''
 
     report = (
         f"📐 **E.V.A.S. MULTI-VARIANT DESIGN SYNTHESIZER**\n\n"
         f"• **Project**: `{subject.title()}`\n"
+        f"• **Active Visual Palette**: `{color_scheme}`\n\n"
         f"🛠️ **MATERIALS**:\n{mat_list_str}\n\n"
         f"💡 *Variant schematics synthesized on Canvas.*"
     )
@@ -236,7 +267,7 @@ def get_live_weather(lat=5.2971, lon=100.2588):
     except Exception as e:
         return f"Weather error: {e}"
 
-def process_and_analyze_attachment(file_b64, file_type=""):
+def process_and_analyze_attachment(file_b64, file_type="", contrast_boost=2.0):
     if not file_b64:
         return "", None
     try:
@@ -244,7 +275,9 @@ def process_and_analyze_attachment(file_b64, file_type=""):
         file_bytes = base64.b64decode(encoded)
         if HAS_OCR:
             img = Image.open(io.BytesIO(file_bytes)).convert('L')
-            text = pytesseract.image_to_string(img)
+            enhancer = ImageEnhance.Contrast(img)
+            enhanced_img = enhancer.enhance(contrast_boost)
+            text = pytesseract.image_to_string(enhanced_img)
             return f"\n\n📷 **[OCR PARSED CONTENT]**:\n```text\n{text.strip()}\n```\n", text.strip()
     except Exception as e:
         return f"\n\n⚠️ Vision module error: {str(e)}", None
@@ -272,22 +305,23 @@ def parse_contextual_intent(prompt):
         return "WEATHER"
     return "UNIVERSAL_EXECUTION"
 
-async def create_tts_audio_file(text, voice_rate="+0%", voice_pitch="-4Hz", filename="static_speech.mp3"):
+async def create_tts_audio_file(text, voice_rate="+0%", voice_pitch="-4Hz", voice_gender="Male-British", filename="static_speech.mp3"):
     if not HAS_EDGE_TTS:
         return False
     try:
         clean_prompt = re.sub(r'[*_~`#>]', '', text).strip()
-        communicate = edge_tts.Communicate(clean_prompt[:600], "en-GB-RyanNeural", pitch=voice_pitch, rate=voice_rate)
+        voice_name = "en-GB-RyanNeural" if "British" in voice_gender else "en-US-GuyNeural"
+        communicate = edge_tts.Communicate(clean_prompt[:600], voice_name, pitch=voice_pitch, rate=voice_rate)
         await communicate.save(filename)
         return True
     except Exception:
         return False
 
-def generate_voice_sync(text, voice_rate="+0%", voice_pitch="-4Hz"):
+def generate_voice_sync(text, voice_rate="+0%", voice_pitch="-4Hz", voice_gender="Male-British"):
     try:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        success = loop.run_until_complete(create_tts_audio_file(text, voice_rate, voice_pitch))
+        success = loop.run_until_complete(create_tts_audio_file(text, voice_rate, voice_pitch, voice_gender))
         loop.close()
         return success
     except Exception:
@@ -302,6 +336,33 @@ def run_network_speedtest():
         return f"⚡ **SPEEDTEST**: Download `{st.download()/1e6:.2f} Mbps` | Upload `{st.upload()/1e6:.2f} Mbps`"
     except Exception as e:
         return f"Speedtest error: {e}"
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+def manage_settings():
+    username = session.get('username')
+    if request.method == 'GET':
+        if username:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("SELECT settings FROM users WHERE username = ?", (username,))
+            row = c.fetchone()
+            conn.close()
+            if row and row[0]:
+                saved_settings = json.loads(row[0])
+                merged = {**DEFAULT_EXTENDED_SETTINGS, **saved_settings}
+                return jsonify(merged)
+        return jsonify(DEFAULT_EXTENDED_SETTINGS)
+    
+    elif request.method == 'POST':
+        new_settings = request.json or {}
+        merged = {**DEFAULT_EXTENDED_SETTINGS, **new_settings}
+        if username:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute("UPDATE users SET settings = ? WHERE username = ?", (json.dumps(merged), username))
+            conn.commit()
+            conn.close()
+        return jsonify({"message": "Settings updated successfully", "settings": merged})
 
 @app.route('/api/auth/register', methods=['POST'])
 def register():
@@ -334,7 +395,8 @@ def login():
     conn.close()
     if user and check_password_hash(user[0], password):
         session['username'] = username
-        return jsonify({'message': 'Logged in', 'username': username, 'settings': json.loads(user[1] or '{}'), 'is_locked': bool(user[3])})
+        user_settings = {**DEFAULT_EXTENDED_SETTINGS, **json.loads(user[1] or '{}')}
+        return jsonify({'message': 'Logged in', 'username': username, 'settings': user_settings, 'is_locked': bool(user[3])})
     return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/')
@@ -353,17 +415,23 @@ def ask():
     data = request.json or {}
     username = session.get('username') or data.get('username', 'guest')
     user_prompt = data.get('prompt', '').strip()
-    settings = data.get('settings', {})
+    settings = {**DEFAULT_EXTENDED_SETTINGS, **data.get('settings', {})}
+    
     honorific = settings.get('honorific', 'Sir')
     voice_rate = settings.get('voice_rate', '+0%')
     voice_pitch = settings.get('voice_pitch', '-4Hz')
+    voice_gender = settings.get('voice_gender', 'Male-British')
+    custom_prefix = settings.get('custom_prefix', '')
+    persona_preset = settings.get('persona_preset', 'JARVIS Protocol')
+    cad_palette = settings.get('cad_color_scheme', 'Holographic Blue')
+    contrast_boost = float(settings.get('ocr_contrast_boost', 2.0))
 
     lat = data.get('latitude', 5.2971)
     lon = data.get('longitude', 100.2588)
     file_b64 = data.get('file_b64', None)
     file_type = data.get('file_type', '')
 
-    file_analysis_text, _ = process_and_analyze_attachment(file_b64, file_type)
+    file_analysis_text, _ = process_and_analyze_attachment(file_b64, file_type, contrast_boost)
     if file_analysis_text:
         user_prompt = f"{user_prompt}{file_analysis_text}".strip()
 
@@ -386,7 +454,7 @@ def ask():
         reply = fetch_recent_gmail_messages(honorific)
 
     elif inferred_intent == "GENERATE_MULTIVARIANT_DESIGN":
-        reply, svg_blueprint = generate_multivariant_design(user_prompt)
+        reply, svg_blueprint = generate_multivariant_design(user_prompt, cad_palette)
 
     elif inferred_intent == "GSC_APP":
         action_type = "GSC_DISPATCH"
@@ -401,15 +469,20 @@ def ask():
 
     elif inferred_intent == "DIRECTIONS":
         destination = re.sub(r'directions to|navigate to', '', user_prompt, flags=re.IGNORECASE).strip() or "Penang Hill, Malaysia"
-        google_maps_url = f"https://www.google.com/maps/dir/?api=1&origin={lat},{lon}&destination={urllib.parse.quote(destination)}"
-        reply = f"🗺️ **NAVIGATION DISPATCHED**: `{destination}`"
+        travel_mode = settings.get('default_travel_mode', 'driving')
+        google_maps_url = f"https://www.google.com/maps/dir/?api=1&origin={lat},{lon}&destination={urllib.parse.quote(destination)}&travelmode={travel_mode}"
+        reply = f"🗺️ **NAVIGATION DISPATCHED**: `{destination}` ({travel_mode.title()} mode)"
 
     elif inferred_intent == "RUN_SPEEDTEST":
         reply = run_network_speedtest()
 
     if not reply:
         today_date = datetime.now().strftime("%B %d, %Y")
-        system_prompt = f"You are E.V.A.S., an AI assistant styled after J.A.R.V.I.S. Address user as '{honorific}'. Today's date is {today_date}."
+        persona_instructions = f"Style: {persona_preset}."
+        system_prompt = (
+            f"You are E.V.A.S., an AI assistant. Address user as '{honorific}'. "
+            f"{persona_instructions} Today's date is {today_date}."
+        )
 
         if openai_client:
             try:
@@ -432,8 +505,11 @@ def ask():
         if not reply:
             reply = f"E.V.A.S. Core online. Request verified, {honorific}."
 
+    if custom_prefix and not reply.startswith(custom_prefix):
+        reply = f"{custom_prefix} {reply}"
+
     clean_reply = re.sub(r'[*_~`#>]', '', reply).strip()
-    has_audio = generate_voice_sync(clean_reply, voice_rate, voice_pitch)
+    has_audio = generate_voice_sync(clean_reply, voice_rate, voice_pitch, voice_gender)
 
     return jsonify({
         'response': clean_reply, 
