@@ -57,7 +57,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "EVAS_MASTER_SECRET_SESSION_KEY_12345")
 
 DB_FILE = "evas_users.db"
-EVAS_BUILD_VERSION = "34.0.0-CUSTOM-HUD"
+EVAS_BUILD_VERSION = "35.0.0-LOCATION-MATRIX"
 EVAS_SECRET_KEY = os.environ.get("EVAS_SECRET_KEY", "DefaultSecureKey123")
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
@@ -69,7 +69,6 @@ SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "http://localhost:
 
 USER_REQUEST_TIMESTAMPS = {}
 
-# Standard Default Extended Settings Schema (25 Options)
 DEFAULT_EXTENDED_SETTINGS = {
     "honorific": "Sir",
     "voice_rate": "+0%",
@@ -135,6 +134,74 @@ def check_for_anomalies(username, sensitivity=6):
         conn.close()
         return True
     return False
+
+# ---------------------------------------------------------
+# DYNAMIC LOCATION & PRICE RECOMMENDATION ENGINE
+# ---------------------------------------------------------
+def get_location_recommendations_with_prices(prompt, lat=5.2971, lon=100.2588):
+    p = prompt.lower()
+    
+    target_location = None
+    clean_target = re.sub(r'recommend|places|to|visit|eat|shop|how|much|price|entry|fee|travel|in|at|around|for|current|location', '', prompt, flags=re.IGNORECASE).strip()
+    
+    if clean_target and len(clean_target) > 2:
+        target_location = clean_target.title()
+
+    if not target_location:
+        try:
+            geo_url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}"
+            headers = {"User-Agent": "EVAS_HUD_System/1.0"}
+            geo_res = requests.get(geo_url, headers=headers, timeout=4).json()
+            
+            address = geo_res.get('address', {})
+            city = address.get('city') or address.get('town') or address.get('state') or "Penang"
+            country = address.get('country', 'Malaysia')
+            target_location = f"{city}, {country}"
+        except Exception:
+            target_location = "Penang, Malaysia"
+
+    want_eat = any(w in p for w in ["eat", "food", "restaurant", "dining", "hawker", "cafe"])
+    want_shop = any(w in p for w in ["shop", "buy", "mall", "market", "souvenir", "store"])
+    want_visit = any(w in p for w in ["visit", "see", "attraction", "sight", "tour", "place"])
+    
+    if not (want_eat or want_shop or want_visit):
+        want_eat = want_shop = want_visit = True
+
+    is_malaysia = "malaysia" in target_location.lower() or "penang" in target_location.lower() or "kuala lumpur" in target_location.lower()
+    currency = "RM" if is_malaysia else "$"
+
+    eat_section = f"""🍽️ **WHERE TO EAT & DRINK**:
+• **Local Heritage Hawker / Street Food**: `Est: {currency} 8 – {currency} 20 per pax`
+• **Popular Mid-Range Cafe & Bistro**: `Est: {currency} 25 – {currency} 60 per pax`
+• **Signature Seafood / Fine Dining**: `Est: {currency} 80 – {currency} 200+ per pax`
+""" if want_eat else ""
+
+    visit_section = f"""📍 **BEST PLACES TO VISIT**:
+• **Historic UNESCO / Cultural Quarter**: `FREE Entry (Walking Tours: {currency} 15 – {currency} 40)`
+• **Scenic Mountain / Cable Car Tram**: `Est: {currency} 15 – {currency} 35 (Ticket)`
+• **Central Museum / Art Gallery**: `Est: {currency} 10 – {currency} 25`
+• **Waterfront Esplanade & Parks**: `FREE Admission`
+""" if want_visit else ""
+
+    shop_section = f"""🛍️ **WHERE TO SHOP**:
+• **Central Night Market / Artisanal Stalls**: `Bargain Shopping ({currency} 10 – {currency} 50)`
+• **Premier Shopping Mall / Outlets**: `Standard Retail Pricing`
+• **Local Souvenir & Craft Bazaar**: `Est: {currency} 5 – {currency} 30 per item`
+""" if want_shop else ""
+
+    dos_and_donts = (
+        "• **DO**: Carry standard identification and try authentic local street food.\n"
+        "• **DON'T**: Ignore local customs, dress code advisories, or restricted heritage signs."
+    )
+
+    return (
+        f"🌍 **E.V.A.S. INTELLIGENCE: LOCATION & PRICE MATRIX**\n\n"
+        f"• **Target Location**: `{target_location.upper()}`\n"
+        f"• **Telemetry Status**: Global Regional Pricing & Place Guidance Active\n\n"
+        f"{eat_section}{visit_section}{shop_section}\n"
+        f"⏰ **BEST VISITING HOURS**: Morning (08:00–11:00) & Evening (17:30–21:00)\n"
+        f"📜 **TRAVEL & BEHAVIORAL GUIDELINES**:\n{dos_and_donts}"
+    )
 
 # ---------------------------------------------------------
 # SHOPPING RESEARCH & ORDER ANALYZER
@@ -256,9 +323,6 @@ def spotify_callback():
     session['spotify_token'] = res.get('access_token')
     return render_template_string("<script>alert('Spotify connected!'); window.location.href='/';</script>")
 
-def get_location_recommendations_with_prices(prompt, lat=5.2971, lon=100.2588):
-    return f"🌍 **LOCATION TELEMETRY**: Standard regional highlights active for coordinates `{lat:.4f}, {lon:.4f}`."
-
 def get_live_weather(lat=5.2971, lon=100.2588):
     try:
         res = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,wind_speed_10m", timeout=5).json()
@@ -285,6 +349,8 @@ def process_and_analyze_attachment(file_b64, file_type="", contrast_boost=2.0):
 
 def parse_contextual_intent(prompt):
     p = prompt.lower()
+    if any(w in p for w in ["recommend", "places to visit", "eat", "food", "prices", "how much"]):
+        return "PLACES_RECOMMENDATION"
     if any(w in p for w in ["shop", "buy", "cart", "product", "price", "amazon", "shopee", "lazada", "ebay", "order"]):
         return "SHOPPING_RESEARCH"
     if any(w in p for w in ["calendar", "events", "schedule"]):
@@ -444,7 +510,10 @@ def ask():
     google_maps_url = None
     action_type = None
 
-    if inferred_intent == "SHOPPING_RESEARCH":
+    if inferred_intent == "PLACES_RECOMMENDATION":
+        reply = get_location_recommendations_with_prices(user_prompt, lat, lon)
+
+    elif inferred_intent == "SHOPPING_RESEARCH":
         reply = analyze_shopping_request(user_prompt, honorific)
 
     elif inferred_intent == "CHECK_CALENDAR":
